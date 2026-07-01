@@ -1,0 +1,23 @@
+# ============================================
+# .htaccess - กำหนดสิทธิ์การเข้าถึงไฟล์และโฟลเดอร์
+# ============================================
+
+# ปิดการแสดงรายการไฟล์ในโฟลเดอร์ (ป้องกันการส่อง目录)
+Options -Indexes
+
+# ห้ามเข้าถึงโฟลเดอร์สำคัญโดยตรง (config, includes, avatars, fonts, vendor, assets)
+<FilesMatch "^(config|includes|avatars|fonts|vendor|assets)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# อนุญาตให้เข้าถึงไฟล์ประเภทนี้ได้ (เพื่อให้เว็บแสดงผลได้)
+<FilesMatch "\.(ttf|png|jpg|jpeg|css|js|ico|svg)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# (ตัวเลือก) บังคับให้ใช้ HTTPS เพื่อความปลอดภัย (ถ้ามี SSL)
+# RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]

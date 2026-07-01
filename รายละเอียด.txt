@@ -1,0 +1,42 @@
+risk_management/
+├── .htaccess                 # กฎ Apache (เช่น ปิด directory listing, rewrite URL)
+├── composer.json             # ประกาศ dependency (ถ้ามี)
+├── load_font.php             # โหลดฟอนต์ TH Sarabun สำหรับ PDF
+├── assets/
+│   ├── css/
+│   │   └── custom.css        # CSS กำหนดเองทั้งระบบ
+│   └── js/
+│       └── cookie-consent.js # สคริปต์แจ้งเตือน cookie
+├── fonts/
+│   └── THSarabun.ttf         # ฟอนต์ภาษาไทย (ใช้ใน PDF)
+├── config/
+│   └── db.php                # เชื่อมต่อฐานข้อมูล PDO
+├── includes/
+│   ├── functions.php         # ฟังก์ชันหลักทั้งหมด (Session, CSRF, Brute Force, isAdmin)
+│   ├── header.php            # ส่วนหัว HTML (รวม title, meta, เชื่อม CSS/JS)
+│   ├── footer.php            # ส่วนท้าย HTML (ปิด body/html)
+│   ├── sidebar.php           # เมนูด้านข้าง แสดงตามบทบาท
+│   └── cookie_banner.php     # แถบยอมรับ cookie (GDPR)
+├── avatars/
+│   └── default.png           # รูปโปรไฟล์เริ่มต้น
+├── index.php                 # หน้าแรก (Login)
+├── register.php              # สมัครสมาชิก
+├── logout.php                # ออกจากระบบ
+├── dashboard.php             # แดชบอร์ด (เฉพาะ Admin)
+├── risks.php                 # รายการความเสี่ยง (Admin: ทั้งหมด, User: เฉพาะของตัวเอง)
+├── risk_form.php             # ฟอร์มเพิ่ม/แก้ไขความเสี่ยง (Step Cards + ยินยอม)
+├── view_risk.php             # ดูรายละเอียดความเสี่ยง
+├── users.php                 # จัดการผู้ใช้ (เฉพาะ Admin)
+├── user_form.php             # ฟอร์มเพิ่ม/แก้ไขผู้ใช้ (Admin)
+├── generate_pdf.php          # สร้าง PDF รายงานความเสี่ยง
+├── action.php                # API จัดการข้อมูล (POST/GET) พร้อมตรวจสอบสิทธิ์
+└── install.sql               # โครงสร้างฐานข้อมูลเริ่มต้น
+
+
+🚀 ขั้นตอนการติดตั้ง
+    1. รัน install.sql ใน phpMyAdmin
+    2. รัน composer install ที่โฟลเดอร์โปรเจกต์
+    3. สร้างโฟลเดอร์ avatars/ และวาง default.png
+    4. สร้างโฟลเดอร์ fonts/ และวาง THSarabun.ttf (สำหรับพิมพ์ PDF)
+    5. แก้ไข config/db.php ให้ตรงกับฐานข้อมูล
+    6. เข้าสู่ระบบ ด้วย admin / admin123
