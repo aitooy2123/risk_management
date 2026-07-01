@@ -2,9 +2,9 @@
 /**
  * ฟอร์มเพิ่ม/แก้ไขผู้ใช้ (Frontend) - เฉพาะ Admin
  * - ดีไซน์ Card Layout สวยงาม
+ * - เพิ่มฟิลด์ reporter_code (รหัสผู้รายงาน)
  * - รองรับการอัปโหลด Avatar พร้อมแสดงตัวอย่าง
  * - ถ้าแก้ไขและไม่กรอกรหัสผ่าน จะคงรหัสผ่านเดิม
- * - แสดงวันที่ปัจจุบัน (พ.ศ.) ในฟอร์ม และห้ามเลือกวันล่วงหน้า
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -23,25 +23,18 @@ if ($id) {
 $csrf_token = generateCsrfToken();
 $is_edit = $id ? true : false;
 $title = $is_edit ? '✏️ แก้ไขผู้ใช้' : '➕ เพิ่มผู้ใช้';
-
-// วันที่ปัจจุบัน (สำหรับแสดงผลภาษาไทย และจำกัดห้ามเลือกอนาคต)
-$currentDate = date('Y-m-d');
-$thaiDate = getThaiDate($currentDate);
 ?>
 <?php include 'includes/header.php'; ?>
-<!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<div class="flex h-[calc(100vh-4rem)] bg-blue-50/30">
+<div class="flex h-screen bg-blue-50/30">
     <?php include 'includes/sidebar.php'; ?>
     <div class="flex-1 p-6 overflow-y-auto">
         <div class="max-w-3xl mx-auto">
-            <!-- หัวข้อ -->
             <h2 class="text-2xl font-bold mb-6 text-blue-800 flex items-center">
                 <i class="fas fa-user-edit mr-3 text-blue-600"></i><?= $title ?>
             </h2>
 
-            <!-- ฟอร์ม -->
             <form id="userForm" method="POST" action="action.php?action=save_user" enctype="multipart/form-data" class="space-y-6">
                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                 <input type="hidden" name="id" value="<?= $id ?>">
@@ -54,6 +47,16 @@ $thaiDate = getThaiDate($currentDate);
                         </h3>
                     </div>
                     <div class="p-5 space-y-4">
+                        <!-- รหัสผู้รายงาน (ใหม่) -->
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-1">
+                                🆔 รหัสผู้รายงาน <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" name="reporter_code" value="<?= htmlspecialchars($user['reporter_code'] ?? '') ?>" 
+                                   class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition" 
+                                   required placeholder="เช่น R10001">
+                        </div>
+
                         <!-- ชื่อผู้ใช้ -->
                         <div>
                             <label class="block text-gray-700 font-medium mb-1">
@@ -98,14 +101,6 @@ $thaiDate = getThaiDate($currentDate);
                         </h3>
                     </div>
                     <div class="p-5 space-y-4">
-                        <!-- วันที่ลงทะเบียน -->
-                        <div>
-                            <label class="block text-gray-700 font-medium mb-1">📅 วันที่ลงทะเบียน</label>
-                            <input type="date" name="register_date" value="<?= $currentDate ?>" max="<?= $currentDate ?>" 
-                                   class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition">
-                            <p class="text-sm text-gray-500 mt-1">📌 <?= $thaiDate ?></p>
-                        </div>
-
                         <!-- บทบาท -->
                         <div>
                             <label class="block text-gray-700 font-medium mb-1">🎯 บทบาท</label>
@@ -119,10 +114,9 @@ $thaiDate = getThaiDate($currentDate);
                         <div>
                             <label class="block text-gray-700 font-medium mb-1">🖼️ รูปโปรไฟล์ (Avatar)</label>
                             <div class="flex items-start space-x-4">
-                                <!-- ตัวอย่างรูป -->
                                 <div class="flex-shrink-0">
                                     <img id="avatarPreview" 
-                                         src="<?= ($is_edit && !empty($user['avatar'])) ? 'avatars/' . htmlspecialchars($user['avatar']) : 'https://via.placeholder.com/100?text=Preview' ?>" 
+                                         src="<?= ($is_edit && !empty($user['avatar'])) ? 'avatars/' . htmlspecialchars($user['avatar']) : 'avatars/default.png' ?>" 
                                          class="w-20 h-20 rounded-full border-2 border-blue-200 object-cover shadow-sm" 
                                          alt="Avatar Preview">
                                 </div>
@@ -172,22 +166,13 @@ document.getElementById('userForm').addEventListener('submit', function(e) {
     const password = document.querySelector('input[name="password"]').value;
     const confirm = document.querySelector('input[name="confirm_password"]').value;
 
-    // ถ้ามีการกรอกรหัสผ่าน (หรือยืนยัน)
     if (password || confirm) {
         if (password !== confirm) {
-            Swal.fire({
-                icon: 'error',
-                title: 'รหัสผ่านไม่ตรงกัน',
-                text: 'กรุณากรอกรหัสผ่านและยืนยันรหัสผ่านให้ตรงกัน'
-            });
+            Swal.fire({ icon: 'error', title: 'รหัสผ่านไม่ตรงกัน', text: 'กรุณากรอกรหัสผ่านและยืนยันรหัสผ่านให้ตรงกัน' });
             return;
         }
         if (password.length < 8) {
-            Swal.fire({
-                icon: 'error',
-                title: 'รหัสผ่านสั้นเกินไป',
-                text: 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร'
-            });
+            Swal.fire({ icon: 'error', title: 'รหัสผ่านสั้นเกินไป', text: 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร' });
             return;
         }
     }
@@ -196,32 +181,22 @@ document.getElementById('userForm').addEventListener('submit', function(e) {
 
     fetch('action.php?action=save_user', {
         method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'   // ✅ ป้องกัน Forbidden
+        },
         body: formData
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'สำเร็จ',
-                text: data.message,
-                timer: 2000,
-                showConfirmButton: false
-            }).then(() => window.location.href = 'users.php');
+            Swal.fire({ icon: 'success', title: 'สำเร็จ', text: data.message, timer: 2000, showConfirmButton: false })
+                .then(() => window.location.href = 'users.php');
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'เกิดข้อผิดพลาด',
-                text: data.message
-            });
+            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.message });
         }
     })
     .catch(() => {
-        Swal.fire({
-            icon: 'error',
-            title: 'เกิดข้อผิดพลาด',
-            text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้'
-        });
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้' });
     });
 });
 </script>

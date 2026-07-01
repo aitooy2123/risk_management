@@ -1,22 +1,25 @@
 <?php
 
 /**
- * ตัวจัดการ API (Backend) – อัปเดตสมบูรณ์
- * 
- * - save_risk: รองรับ reporter_code, status
- * - check_duplicate: ตรวจสอบ reporter_code + เงื่อนไขอื่น
- * - delete_risks: ลบรายการ (Admin)
- * - save_user: รองรับ reporter_code, ตรวจสอบซ้ำ
- * - delete_user: ลบผู้ใช้ทีละคน (Admin)
- * - delete_users: ลบผู้ใช้หลายคน (Admin)  ** เพิ่มใหม่ **
- * - save_cookie_consent: บันทึก Consent
+ * ตัวจัดการ API (Backend) – ไม่มี Cookie Consent
+ * - รองรับ CSRF token จากทั้ง POST form และ JSON body
+ * - แก้ไขปัญหา Forbidden เมื่อใช้ fetch แบบ JSON
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
 require_once 'includes/functions.php';
 
-// ตรวจสอบว่าเรียกผ่าน AJAX หรือมี CSRF token
-if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) && empty($_POST['csrf_token'])) {
+// ตรวจสอบ CSRF token จากหลายช่องทาง
+$csrf_token = $_POST['csrf_token'] ?? '';
+
+if (empty($csrf_token)) {
+    // ลองอ่านจาก JSON body
+    $input = json_decode(file_get_contents('php://input'), true);
+    $csrf_token = $input['csrf_token'] ?? '';
+}
+
+// ถ้าไม่มี CSRF token และไม่ใช่ AJAX → Forbidden
+if (empty($csrf_token) && empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Forbidden']);
     exit;
@@ -301,7 +304,8 @@ if ($action == 'delete_user') {
     }
 
     $input = json_decode(file_get_contents('php://input'), true);
-    if (!isset($input['csrf_token']) || !validateCsrfToken($input['csrf_token'])) {
+    $csrf_token = $input['csrf_token'] ?? '';
+    if (!validateCsrfToken($csrf_token)) {
         echo json_encode(['success' => false, 'message' => 'CSRF token ไม่ถูกต้อง']);
         exit;
     }
@@ -335,7 +339,7 @@ if ($action == 'delete_user') {
 }
 
 // ============================================
-// 6. delete_users (ลบหลายคน) – เพิ่มใหม่
+// 6. delete_users (ลบหลายคน)
 // ============================================
 if ($action == 'delete_users') {
     if (!isLoggedIn() || !isAdmin()) {
@@ -344,7 +348,8 @@ if ($action == 'delete_users') {
     }
 
     $input = json_decode(file_get_contents('php://input'), true);
-    if (!isset($input['csrf_token']) || !validateCsrfToken($input['csrf_token'])) {
+    $csrf_token = $input['csrf_token'] ?? '';
+    if (!validateCsrfToken($csrf_token)) {
         echo json_encode(['success' => false, 'message' => 'CSRF token ไม่ถูกต้อง']);
         exit;
     }
@@ -355,15 +360,12 @@ if ($action == 'delete_users') {
         exit;
     }
 
-    // ป้องกันลบตัวเอง
     if (in_array($_SESSION['user_id'], $ids)) {
         echo json_encode(['success' => false, 'message' => 'ไม่สามารถลบตัวเองได้']);
         exit;
     }
 
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
-
-    // ตรวจสอบ Admin คนสุดท้าย
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND id IN ($placeholders)");
     $stmt->execute($ids);
     if ($stmt->fetchColumn() > 0) {
@@ -378,38 +380,5 @@ if ($action == 'delete_users') {
     $stmt = $pdo->prepare("DELETE FROM users WHERE id IN ($placeholders)");
     $stmt->execute($ids);
     echo json_encode(['success' => true, 'message' => 'ลบผู้ใช้ ' . $stmt->rowCount() . ' คนสำเร็จ']);
-    exit;
-}
-
-// ============================================
-// 7. save_cookie_consent (ไม่เปลี่ยนแปลง)
-// ============================================
-if ($action == 'save_cookie_consent') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    $consent = $input['consent'] ?? 0;
-    $preferences = $input['preferences'] ?? [];
-    $user_id = isLoggedIn() ? $_SESSION['user_id'] : null;
-    $ip = $_SERVER['REMOTE_ADDR'] ?? null;
-    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
-
-    try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS cookie_consent_log (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NULL,
-            consent TINYINT(1) DEFAULT 0,
-            preferences JSON NULL,
-            ip VARCHAR(45) NULL,
-            user_agent TEXT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-        $stmt = $pdo->prepare("INSERT INTO cookie_consent_log (user_id, consent, preferences, ip, user_agent) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $consent, json_encode($preferences), $ip, $user_agent]);
-        echo json_encode(['success' => true, 'message' => 'บันทึก Consent เรียบร้อย']);
-    } catch (PDOException $e) {
-        error_log('Cookie Consent Error: ' . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'ไม่สามารถบันทึก Consent ได้']);
-    }
     exit;
 }
