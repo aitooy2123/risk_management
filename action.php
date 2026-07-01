@@ -7,7 +7,8 @@
  * - check_duplicate: ตรวจสอบ reporter_code + เงื่อนไขอื่น
  * - delete_risks: ลบรายการ (Admin)
  * - save_user: รองรับ reporter_code, ตรวจสอบซ้ำ
- * - delete_user: ลบผู้ใช้ (Admin)
+ * - delete_user: ลบผู้ใช้ทีละคน (Admin)
+ * - delete_users: ลบผู้ใช้หลายคน (Admin)  ** เพิ่มใหม่ **
  * - save_cookie_consent: บันทึก Consent
  */
 define('ACCESS_ALLOWED', true);
@@ -54,18 +55,15 @@ if ($action == 'save_risk') {
     $consent = isset($_POST['consent']) ? 1 : 0;
     $status = $_POST['status'] ?? 'ยังไม่ดำเนินการ';
 
-    // ตรวจสอบฟิลด์ที่จำเป็น
     if (empty($reporter_code) || empty($unit) || empty($event_datetime) || empty($report_datetime) || empty($detail) || empty($initial_solution) || empty($suggestion)) {
         echo json_encode(['success' => false, 'message' => 'กรุณากรอกข้อมูลให้ครบถ้วน']);
         exit;
     }
 
-    // แทน "อื่นๆ" ด้วยค่าที่กรอก
     if ($unit == 'อื่นๆ') $unit = $unit_other;
     if ($risk_type == 'อื่นๆ') $risk_type = $risk_type_other;
     if ($severity == 'อื่นๆ') $severity = $severity_other;
 
-    // ตรวจสอบข้อมูลซ้ำ (เฉพาะเพิ่มใหม่)
     if (empty($id)) {
         $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM risks WHERE unit = ? AND risk_type = ? AND event_datetime = ? AND reporter_code = ?");
         $checkStmt->execute([$unit, $risk_type, $event_datetime, $reporter_code]);
@@ -79,7 +77,6 @@ if ($action == 'save_risk') {
 
     try {
         if ($id) {
-            // แก้ไข
             $isAdmin = isAdmin() ? 1 : 0;
             $stmt = $pdo->prepare("UPDATE risks SET 
                 reporter_code = ?, unit = ?, unit_other = ?, risk_type = ?, risk_type_other = ?,
@@ -99,7 +96,6 @@ if ($action == 'save_risk') {
                 exit;
             }
         } else {
-            // เพิ่มใหม่
             $stmt = $pdo->prepare("INSERT INTO risks 
                 (user_id, reporter_code, unit, unit_other, risk_type, risk_type_other, severity, severity_other,
                  event_datetime, report_datetime, detail, initial_solution, suggestion, consent, consent_at, status)
@@ -182,7 +178,7 @@ if ($action == 'delete_risks') {
 }
 
 // ============================================
-// 4. save_user (อัปเดตรองรับ reporter_code)
+// 4. save_user (รับ reporter_code และ avatar)
 // ============================================
 if ($action == 'save_user') {
     if (!isLoggedIn() || !isAdmin()) {
@@ -208,7 +204,6 @@ if ($action == 'save_user') {
         exit;
     }
 
-    // ตรวจสอบ username ซ้ำ
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
     $stmt->execute([$username, $id ?? 0]);
     if ($stmt->fetch()) {
@@ -216,7 +211,6 @@ if ($action == 'save_user') {
         exit;
     }
 
-    // ตรวจสอบ reporter_code ซ้ำ
     $stmt = $pdo->prepare("SELECT id FROM users WHERE reporter_code = ? AND id != ?");
     $stmt->execute([$reporter_code, $id ?? 0]);
     if ($stmt->fetch()) {
@@ -259,7 +253,6 @@ if ($action == 'save_user') {
 
     try {
         if ($id) {
-            // แก้ไขผู้ใช้
             $sql = "UPDATE users SET username = ?, role = ?, reporter_code = ?";
             $params = [$username, $role, $reporter_code];
             if (!empty($password)) {
@@ -282,7 +275,6 @@ if ($action == 'save_user') {
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
         } else {
-            // เพิ่มใหม่
             if (empty($password)) {
                 echo json_encode(['success' => false, 'message' => 'กรุณาระบุรหัสผ่าน']);
                 exit;
@@ -300,7 +292,7 @@ if ($action == 'save_user') {
 }
 
 // ============================================
-// 5. delete_user
+// 5. delete_user (ลบทีละคน)
 // ============================================
 if ($action == 'delete_user') {
     if (!isLoggedIn() || !isAdmin()) {
@@ -343,7 +335,54 @@ if ($action == 'delete_user') {
 }
 
 // ============================================
-// 6. save_cookie_consent
+// 6. delete_users (ลบหลายคน) – เพิ่มใหม่
+// ============================================
+if ($action == 'delete_users') {
+    if (!isLoggedIn() || !isAdmin()) {
+        echo json_encode(['success' => false, 'message' => 'คุณไม่มีสิทธิ์']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!isset($input['csrf_token']) || !validateCsrfToken($input['csrf_token'])) {
+        echo json_encode(['success' => false, 'message' => 'CSRF token ไม่ถูกต้อง']);
+        exit;
+    }
+
+    $ids = $input['ids'] ?? [];
+    if (empty($ids)) {
+        echo json_encode(['success' => false, 'message' => 'ไม่พบผู้ใช้ที่เลือก']);
+        exit;
+    }
+
+    // ป้องกันลบตัวเอง
+    if (in_array($_SESSION['user_id'], $ids)) {
+        echo json_encode(['success' => false, 'message' => 'ไม่สามารถลบตัวเองได้']);
+        exit;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+    // ตรวจสอบ Admin คนสุดท้าย
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND id IN ($placeholders)");
+    $stmt->execute($ids);
+    if ($stmt->fetchColumn() > 0) {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND id NOT IN ($placeholders)");
+        $stmt->execute($ids);
+        if ($stmt->fetchColumn() == 0) {
+            echo json_encode(['success' => false, 'message' => 'ไม่สามารถลบ Admin คนสุดท้ายได้']);
+            exit;
+        }
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM users WHERE id IN ($placeholders)");
+    $stmt->execute($ids);
+    echo json_encode(['success' => true, 'message' => 'ลบผู้ใช้ ' . $stmt->rowCount() . ' คนสำเร็จ']);
+    exit;
+}
+
+// ============================================
+// 7. save_cookie_consent (ไม่เปลี่ยนแปลง)
 // ============================================
 if ($action == 'save_cookie_consent') {
     $input = json_decode(file_get_contents('php://input'), true);

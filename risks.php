@@ -1,5 +1,4 @@
 <?php
-
 /**
  * รายการความเสี่ยง (ฉบับสมบูรณ์)
  * 
@@ -8,8 +7,9 @@
  * - Admin: เห็นทั้งหมด / User: เห็นเฉพาะของตัวเอง
  * - เลือกลบ, พิมพ์ PDF, พิมพ์ทั้งหมด
  * - Pagination 10 รายการ/หน้า
- * - ✅ แสดงวันที่โดยไม่มีเวลา (d/m/Y)
- * - ✅ สลับสีแถวตาราง (alternating row colors)
+ * - ✅ แสดงวันที่แบบไม่มีเวลา (d/m/Y)
+ * - ✅ สลับสีแถวตาราง
+ * - ✅ Badge สีแยกตามระดับและสถานะ
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -18,8 +18,7 @@ require_once 'includes/functions.php';
 if (!isLoggedIn()) redirect('index.php');
 
 if (!function_exists('canModify')) {
-    function canModify($risk_user_id)
-    {
+    function canModify($risk_user_id) {
         if (!isset($_SESSION['user_id'])) return false;
         if (isAdmin()) return true;
         return $_SESSION['user_id'] == $risk_user_id;
@@ -94,12 +93,29 @@ try {
 
 $csrf_token = generateCsrfToken();
 
-function buildPageUrl($page, $currentParams)
-{
+function buildPageUrl($page, $currentParams) {
     $query = $currentParams;
     $query['page'] = $page;
     return 'risks.php?' . http_build_query($query);
 }
+
+// Mapping สี Badge ตามระดับ
+$severityBadgeMap = [
+    'A' => 'bg-blue-100 text-blue-800',
+    'B' => 'bg-green-100 text-green-800',
+    'C' => 'bg-lime-100 text-lime-800',
+    'D' => 'bg-yellow-100 text-yellow-800',
+    'F' => 'bg-orange-100 text-orange-800',
+    'E' => 'bg-red-100 text-red-800'
+];
+
+// Mapping สี Badge ตามสถานะ
+$statusBadgeMap = [
+    'ยังไม่ดำเนินการ' => 'bg-yellow-100 text-yellow-800',
+    'กำลังดำเนินการ' => 'bg-blue-100 text-blue-800',
+    'ดำเนินการแล้ว' => 'bg-green-100 text-green-800',
+    'ยุติ' => 'bg-gray-100 text-gray-600'
+];
 ?>
 <?php include 'includes/header.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -109,7 +125,7 @@ function buildPageUrl($page, $currentParams)
     <div class="flex-1 p-6 overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-blue-800">📋 รายการความเสี่ยง</h2>
-            <a href="risk_form.php" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            <a href="risk_form.php" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow transition">
                 <i class="fas fa-plus mr-2"></i> เพิ่มรายการ
             </a>
         </div>
@@ -173,20 +189,19 @@ function buildPageUrl($page, $currentParams)
 
         <div class="flex flex-wrap items-center gap-2 mb-4">
             <?php if (isAdmin()): ?>
-                <button id="deleteSelected" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                <button id="deleteSelected" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 shadow transition">
                     <i class="fas fa-trash mr-2"></i> ลบที่เลือก
                 </button>
             <?php endif; ?>
-            <button id="printSelected" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+            <button id="printSelected" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 shadow transition">
                 <i class="fas fa-print mr-2"></i> พิมพ์ PDF ที่เลือก
             </button>
             <a href="generate_pdf.php?ids=<?= implode(',', $allIds) ?>" target="_blank"
-                class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800">
+                class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 shadow transition">
                 <i class="fas fa-file-pdf mr-2"></i> พิมพ์ทั้งหมด
             </a>
         </div>
 
-        <!-- ตารางที่มีแถวสลับสี -->
         <div class="bg-white rounded-lg shadow border border-blue-100 overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-blue-50 text-blue-800 border-b">
@@ -207,8 +222,9 @@ function buildPageUrl($page, $currentParams)
                 <tbody>
                     <?php foreach ($risks as $index => $risk):
                         $rowNumber = ($page - 1) * $perPage + $index + 1;
-                        // ✅ สลับสีพื้นหลัง: แถวคู่ (0-based index คู่) สีขาว, แถวคี่ สีเทาอ่อน
                         $rowBg = $index % 2 == 0 ? 'bg-white' : 'bg-gray-50';
+                        $sevColor = $severityBadgeMap[$risk['severity']] ?? 'bg-gray-100 text-gray-800';
+                        $staColor = $statusBadgeMap[$risk['status']] ?? 'bg-gray-100 text-gray-600';
                     ?>
                         <tr class="border-b border-gray-100 <?= $rowBg ?> hover:bg-blue-50 transition-colors">
                             <?php if (isAdmin()): ?>
@@ -218,17 +234,17 @@ function buildPageUrl($page, $currentParams)
                             <td class="px-4 py-2"><?= htmlspecialchars($risk['unit'] ?? '-') ?></td>
                             <td class="px-4 py-2"><?= htmlspecialchars($risk['risk_type'] . ($risk['risk_type_other'] ? ' (' . $risk['risk_type_other'] . ')' : '')) ?></td>
                             <td class="px-4 py-2">
-                                <span class="px-2 py-1 rounded-full text-xs font-semibold <?= getSeverityBadge($risk['severity']) ?>">
+                                <span class="px-2 py-1 rounded-full text-xs font-semibold <?= $sevColor ?>">
                                     <?= htmlspecialchars($risk['severity']) ?>
                                 </span>
                             </td>
                             <td class="px-4 py-2">
                                 <?php if (!empty($risk['status'])): ?>
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold <?= $staColor ?>">
                                         <?= htmlspecialchars($risk['status']) ?>
                                     </span>
                                 <?php else: ?>
-                                    -
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-400">-</span>
                                 <?php endif; ?>
                             </td>
                             <td class="px-4 py-2"><?= date('d/m/Y', strtotime($risk['event_datetime'])) ?></td>
@@ -313,7 +329,10 @@ function buildPageUrl($page, $currentParams)
                 if (result.isConfirmed) {
                     fetch('action.php?action=delete_risks', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'   // ✅ เพิ่ม header
+                            },
                             body: JSON.stringify({ ids: ids, csrf_token: csrfToken })
                         })
                         .then(res => res.json())
@@ -344,7 +363,10 @@ function buildPageUrl($page, $currentParams)
                 if (result.isConfirmed) {
                     fetch('action.php?action=delete_risks', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'   // ✅ เพิ่ม header
+                            },
                             body: JSON.stringify({ ids: [id], csrf_token: csrfToken })
                         })
                         .then(res => res.json())

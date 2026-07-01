@@ -1,19 +1,15 @@
 <?php
 /**
  * หน้า Login (Frontend) – โทนสีฟ้า
- * 
- * คุณสมบัติ:
- * - ตรวจสอบ CSRF Token
- * - ป้องกัน Brute Force
- * - Remember Me (Cookie)
- * - UI สวยงาม อ่านง่าย
+ * - ผู้ใช้ทั่วไป → risk_form.php
+ * - Admin → dashboard.php
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
 require_once 'includes/functions.php';
 
 if (isLoggedIn()) {
-    redirect('dashboard.php');
+    redirect(isAdmin() ? 'dashboard.php' : 'risk_form.php');
 }
 
 $error = '';
@@ -33,7 +29,7 @@ if (!isLoggedIn() && isset($_COOKIE['remember_me'])) {
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
-        redirect('dashboard.php');
+        redirect(isAdmin() ? 'dashboard.php' : 'risk_form.php');
     } else {
         setcookie('remember_me', '', time() - 3600, '/');
     }
@@ -83,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                 }
 
-                redirect('dashboard.php');
+                redirect(isAdmin() ? 'dashboard.php' : 'risk_form.php');
             } else {
                 recordFailedAttempt($username);
                 $error = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
@@ -97,9 +93,6 @@ $csrf_token = generateCsrfToken();
 <?php include 'includes/header.php'; ?>
 
 <style>
-    /* ============================================
-       ดีไซน์โทนสีฟ้า (Blue Theme)
-       ============================================ */
     :root {
         --clr-bg-start: #dbeafe;
         --clr-bg-mid: #bfdbfe;

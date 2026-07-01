@@ -1,9 +1,9 @@
 <?php
 /**
- * หน้าแสดงรายละเอียดความเสี่ยง (Frontend)
- * - แสดงข้อมูลครบถ้วนทุกฟิลด์
- * - แสดงสถานะ Consent และวันที่ยินยอม
- * - มีปุ่มกลับและพิมพ์ PDF
+ * หน้าแสดงรายละเอียดความเสี่ยง (View Risk)
+ * - ดีไซน์สวย อ่านง่าย แยกส่วนชัดเจน
+ * - แสดงข้อมูลครบทุกฟิลด์ (ยกเว้น Consent ถูกนำออกแล้ว)
+ * - รองรับการแสดงผลทั้ง Admin และ User
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -13,76 +13,233 @@ if (!isLoggedIn()) redirect('index.php');
 $id = $_GET['id'] ?? null;
 if (!$id) redirect('risks.php');
 
-// ดึงข้อมูล
 $stmt = $pdo->prepare("SELECT r.*, u.username FROM risks r LEFT JOIN users u ON r.user_id = u.id WHERE r.id = ?");
 $stmt->execute([$id]);
 $risk = $stmt->fetch();
 
-// ตรวจสอบว่ามีข้อมูลหรือไม่
 if (!$risk) redirect('risks.php');
 if (!isAdmin() && $risk['user_id'] != $_SESSION['user_id']) redirect('risks.php');
 
-// แปลงระดับความรุนแรงเป็นข้อความ
+$canEdit = (isAdmin() || $risk['user_id'] == $_SESSION['user_id']);
+
 $severityMap = [
-    'A'=>'ระดับ A : มีโอกาสเกิดแต่ยังไม่เกิดขึ้น',
-    'B'=>'ระดับ B : เกิด ยังไม่ถึงตัวบุคคล ไม่กระทบงาน',
-    'C'=>'ระดับ C : เกิดถึงตัวบุคคล กระทบเบื้องต้น แก้ไขเองได้',
-    'D'=>'ระดับ D : เกิดถึงตัวบุคคล กระทบปานกลาง ต้องให้เพื่อนช่วย',
-    'F'=>'ระดับ F : เกิดถึงตัวบุคคล กระทบสูง ต้องแจ้งหัวหน้า',
-    'E'=>'ระดับ E : เกิดถึงตัวบุคคล กระทบสูงสุด รายงานผู้บริหาร'
+    'A' => 'มีโอกาสเกิดแต่ยังไม่เกิดขึ้น',
+    'B' => 'เกิด ยังไม่ถึงตัวบุคคล ไม่กระทบงาน',
+    'C' => 'เกิดถึงตัวบุคคล กระทบเบื้องต้น แก้ไขเองได้',
+    'D' => 'เกิดถึงตัวบุคคล กระทบปานกลาง ต้องให้เพื่อนช่วย',
+    'F' => 'เกิดถึงตัวบุคคล กระทบสูง ต้องแจ้งหัวหน้า',
+    'E' => 'เกิดถึงตัวบุคคล กระทบสูงสุด รายงานผู้บริหาร'
 ];
-$severityText = $severityMap[$risk['severity']] ?? $risk['severity'];
+
+$severityBadgeColors = [
+    'A' => 'bg-blue-100 text-blue-800 border-blue-300',
+    'B' => 'bg-green-100 text-green-800 border-green-300',
+    'C' => 'bg-lime-100 text-lime-800 border-lime-300',
+    'D' => 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    'F' => 'bg-orange-100 text-orange-800 border-orange-300',
+    'E' => 'bg-red-100 text-red-800 border-red-300'
+];
+
+$statusBadgeColors = [
+    'ยังไม่ดำเนินการ' => 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    'กำลังดำเนินการ' => 'bg-blue-100 text-blue-800 border-blue-300',
+    'ดำเนินการแล้ว' => 'bg-green-100 text-green-800 border-green-300',
+    'ยุติ' => 'bg-gray-100 text-gray-600 border-gray-300'
+];
+
+function renderBadge($text, $colorMap, $default = 'bg-gray-100 text-gray-600 border-gray-300') {
+    $class = $colorMap[$text] ?? $default;
+    return "<span class=\"px-3 py-1 rounded-full text-xs font-semibold border {$class}\">" . htmlspecialchars($text) . "</span>";
+}
 ?>
 <?php include 'includes/header.php'; ?>
-<div class="flex h-screen bg-blue-50/30">
+
+<style>
+    .view-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        border-radius: 1rem;
+        padding: 1.5rem 2rem;
+        color: white;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
+    }
+    .info-card {
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        padding: 1.5rem;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .info-card:hover {
+        box-shadow: 0 8px 20px -6px rgba(0,0,0,0.08);
+        border-color: #cbd5e1;
+    }
+    .detail-text {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        line-height: 1.8;
+        color: #334155;
+    }
+    .objective-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 1rem;
+        padding: 1.25rem;
+    }
+    .info-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+    }
+    .info-value {
+        font-weight: 500;
+        color: #1e293b;
+    }
+</style>
+
+<div class="flex h-screen bg-gray-50/50">
     <?php include 'includes/sidebar.php'; ?>
     <div class="flex-1 p-6 overflow-y-auto">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-blue-800">📄 รายละเอียดความเสี่ยง</h2>
-            <div>
-                <a href="risks.php" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"><i class="fas fa-arrow-left mr-2"></i> กลับ</a>
-                <a href="generate_pdf.php?id=<?= $id ?>" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"><i class="fas fa-file-pdf mr-2"></i> พิมพ์ PDF</a>
-            </div>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow border border-blue-100">
-            <!-- วัตถุประสงค์ -->
-            <div class="objective-box p-4 rounded-lg mb-6">
-                <h3 class="font-bold text-blue-800">วัตถุประสงค์</h3>
-                <ul class="list-disc ml-6 mt-2 text-gray-700">
-                    <li>เพื่อแก้ไขเหตุการณ์ที่เกิดขึ้นในหน่วยงานได้อย่างเหมาะสม และทันเวลา</li>
-                    <li>เพื่อป้องกัน ลดการความเสียหายที่อาจเกิดขึ้นในงานให้น้อยลงหรือไม่มีเลย</li>
-                    <li>เพื่อให้องค์กรสามารถหาแนวทางป้องกันไม่ให้เกิดอุบัติการณ์เสี่ยงซ้ำ และช่วยให้องค์กรพัฒนาเป็นไปในแนวทางเดียวกัน</li>
-                </ul>
-            </div>
-            
-            <!-- ข้อมูลหลัก -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><span class="font-bold text-blue-700">หน่วยงานที่เกิดความเสี่ยง</span><br><?= htmlspecialchars($risk['unit'] . ($risk['unit_other'] ? ' ('.$risk['unit_other'].')' : '')) ?></div>
-                <div><span class="font-bold text-blue-700">ประเภทความเสี่ยง</span><br><?= htmlspecialchars($risk['risk_type'] . ($risk['risk_type_other'] ? ' ('.$risk['risk_type_other'].')' : '')) ?></div>
-                <div><span class="font-bold text-blue-700">ระดับความรุนแรง</span><br><span class="px-2 py-1 rounded-full text-xs font-semibold <?= getSeverityBadge($risk['severity']) ?>"><?= $risk['severity'] ?></span> – <?= htmlspecialchars($severityText) ?></div>
-                <div><span class="font-bold text-blue-700">วันเวลาที่เกิดเหตุการณ์ (จริง)</span><br><?= getThaiDate($risk['event_datetime']) ?></div>
-                <div><span class="font-bold text-blue-700">วันเวลาที่รายงานเหตุการณ์</span><br><?= getThaiDate($risk['report_datetime']) ?></div>
-                <div><span class="font-bold text-blue-700">ผู้รายงาน</span><br><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></div>
-                <div><span class="font-bold text-blue-700">📄 สถานะการยินยอม (Consent)</span><br>
-                    <?php if ($risk['consent'] == 1): ?>
-                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                            <i class="fas fa-check-circle mr-1"></i> ยินยอมแล้ว
-                        </span>
-                        <span class="text-sm text-gray-500 ml-2">
-                            (<?= getThaiDate($risk['consent_at']) ?>)
-                        </span>
-                    <?php else: ?>
-                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
-                            <i class="fas fa-times-circle mr-1"></i> ยังไม่ยินยอม
-                        </span>
+        
+        <!-- Header -->
+        <div class="view-header mb-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <p class="text-blue-200 text-sm mb-1">รายละเอียดความเสี่ยง</p>
+                    <h1 class="text-2xl font-bold">
+                        #<?= $risk['id'] ?> — <?= htmlspecialchars($risk['risk_type']) ?>
+                    </h1>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <a href="risks.php" class="bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition backdrop-blur-sm text-sm">
+                        <i class="fas fa-arrow-left mr-2"></i>กลับ
+                    </a>
+                    <?php if ($canEdit): ?>
+                        <a href="risk_form.php?id=<?= $id ?>" class="bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition backdrop-blur-sm text-sm">
+                            <i class="fas fa-edit mr-2"></i>แก้ไข
+                        </a>
                     <?php endif; ?>
+                    <a href="generate_pdf.php?id=<?= $id ?>" target="_blank" class="bg-white text-blue-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium">
+                        <i class="fas fa-file-pdf mr-2"></i>พิมพ์ PDF
+                    </a>
                 </div>
             </div>
+        </div>
+
+        <!-- เนื้อหาหลัก -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <!-- รายละเอียดเพิ่มเติม -->
-            <div class="mt-6"><div class="font-bold text-blue-700 text-lg">📝 รายละเอียดเหตุการณ์</div><div class="bg-gray-50 p-4 rounded-lg mt-2 border border-blue-50"><?= nl2br(htmlspecialchars($risk['detail'])) ?></div></div>
-            <div class="mt-4"><div class="font-bold text-blue-700 text-lg">🔧 การแก้ไขเบื้องต้น</div><div class="bg-gray-50 p-4 rounded-lg mt-2 border border-blue-50"><?= nl2br(htmlspecialchars($risk['initial_solution'])) ?></div></div>
-            <div class="mt-4"><div class="font-bold text-blue-700 text-lg">💡 ปัญหาและข้อเสนอแนะ</div><div class="bg-gray-50 p-4 rounded-lg mt-2 border border-blue-50"><?= nl2br(htmlspecialchars($risk['suggestion'])) ?></div></div>
+            <!-- คอลัมน์ซ้าย: ข้อมูลทั่วไป + รายละเอียด -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- ข้อมูลทั่วไป -->
+                <div class="info-card">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-blue-500 rounded-full"></span>
+                        ข้อมูลทั่วไป
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <div class="info-label">กลุ่มงาน</div>
+                            <div class="info-value"><?= htmlspecialchars($risk['unit'] . ($risk['unit_other'] ? ' (' . $risk['unit_other'] . ')' : '')) ?></div>
+                        </div>
+                        <div>
+                            <div class="info-label">รหัสผู้รายงาน</div>
+                            <div class="info-value"><?= htmlspecialchars($risk['reporter_code'] ?? '-') ?></div>
+                        </div>
+                        <div>
+                            <div class="info-label">ผู้รายงาน</div>
+                            <div class="info-value"><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></div>
+                        </div>
+                        <div>
+                            <div class="info-label">วันที่เกิดเหตุการณ์</div>
+                            <div class="info-value"><?= getThaiDate($risk['event_datetime']) ?></div>
+                        </div>
+                        <div>
+                            <div class="info-label">วันที่รายงาน</div>
+                            <div class="info-value"><?= getThaiDate($risk['report_datetime']) ?></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- รายละเอียดเหตุการณ์ -->
+                <div class="info-card">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-indigo-500 rounded-full"></span>
+                        รายละเอียดเหตุการณ์
+                    </h3>
+                    <div class="detail-text">
+                        <?= nl2br(htmlspecialchars($risk['detail'])) ?>
+                    </div>
+                </div>
+
+                <!-- การแก้ไขเบื้องต้น -->
+                <div class="info-card">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-teal-500 rounded-full"></span>
+                        การแก้ไขเบื้องต้น
+                    </h3>
+                    <div class="detail-text">
+                        <?= nl2br(htmlspecialchars($risk['initial_solution'])) ?>
+                    </div>
+                </div>
+
+                <!-- ปัญหาและข้อเสนอแนะ -->
+                <div class="info-card">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-orange-500 rounded-full"></span>
+                        ปัญหาและข้อเสนอแนะ
+                    </h3>
+                    <div class="detail-text">
+                        <?= nl2br(htmlspecialchars($risk['suggestion'])) ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- คอลัมน์ขวา: สถานะ / วัตถุประสงค์ -->
+            <div class="space-y-6">
+                
+                <!-- วัตถุประสงค์ -->
+                <div class="objective-box">
+                    <h3 class="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                        <i class="fas fa-bullseye text-blue-600"></i> วัตถุประสงค์
+                    </h3>
+                    <ul class="text-sm text-blue-800 space-y-1.5 list-disc list-inside leading-relaxed">
+                        <li>แก้ไขเหตุการณ์อย่างเหมาะสม ทันเวลา</li>
+                        <li>ป้องกัน ลดความเสียหายที่อาจเกิดขึ้น</li>
+                        <li>หาแนวทางป้องกันและพัฒนาองค์กร</li>
+                    </ul>
+                </div>
+
+                <!-- ระดับความรุนแรง -->
+                <div class="info-card">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-red-400 rounded-full"></span>
+                        ระดับความรุนแรง
+                    </h3>
+                    <?= renderBadge("ระดับ {$risk['severity']} — {$severityMap[$risk['severity']]}", $severityBadgeColors) ?>
+                </div>
+
+                <!-- สถานะการดำเนินการ -->
+                <div class="info-card">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-blue-500 rounded-full"></span>
+                        สถานะการดำเนินการ
+                    </h3>
+                    <?= renderBadge($risk['status'] ?? 'ยังไม่ดำเนินการ', $statusBadgeColors) ?>
+                </div>
+
+                <!-- ข้อมูลเวลา -->
+                <div class="info-card text-xs text-gray-500 space-y-1">
+                    <p>📅 สร้างเมื่อ: <?= getThaiDate($risk['created_at']) ?></p>
+                    <p>🔄 แก้ไขล่าสุด: <?= getThaiDate($risk['updated_at']) ?></p>
+                </div>
+            </div>
         </div>
     </div>
 </div>

@@ -17,7 +17,7 @@ if (!defined('ACCESS_ALLOWED')) {
                 <p class="text-xs text-blue-200">ศูนย์อนามัยที่ 8 อุดรธานี</p>
             </div>
         </div>
-      
+
     </div>
 
     <!-- เมนูหลัก -->
@@ -27,11 +27,12 @@ if (!defined('ACCESS_ALLOWED')) {
                 <i class="fas fa-tachometer-alt w-5 text-center"></i>
                 <span>ภาพรวม</span>
             </a>
+            <a href="risks.php" class="menu-item <?= basename($_SERVER['PHP_SELF']) == 'risks.php' ? 'active' : '' ?>">
+                <i class="fas fa-list w-5 text-center"></i>
+                <span>รายการความเสี่ยง</span>
+            </a>
         <?php endif; ?>
-        <a href="risks.php" class="menu-item <?= basename($_SERVER['PHP_SELF']) == 'risks.php' ? 'active' : '' ?>">
-            <i class="fas fa-list w-5 text-center"></i>
-            <span>รายการความเสี่ยง</span>
-        </a>
+
         <a href="risk_form.php" class="menu-item <?= basename($_SERVER['PHP_SELF']) == 'risk_form.php' ? 'active' : '' ?>">
             <i class="fas fa-plus-circle w-5 text-center"></i>
             <span>เพิ่มความเสี่ยง</span>
