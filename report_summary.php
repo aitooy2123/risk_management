@@ -1,6 +1,7 @@
 <?php
 /**
  * หน้าสรุปผลการรายงาน - UI สวยงาม พร้อมพื้นหลัง
+ * - แสดงเฉพาะรายการที่สรุปผลเรียบร้อยแล้ว (มีข้อมูลใน risk_reports)
  * - User: เห็นเฉพาะรายการของตัวเอง / Admin: เห็นทั้งหมด
  * - บันทึก: มาตรการแก้ไข, ผู้รับผิดชอบ, การติดตามผล, ผลที่คาดว่าจะได้รับ
  * - แนบไฟล์สรุปผลได้ + Lightbox
@@ -30,8 +31,8 @@ if ($risk_id) {
     $stmt = $pdo->prepare("SELECT r.*, u.username FROM risks r LEFT JOIN users u ON r.user_id = u.id WHERE r.id = ?");
     $stmt->execute([$risk_id]);
     $risk = $stmt->fetch();
-    if (!$risk) redirect('risks.php');
-    if (!isAdmin() && $risk['user_id'] != $_SESSION['user_id']) redirect('risks.php');
+    if (!$risk) redirect('report_summary.php');
+    if (!isAdmin() && $risk['user_id'] != $_SESSION['user_id']) redirect('report_summary.php');
 }
 
 $existingReport = null;
@@ -39,6 +40,7 @@ if ($risk_id) {
     $stmt = $pdo->prepare("SELECT * FROM risk_reports WHERE risk_id = ? ORDER BY created_at DESC LIMIT 1");
     $stmt->execute([$risk_id]);
     $existingReport = $stmt->fetch();
+    if (!$existingReport) redirect('report_summary.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -115,9 +117,14 @@ $filterTypes = $pdo->query("SELECT DISTINCT risk_type FROM risks ORDER BY risk_t
 $filterSeverities = $pdo->query("SELECT DISTINCT severity FROM risks ORDER BY severity")->fetchAll(PDO::FETCH_COLUMN);
 
 if ($risk_id === 0) {
+    // แสดงเฉพาะรายการที่มีสรุปผลแล้ว (มีข้อมูลใน risk_reports)
     $whereClause = "WHERE 1=1";
     $countParams = [];
     $queryParams = [];
+    
+    // เฉพาะรายการที่มี risk_reports
+    $whereClause .= " AND rr.id IS NOT NULL";
+    
     if (!isAdmin()) {
         $whereClause .= " AND r.user_id = ?";
         $countParams[] = $_SESSION['user_id'];
@@ -157,7 +164,9 @@ if ($risk_id === 0) {
         $queryParams[] = $date_from;
     }
 
-    $countSql = "SELECT COUNT(*) FROM risks r {$whereClause}";
+    $countSql = "SELECT COUNT(*) FROM risks r 
+                 LEFT JOIN risk_reports rr ON r.id = rr.risk_id 
+                 {$whereClause}";
     $countStmt = $pdo->prepare($countSql);
     $countStmt->execute($countParams);
     $totalRows = $countStmt->fetchColumn();
@@ -165,7 +174,13 @@ if ($risk_id === 0) {
 
     $limit = (int)$perPage;
     $offsetVal = (int)$offset;
-    $sql = "SELECT r.*, u.username, rr.id as report_id FROM risks r LEFT JOIN users u ON r.user_id = u.id LEFT JOIN risk_reports rr ON r.id = rr.risk_id {$whereClause} ORDER BY r.created_at DESC LIMIT {$limit} OFFSET {$offsetVal}";
+    $sql = "SELECT r.*, u.username, rr.id as report_id, rr.corrective_action, rr.responsible_person, rr.follow_up, rr.expected_outcome, rr.report_file 
+            FROM risks r 
+            LEFT JOIN users u ON r.user_id = u.id 
+            LEFT JOIN risk_reports rr ON r.id = rr.risk_id 
+            {$whereClause} 
+            ORDER BY r.created_at DESC 
+            LIMIT {$limit} OFFSET {$offsetVal}";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($queryParams);
     $allRisks = $stmt->fetchAll();
@@ -566,6 +581,11 @@ $csrf_token = generateCsrfToken();
         font-size: 0.7rem;
         font-weight: 600;
         white-space: nowrap;
+    }
+
+    .badge-completed {
+        background: #d1fae5;
+        color: #065f46;
     }
 
     .btn-icon {
@@ -975,6 +995,22 @@ $csrf_token = generateCsrfToken();
         background: #fee2e2;
     }
 
+    /* Status Badge for Completed */
+    .badge-completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    /* Report summary badge */
+    .report-summary-box {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.7rem;
+        color: #065f46;
+    }
+
     @media (max-width: 1024px) {
         .filter-grid {
             grid-template-columns: 1fr 1fr;
@@ -1014,7 +1050,7 @@ $csrf_token = generateCsrfToken();
                 <!-- ========== LIST VIEW ========== -->
                 <div class="page-header">
                     <h2>📋 สรุปผลการรายงาน</h2>
-                    <p>เลือกเคสที่ต้องการบันทึกสรุปผล <span>(<?= number_format($totalRows) ?> รายการ)</span></p>
+                    <p>รายการความเสี่ยงที่สรุปผลเรียบร้อยแล้ว <span>(<?= number_format($totalRows) ?> รายการ)</span></p>
                 </div>
 
                 <div class="filter-card">
@@ -1097,28 +1133,22 @@ $csrf_token = generateCsrfToken();
 
                 <?php if (empty($allRisks)): ?>
                     <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <h3 class="text-xl font-semibold text-gray-600 mb-2">ไม่พบรายการ</h3>
+                        <i class="fas fa-file-alt"></i>
+                        <h3 class="text-xl font-semibold text-gray-600 mb-2">ยังไม่มีรายงานที่สรุปผล</h3>
                         <p class="text-gray-400 mb-4">
                             <?= ($search || $unit_filter || $type_filter || $severity_filter || $status_filter || $date_from)
                                 ? 'ไม่พบข้อมูลตรงตามเงื่อนไขที่เลือก'
-                                : (isAdmin() ? 'ไม่มีข้อมูลในระบบ' : 'คุณยังไม่มีรายการ') ?>
+                                : 'ยังไม่มีการสรุปผลรายงานความเสี่ยง' ?>
                         </p>
-                        <?php if ($search || $unit_filter || $type_filter || $severity_filter || $status_filter || $date_from): ?>
-                            <a href="report_summary.php" class="btn-filter primary" style="text-decoration:none;">
-                                <i class="fas fa-redo"></i> ล้างตัวกรอง
-                            </a>
-                        <?php else: ?>
-                            <a href="risk_form.php" class="btn-filter primary" style="text-decoration:none;">
-                                <i class="fas fa-plus"></i> เพิ่มความเสี่ยง
-                            </a>
-                        <?php endif; ?>
+                        <a href="risks.php" class="btn-filter primary" style="text-decoration:none;">
+                            <i class="fas fa-arrow-left"></i> กลับไปหน้ารายการความเสี่ยง
+                        </a>
                     </div>
                 <?php else: ?>
                     <div class="table-card">
                         <div class="table-header-bar">
                             <span class="font-semibold text-gray-700">
-                                <i class="fas fa-list text-blue-600 mr-1"></i> รายการความเสี่ยง
+                                <i class="fas fa-check-circle text-green-600 mr-1"></i> รายการที่สรุปผลแล้ว
                             </span>
                             <span class="text-xs text-gray-500">
                                 หน้า <?= $page ?> จาก <?= max(1, $totalPages) ?> |
@@ -1136,7 +1166,7 @@ $csrf_token = generateCsrfToken();
                                         <th>วันที่</th>
                                         <th>ผู้รายงาน</th>
                                         <th>สถานะ</th>
-                                        <th>รายงาน</th>
+                                        <th>สรุปผล</th>
                                         <th style="width:80px;text-align:center;">จัดการ</th>
                                     </tr>
                                 </thead>
@@ -1166,22 +1196,19 @@ $csrf_token = generateCsrfToken();
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <?php if ($item['report_id']): ?>
-                                                    <span class="badge bg-green-100 text-green-700"><i class="fas fa-check-circle text-xs"></i> มีรายงาน</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-yellow-100 text-yellow-700"><i class="fas fa-clock text-xs"></i> รอรายงาน</span>
-                                                <?php endif; ?>
+                                                <div class="report-summary-box">
+                                                    <i class="fas fa-check-circle text-green-600 mr-1"></i>
+                                                    สรุปแล้ว
+                                                </div>
                                             </td>
                                             <td>
                                                 <div style="display:flex;gap:3px;justify-content:center;">
-                                                    <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-blue-50 text-blue-600 hover:bg-blue-100" title="<?= $item['report_id'] ? 'แก้ไข' : 'เพิ่ม' ?>">
-                                                        <i class="fas fa-<?= $item['report_id'] ? 'edit' : 'plus' ?> text-sm"></i>
+                                                    <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-blue-50 text-blue-600 hover:bg-blue-100" title="แก้ไข">
+                                                        <i class="fas fa-edit text-sm"></i>
                                                     </a>
-                                                    <?php if ($item['report_id']): ?>
-                                                        <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-green-50 text-green-600 hover:bg-green-100" title="ดู">
-                                                            <i class="fas fa-eye text-sm"></i>
-                                                        </a>
-                                                    <?php endif; ?>
+                                                    <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-green-50 text-green-600 hover:bg-green-100" title="ดู">
+                                                        <i class="fas fa-eye text-sm"></i>
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>

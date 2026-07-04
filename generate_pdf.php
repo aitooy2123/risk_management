@@ -3,6 +3,10 @@
  * generate_pdf.php – สร้าง PDF รายงานความเสี่ยง (ภาษาไทยสมบูรณ์)
  * - ใช้ฟอนต์ Sarabun จากเครื่อง
  * - รองรับภาษาไทย 100%
+ * - ใช้ลิงก์รูปภาพจาก URL
+ * - แนบไฟล์สรุปผล (risk_reports)
+ * - แสดงผลสรุปในหน้าเดียว
+ * - ไม่มี badge และ pill
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -33,12 +37,44 @@ $stmt->execute($params);
 $risks = $stmt->fetchAll();
 if (empty($risks)) die('ไม่พบข้อมูลหรือไม่มีสิทธิ์');
 
+// ---------- ดึงข้อมูลสรุปผล (risk_reports) ----------
+$reportData = [];
+foreach ($risks as $risk) {
+    $stmt = $pdo->prepare("SELECT * FROM risk_reports WHERE risk_id = ? ORDER BY created_at DESC LIMIT 1");
+    $stmt->execute([$risk['id']]);
+    $report = $stmt->fetch();
+    if ($report) {
+        $reportData[$risk['id']] = $report;
+    }
+}
+
 // ---------- โหลด Dompdf ----------
 require_once 'vendor/autoload.php';
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-// ---------- สร้าง HTML ----------
+// ---------- URL โลโก้ ----------
+$logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/%E0%B9%82%E0%B8%A5%E0%B9%82%E0%B8%81%E0%B9%89%E0%B8%A8%E0%B8%B9%E0%B8%99%E0%B8%A2%E0%B9%8C%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%A1%E0%B8%B1%E0%B8%A2%E0%B8%97%E0%B8%B5%E0%B9%88_8.png/1920px-%E0%B9%82%E0%B8%A5%E0%B9%82%E0%B8%81%E0%B9%89%E0%B8%A8%E0%B8%B9%E0%B8%99%E0%B8%A2%E0%B9%8C%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%A1%E0%B8%B1%E0%B8%A2%E0%B8%97%E0%B8%B5%E0%B9%88_8.png';
+
+// ---------- ตรวจสอบฟังก์ชัน getThaiDate() ----------
+if (!function_exists('getThaiDate')) {
+    function getThaiDate($datetime) {
+        if (empty($datetime)) return '-';
+        $thai_months = [
+            'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+        ];
+        $ts = strtotime($datetime);
+        $year = date('Y', $ts) + 543;
+        $month = (int)date('m', $ts) - 1;
+        $day = date('j', $ts);
+        $hour = date('H', $ts);
+        $min = date('i', $ts);
+        return "{$day} {$thai_months[$month]} {$year} เวลา {$hour}:{$min} น.";
+    }
+}
+
+// ---------- สร้าง HTML (สรุปในหน้าเดียว) ----------
 $html = '<!DOCTYPE html>
 <html>
 <head>
@@ -59,13 +95,13 @@ $html = '<!DOCTYPE html>
     }
     
     @page { 
-        margin: 1.8cm 1.5cm; 
+        margin: 1.5cm 1.2cm; 
     }
     
     body {
         font-family: "Sarabun", "Garuda", sans-serif;
-        font-size: 14px;
-        line-height: 1.8;
+        font-size: 16px;
+        line-height: 1.5;
         color: #1e293b;
         background: #fff;
         position: relative;
@@ -76,8 +112,8 @@ $html = '<!DOCTYPE html>
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%) rotate(-30deg);
-        font-size: 80px;
-        color: rgba(30, 58, 138, 0.06);
+        font-size: 70px;
+        color: rgba(30, 58, 138, 0.05);
         z-index: -1;
         white-space: nowrap;
         font-weight: bold;
@@ -87,22 +123,42 @@ $html = '<!DOCTYPE html>
     
     .header { 
         text-align: center; 
-        border-bottom: 3px solid #3b82f6; 
-        padding-bottom: 12px; 
-        margin-bottom: 20px; 
+        border-bottom: 2px solid #3b82f6; 
+        padding-bottom: 8px; 
+        margin-bottom: 12px; 
+        position: relative;
+    }
+    
+    .header-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 4px;
+    }
+    
+    .header-logo img {
+        height: 50px;
+        width: auto;
     }
     
     .header h1 { 
-        font-size: 24px; 
-        margin: 0 0 5px 0; 
+        font-size: 18px; 
+        margin: 0; 
         color: #1e3a8a; 
         font-family: "Sarabun", sans-serif;
         font-weight: bold;
     }
     
     .header .sub { 
-        font-size: 16px; 
+        font-size: 13px; 
         color: #2563eb; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
+    .header .sub-sub {
+        font-size: 10px;
+        color: #64748b;
         font-family: "Sarabun", sans-serif;
     }
     
@@ -112,47 +168,60 @@ $html = '<!DOCTYPE html>
         left: 0; 
         right: 0; 
         text-align: center; 
-        font-size: 12px; 
+        font-size: 9px; 
         color: #6b7280; 
         border-top: 1px solid #dbeafe; 
-        padding-top: 8px; 
+        padding-top: 5px; 
         font-family: "Sarabun", sans-serif;
     }
     
     .title-section { 
         font-weight: bold; 
-        font-size: 18px; 
+        font-size: 14px; 
         color: #1e3a8a; 
-        margin-top: 20px; 
-        margin-bottom: 10px; 
-        border-left: 5px solid #3b82f6; 
-        padding-left: 12px; 
+        margin-top: 10px; 
+        margin-bottom: 6px; 
+        border-left: 4px solid #3b82f6; 
+        padding-left: 8px; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
+    .title-section-sm { 
+        font-weight: bold; 
+        font-size: 13px; 
+        color: #1e3a8a; 
+        margin-top: 8px; 
+        margin-bottom: 4px; 
+        border-left: 3px solid #3b82f6; 
+        padding-left: 6px; 
         font-family: "Sarabun", sans-serif;
     }
     
     .objectives { 
         background: #eff6ff; 
-        padding: 12px 16px; 
-        border-radius: 6px; 
-        margin-bottom: 20px; 
-        border-left: 4px solid #3b82f6; 
+        padding: 6px 10px; 
+        border-radius: 4px; 
+        margin-bottom: 10px; 
+        border-left: 3px solid #3b82f6; 
         font-family: "Sarabun", sans-serif;
+        font-size: 11px;
     }
     
     .objectives ul { 
-        margin: 6px 0 0 20px; 
+        margin: 2px 0 0 14px; 
         padding: 0; 
     }
     
     .objectives li {
-        margin-bottom: 4px;
+        margin-bottom: 1px;
     }
     
     .info-grid { 
         display: table; 
         width: 100%; 
-        margin-bottom: 20px; 
+        margin-bottom: 8px; 
         border-collapse: collapse; 
+        font-size: 11px;
     }
     
     .info-row { 
@@ -161,9 +230,9 @@ $html = '<!DOCTYPE html>
     
     .info-label { 
         display: table-cell; 
-        width: 35%; 
+        width: 28%; 
         font-weight: bold; 
-        padding: 8px 10px 8px 0; 
+        padding: 3px 6px 3px 0; 
         border-bottom: 1px dashed #dbeafe; 
         color: #1e3a8a; 
         font-family: "Sarabun", sans-serif;
@@ -171,139 +240,214 @@ $html = '<!DOCTYPE html>
     
     .info-value { 
         display: table-cell; 
-        padding: 8px 0; 
+        padding: 3px 0; 
         border-bottom: 1px dashed #dbeafe; 
         font-family: "Sarabun", sans-serif;
     }
     
     .detail-box { 
         background: #f8faff; 
-        padding: 14px 16px; 
-        border-left: 4px solid #3b82f6; 
-        margin: 10px 0; 
-        border-radius: 4px; 
+        padding: 6px 10px; 
+        border-left: 3px solid #3b82f6; 
+        margin: 4px 0; 
+        border-radius: 3px; 
         font-family: "Sarabun", sans-serif;
-        line-height: 1.8;
-    }
-    
-    .badge { 
-        display: inline-block; 
-        padding: 3px 14px; 
-        border-radius: 20px; 
-        font-weight: bold; 
-        font-size: 14px; 
-        font-family: "Sarabun", sans-serif;
-    }
-    
-    .badge-A { background: #dbeafe; color: #1e40af; }
-    .badge-B { background: #bfdbfe; color: #1e3a8a; }
-    .badge-C { background: #93c5fd; color: #1e3a8a; }
-    .badge-D { background: #60a5fa; color: #ffffff; }
-    .badge-F { background: #3b82f6; color: #ffffff; }
-    .badge-E { background: #1e40af; color: #ffffff; }
-    
-    .risk-content {
-        font-family: "Sarabun", sans-serif;
-        line-height: 1.8;
+        line-height: 1.5;
+        font-size: 11px;
     }
     
     .section-label {
         font-weight: bold;
-        font-size: 16px;
+        font-size: 12px;
         color: #1e3a8a;
-        margin-bottom: 8px;
+        margin-bottom: 3px;
+        margin-top: 6px;
         font-family: "Sarabun", sans-serif;
+    }
+    
+    .divider {
+        border: none;
+        border-top: 1px dashed #dbeafe;
+        margin: 8px 0;
+    }
+    
+    .risk-item {
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .risk-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .summary-bar {
+        background: #f8fafc;
+        padding: 5px 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        text-align: center;
+        font-size: 12px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .severity-text {
+        font-weight: normal;
     }
 </style>
 </head>
-<body>';
+<body>
+<div class="watermark">ศูนย์อนามัยที่ 8</div>';
 
+// ----- Header -----
+$html .= '
+<div class="header">
+    <div class="header-logo">
+        <img src="' . $logoUrl . '" alt="ศูนย์อนามัยที่ 8">
+        <div>
+            <h1>รายงานอุบัติการณ์ความเสี่ยง</h1>
+            <div class="sub">ศูนย์อนามัยที่ 8 อุดรธานี</div>
+            <div class="sub-sub">กรมอนามัย กระทรวงสาธารณสุข</div>
+        </div>
+    </div>
+</div>
+
+<div class="objectives">
+    <strong>วัตถุประสงค์</strong>
+    <ul>
+        <li>เพื่อแก้ไขเหตุการณ์ที่เกิดขึ้นในหน่วยงานได้อย่างเหมาะสม และทันเวลา</li>
+        <li>เพื่อป้องกัน ลดการความเสียหายที่อาจเกิดขึ้นในงานให้น้อยลง</li>
+        <li>เพื่อหาแนวทางป้องกันไม่ให้เกิดอุบัติการณ์เสี่ยงซ้ำ</li>
+    </ul>
+</div>';
+
+// ----- สรุปภาพรวม -----
+$totalRisks = count($risks);
+$html .= '
+<div class="summary-bar">
+    📊 สรุปภาพรวม : จำนวนความเสี่ยงทั้งหมด <strong>' . $totalRisks . '</strong> รายการ 
+    | วันที่พิมพ์ ' . getThaiDate(date('Y-m-d H:i:s')) . '
+</div>';
+
+// ----- Loop ข้อมูล -----
 $severityMap = [
-    'A' => 'ระดับ A : มีโอกาสเกิดความเสี่ยงแต่ยังไม่เกิดขึ้น',
-    'B' => 'ระดับ B : เกิดความเสี่ยง ยังไม่ถึงตัวบุคคล ไม่เกิดผลกระทบต่องาน',
-    'C' => 'ระดับ C : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับเบื้องต้น สามารถแก้ไขได้ด้วยตนเอง',
-    'D' => 'ระดับ D : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับปานกลางต้องให้เพื่อนร่วมงานช่วยแก้ไข',
-    'F' => 'ระดับ F : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงต้องแจ้งหัวหน้างานช่วยแก้ไข',
-    'E' => 'ระดับ E : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงสุดไม่สามารถแก้ไขได้ รายงานผู้บริหาร'
+    'A' => 'ระดับ A : มีโอกาสเกิดแต่ยังไม่เกิดขึ้น',
+    'B' => 'ระดับ B : เกิด ยังไม่ถึงตัวบุคคล ไม่เกิดผลกระทบ',
+    'C' => 'ระดับ C : เกิดถึงตัวบุคคล ผลกระทบเบื้องต้น แก้ไขเองได้',
+    'D' => 'ระดับ D : เกิดถึงตัวบุคคล ผลกระทบปานกลาง ต้องให้ผู้อื่นช่วย',
+    'F' => 'ระดับ F : เกิดถึงตัวบุคคล ผลกระทบสูง ต้องแจ้งหัวหน้า',
+    'E' => 'ระดับ E : เกิดถึงตัวบุคคล ผลกระทบสูงสุด แจ้งผู้บริหาร'
 ];
 
 foreach ($risks as $index => $risk) {
-    if ($index > 0) {
-        $html .= '<div style="page-break-before: always;"></div>';
-    }
-    
     $severityText = isset($severityMap[$risk['severity']]) ? $severityMap[$risk['severity']] : $risk['severity'];
+    $statusText = $risk['status'] ?? 'ยังไม่ดำเนินการ';
+    $report = isset($reportData[$risk['id']]) ? $reportData[$risk['id']] : null;
     
     $html .= '
-    <div class="watermark">ศูนย์อนามัยที่ 8</div>
-    
-    <div class="header">
-        <h1>รายงานอุบัติการณ์ความเสี่ยง</h1>
-        <div class="sub">ศูนย์อนามัยที่ 8 อุดรธานี</div>
-    </div>
-    
-    <div class="objectives">
-        <strong>วัตถุประสงค์</strong>
-        <ul>
-            <li>เพื่อแก้ไขเหตุการณ์ที่เกิดขึ้นในหน่วยงานได้อย่างเหมาะสม และทันเวลา</li>
-            <li>เพื่อป้องกัน ลดการความเสียหายที่อาจเกิดขึ้นในงานให้น้อยลงหรือไม่มีเลย</li>
-            <li>เพื่อให้องค์กรสามารถหาแนวทางป้องกันไม่ให้เกิดอุบัติการณ์เสี่ยงซ้ำ และช่วยให้องค์กรพัฒนาเป็นไปในแนวทางเดียวกัน</li>
-        </ul>
-    </div>
-    
-    <div class="title-section">รายละเอียดความเสี่ยง</div>
+<div class="risk-item">
+    <div class="title-section">📋 ความเสี่ยง #' . ($index + 1) . '</div>
     
     <div class="info-grid">
         <div class="info-row">
-            <div class="info-label">หน่วยงานที่เกิดความเสี่ยง</div>
+            <div class="info-label">หน่วยงาน</div>
             <div class="info-value">' . htmlspecialchars($risk['unit'] . ($risk['unit_other'] ? ' (' . $risk['unit_other'] . ')' : '')) . '</div>
         </div>
         <div class="info-row">
-            <div class="info-label">ประเภทความเสี่ยง</div>
+            <div class="info-label">ประเภท</div>
             <div class="info-value">' . htmlspecialchars($risk['risk_type'] . ($risk['risk_type_other'] ? ' (' . $risk['risk_type_other'] . ')' : '')) . '</div>
         </div>
         <div class="info-row">
             <div class="info-label">ระดับความรุนแรง</div>
             <div class="info-value">
-                <span class="badge badge-' . $risk['severity'] . '">' . $risk['severity'] . '</span> 
-                – ' . htmlspecialchars($severityText) . '
+                <strong>' . $risk['severity'] . '</strong> 
+                <span class="severity-text">' . htmlspecialchars($severityText) . '</span>
             </div>
         </div>
         <div class="info-row">
-            <div class="info-label">วันเวลาที่เกิดเหตุการณ์</div>
+            <div class="info-label">สถานะ</div>
+            <div class="info-value">' . htmlspecialchars($statusText) . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">วันที่เกิดเหตุการณ์</div>
             <div class="info-value">' . getThaiDate($risk['event_datetime']) . '</div>
         </div>
         <div class="info-row">
-            <div class="info-label">วันเวลาที่รายงานเหตุการณ์</div>
+            <div class="info-label">วันที่รายงาน</div>
             <div class="info-value">' . getThaiDate($risk['report_datetime'] ?? $risk['created_at']) . '</div>
         </div>
         <div class="info-row">
             <div class="info-label">ผู้รายงาน</div>
             <div class="info-value">' . htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') . '</div>
         </div>
-        <div class="info-row">
-            <div class="info-label">📄 สถานะการยินยอม (Consent)</div>
-            <div class="info-value">' . ($risk['consent'] == 1 ? '✅ ยินยอมแล้ว (' . getThaiDate($risk['consent_at']) . ')' : '❌ ยังไม่ยินยอม') . '</div>
-        </div>
     </div>
     
     <div class="section-label">📝 รายละเอียดเหตุการณ์</div>
-    <div class="detail-box">' . nl2br(htmlspecialchars($risk['detail'] ?? $risk['risk_detail'] ?? '-')) . '</div>
+    <div class="detail-box">' . nl2br(htmlspecialchars($risk['detail'] ?? '-')) . '</div>
     
     <div class="section-label">🔧 การแก้ไขเบื้องต้น</div>
     <div class="detail-box">' . nl2br(htmlspecialchars($risk['initial_solution'] ?? '-')) . '</div>
     
     <div class="section-label">💡 ปัญหาและข้อเสนอแนะ</div>
-    <div class="detail-box">' . nl2br(htmlspecialchars($risk['suggestion'] ?? '-')) . '</div>
+    <div class="detail-box">' . nl2br(htmlspecialchars($risk['suggestion'] ?? '-')) . '</div>';
+
+    // สรุปผล
+    if ($report) {
+        $html .= '
+    <hr class="divider">
+    <div class="title-section-sm">📊 สรุปผลการรายงาน</div>
     
-    <div class="footer">พิมพ์เมื่อ ' . getThaiDate(date('Y-m-d H:i:s')) . ' | ระบบจัดการความเสี่ยง ศูนย์อนามัยที่ 8</div>';
+    <div class="info-grid">
+        <div class="info-row">
+            <div class="info-label">มาตรการแก้ไข</div>
+            <div class="info-value">' . nl2br(htmlspecialchars($report['corrective_action'] ?? '-')) . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">ผู้รับผิดชอบ</div>
+            <div class="info-value">' . htmlspecialchars($report['responsible_person'] ?? '-') . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">การติดตามผล</div>
+            <div class="info-value">' . nl2br(htmlspecialchars($report['follow_up'] ?? '-')) . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">ผลที่คาดว่าจะได้รับ</div>
+            <div class="info-value">' . nl2br(htmlspecialchars($report['expected_outcome'] ?? '-')) . '</div>
+        </div>';
+        
+        if (!empty($report['report_file'])) {
+            $html .= '
+        <div class="info-row">
+            <div class="info-label">ไฟล์แนบ</div>
+            <div class="info-value">' . htmlspecialchars(basename($report['report_file'])) . '</div>
+        </div>';
+        }
+        
+        if (!empty($report['created_at'])) {
+            $html .= '
+        <div class="info-row">
+            <div class="info-label">วันที่บันทึกสรุปผล</div>
+            <div class="info-value">' . getThaiDate($report['created_at']) . '</div>
+        </div>';
+        }
+        
+        $html .= '
+    </div>';
+    }
+
+    $html .= '
+</div>';
 }
 
-$html .= '</body></html>';
+$html .= '
+<div class="footer">พิมพ์เมื่อ ' . getThaiDate(date('Y-m-d H:i:s')) . ' | ระบบจัดการความเสี่ยง ศูนย์อนามัยที่ 8</div>
+</body></html>';
 
 // ---------- ตั้งค่า Dompdf ----------
 $options = new Options();
-$options->set('isRemoteEnabled', false);
+$options->set('isRemoteEnabled', true);
 $options->set('isHtml5ParserEnabled', true);
 $options->set('isPhpEnabled', false);
 $options->set('defaultFont', 'Sarabun');

@@ -12,12 +12,16 @@ if ($date_from && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from)) $date_from =
 if ($date_to && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) $date_to = '';
 
 $date_where = '';
+$date_where_clause = '';
 if ($date_from && $date_to) {
     $date_where = " WHERE event_datetime BETWEEN '{$date_from} 00:00:00' AND '{$date_to} 23:59:59' ";
+    $date_where_clause = " AND event_datetime BETWEEN '{$date_from} 00:00:00' AND '{$date_to} 23:59:59' ";
 } elseif ($date_from) {
     $date_where = " WHERE event_datetime >= '{$date_from} 00:00:00' ";
+    $date_where_clause = " AND event_datetime >= '{$date_from} 00:00:00' ";
 } elseif ($date_to) {
     $date_where = " WHERE event_datetime <= '{$date_to} 23:59:59' ";
+    $date_where_clause = " AND event_datetime <= '{$date_to} 23:59:59' ";
 }
 
 // สถิติรวม
@@ -27,6 +31,24 @@ $totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 // จำนวนความเสี่ยงตามระดับ - Doughnut Chart
 $severityData = $pdo->query("SELECT severity, COUNT(*) as count FROM risks" . $date_where . " GROUP BY severity ORDER BY 
     CASE severity WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 WHEN 'D' THEN 4 WHEN 'F' THEN 5 WHEN 'E' THEN 6 END")->fetchAll();
+
+// ระดับความรุนแรงแบบเต็ม
+$severityFullMap = [
+    'A' => 'ระดับ A : มีโอกาสเกิดความเสี่ยงแต่ยังไม่เกิดขึ้น',
+    'B' => 'ระดับ B : เกิดความเสี่ยง ยังไม่ถึงตัวบุคคล ไม่เกิดผลกระทบต่องาน',
+    'C' => 'ระดับ C : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับเบื้องต้น สามารถแก้ไขได้ด้วยตนเอง',
+    'D' => 'ระดับ D : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับปานกลางต้องให้เพื่อนร่วมงานช่วยแก้ไข',
+    'F' => 'ระดับ F : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงต้องแจ้งหัวหน้างานช่วยแก้ไข',
+    'E' => 'ระดับ E : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงสุดไม่สามารถแก้ไขได้ รายงานผู้บริหาร'
+];
+
+// เตรียมข้อมูลสำหรับแสดงใน Tooltip
+$severityFullLabels = [];
+$severityFullCounts = [];
+foreach ($severityData as $item) {
+    $severityFullLabels[] = $severityFullMap[$item['severity']] ?? $item['severity'];
+    $severityFullCounts[] = $item['count'];
+}
 
 // ประเภทความเสี่ยง - Polar Area
 $riskTypes = $pdo->query("SELECT risk_type, COUNT(*) as count FROM risks" . $date_where . " GROUP BY risk_type ORDER BY count DESC")->fetchAll();
@@ -69,6 +91,14 @@ $todayRisks = $pdo->query("SELECT COUNT(*) FROM risks WHERE DATE(created_at) = C
 
 // จำนวนความเสี่ยงที่ดำเนินการแล้ว
 $completedRisks = $pdo->query("SELECT COUNT(*) FROM risks WHERE status = 'ดำเนินการแล้ว'" . ($date_where ? ' AND ' . substr($date_where, 6) : ''))->fetchColumn();
+
+// สถานะแยกตามประเภท (สำหรับแสดงจำนวน)
+$statusCounts = [
+    'ยังไม่ดำเนินการ' => $pdo->query("SELECT COUNT(*) FROM risks WHERE status = 'ยังไม่ดำเนินการ'" . $date_where_clause)->fetchColumn(),
+    'กำลังดำเนินการ' => $pdo->query("SELECT COUNT(*) FROM risks WHERE status = 'กำลังดำเนินการ'" . $date_where_clause)->fetchColumn(),
+    'ดำเนินการแล้ว' => $pdo->query("SELECT COUNT(*) FROM risks WHERE status = 'ดำเนินการแล้ว'" . $date_where_clause)->fetchColumn(),
+    'ยุติ' => $pdo->query("SELECT COUNT(*) FROM risks WHERE status = 'ยุติ'" . $date_where_clause)->fetchColumn()
+];
 
 // เตรียมข้อมูลกราฟ
 $severityLabels = array_column($severityData, 'severity');
@@ -520,6 +550,44 @@ function getSeverityClass($severity)
         color: #f59e0b;
     }
 
+    /* สถานะสี */
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-progress { background: #dbeafe; color: #1e40af; }
+    .status-completed { background: #d1fae5; color: #065f46; }
+    .status-terminated { background: #f1f5f9; color: #475569; }
+
+    /* สถานะ Summary Box */
+    .status-summary-box {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+    }
+    .status-summary-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.3rem 0.8rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+    }
+    .status-summary-item .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .status-summary-item .count {
+        font-weight: 700;
+        margin-left: 0.2rem;
+    }
+    .dot-pending { background: #fbbf24; }
+    .dot-progress { background: #60a5fa; }
+    .dot-completed { background: #34d399; }
+    .dot-terminated { background: #94a3b8; }
+
     @media (max-width: 1024px) {
         .stats-grid { grid-template-columns: repeat(2, 1fr); }
         .content-grid { grid-template-columns: 1fr; }
@@ -527,6 +595,7 @@ function getSeverityClass($severity)
 
     @media (max-width: 640px) {
         .stats-grid { grid-template-columns: 1fr; }
+        .status-summary-box { flex-direction: column; align-items: flex-start; }
     }
 
     @media print {
@@ -562,6 +631,26 @@ function getSeverityClass($severity)
                     <a href="dashboard.php" class="btn-filter danger"><i class="fas fa-times"></i> รีเซ็ต</a>
                 <?php endif; ?>
             </form>
+
+            <!-- Status Summary Box -->
+            <div class="status-summary-box" style="margin-bottom:1.5rem;">
+                <div class="status-summary-item" style="background:rgba(254,243,199,0.5);border-color:#fcd34d;">
+                    <span class="dot dot-pending"></span>
+                    ยังไม่ดำเนินการ <span class="count"><?= $statusCounts['ยังไม่ดำเนินการ'] ?></span>
+                </div>
+                <div class="status-summary-item" style="background:rgba(219,234,254,0.5);border-color:#93c5fd;">
+                    <span class="dot dot-progress"></span>
+                    กำลังดำเนินการ <span class="count"><?= $statusCounts['กำลังดำเนินการ'] ?></span>
+                </div>
+                <div class="status-summary-item" style="background:rgba(209,250,229,0.5);border-color:#6ee7b7;">
+                    <span class="dot dot-completed"></span>
+                    ดำเนินการแล้ว <span class="count"><?= $statusCounts['ดำเนินการแล้ว'] ?></span>
+                </div>
+                <div class="status-summary-item" style="background:rgba(241,245,249,0.5);border-color:#cbd5e1;">
+                    <span class="dot dot-terminated"></span>
+                    ยุติ <span class="count"><?= $statusCounts['ยุติ'] ?></span>
+                </div>
+            </div>
 
             <div class="stats-grid">
                 <div class="stat-card blue">
@@ -667,13 +756,22 @@ function getSeverityClass($severity)
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($recent as $row): $sevClass = getSeverityClass($row['severity']);
-                                        $statusClass = getStatusClass($row['status'] ?? ''); ?>
+                                    <?php foreach ($recent as $row): 
+                                        $sevClass = getSeverityClass($row['severity']);
+                                        $status = $row['status'] ?? 'ยังไม่ดำเนินการ';
+                                        $statusColor = '';
+                                        if ($status == 'ยังไม่ดำเนินการ') $statusColor = 'status-pending';
+                                        elseif ($status == 'กำลังดำเนินการ') $statusColor = 'status-progress';
+                                        elseif ($status == 'ดำเนินการแล้ว') $statusColor = 'status-completed';
+                                        elseif ($status == 'ยุติ') $statusColor = 'status-terminated';
+                                    ?>
                                         <tr>
                                             <td style="color:#94a3b8;"><?= htmlspecialchars(mb_substr($row['unit'] ?? '-', 0, 12)) ?></td>
                                             <td style="font-weight:500;"><?= htmlspecialchars(mb_substr($row['risk_type'] ?? '-', 0, 18)) ?></td>
                                             <td><span class="badge-xs <?= $sevClass ?>"><?= htmlspecialchars($row['severity'] ?? '-') ?></span></td>
-                                            <td><span class="badge-xs <?= $statusClass ?>"><?= htmlspecialchars(mb_substr($row['status'] ?? '-', 0, 10)) ?></span></td>
+                                            <td>
+                                                <span class="badge-xs <?= $statusColor ?>"><?= htmlspecialchars(mb_substr($status, 0, 10)) ?></span>
+                                            </td>
                                             <td style="text-align:right;color:#94a3b8;font-size:0.72rem;"><?= date('d/m/Y', strtotime($row['created_at'])) ?></td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -729,7 +827,6 @@ function getSeverityClass($severity)
         if (dateFrom) dateFrom.setAttribute('max', today);
         if (dateTo) dateTo.setAttribute('max', today);
 
-        // ตรวจสอบว่า date_from ไม่เกิน date_to
         if (dateFrom && dateTo) {
             dateFrom.addEventListener('change', function() {
                 if (dateTo.value && this.value > dateTo.value) {
@@ -748,13 +845,13 @@ function getSeverityClass($severity)
 
     // ========== Charts ==========
     document.addEventListener('DOMContentLoaded', function() {
-        // Doughnut
+        // Doughnut - ใช้ชื่อเต็มใน Legend
         new Chart(document.getElementById('severityDoughnut'), {
             type: 'doughnut',
             data: {
-                labels: <?= json_encode($severityLabels) ?>,
+                labels: <?= json_encode($severityFullLabels) ?>,
                 datasets: [{
-                    data: <?= json_encode($severityCounts) ?>,
+                    data: <?= json_encode($severityFullCounts) ?>,
                     backgroundColor: <?= json_encode($doughnutColors) ?>,
                     borderWidth: 3,
                     borderColor: '#fff'
@@ -769,9 +866,22 @@ function getSeverityClass($severity)
                         position: 'right',
                         labels: {
                             usePointStyle: true,
-                            padding: 18,
+                            padding: 12,
                             font: {
-                                size: 11
+                                size: 10
+                            },
+                            boxWidth: 12,
+                            boxHeight: 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var label = context.label || '';
+                                var value = context.parsed || 0;
+                                var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return label + ': ' + value + ' รายการ (' + percentage + '%)';
                             }
                         }
                     }
@@ -802,6 +912,17 @@ function getSeverityClass($severity)
                             padding: 12,
                             font: {
                                 size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var label = context.label || '';
+                                var value = context.parsed || 0;
+                                var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return label + ': ' + value + ' รายการ (' + percentage + '%)';
                             }
                         }
                     }
@@ -899,7 +1020,7 @@ function getSeverityClass($severity)
                 }, {
                     label: 'ยุติ',
                     data: <?= json_encode($statusTerminated) ?>,
-                    backgroundColor: '#cbd5e1',
+                    backgroundColor: '#94a3b8',
                     borderRadius: 4
                 }]
             },
@@ -915,6 +1036,15 @@ function getSeverityClass($severity)
                             padding: 20,
                             font: {
                                 size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var label = context.dataset.label || '';
+                                var value = context.parsed.x || 0;
+                                return label + ': ' + value + ' รายการ';
                             }
                         }
                     }

@@ -4,7 +4,7 @@
  * ฟอร์มเพิ่ม/แก้ไขข้อมูลความเสี่ยง (Card Layout) - UI สวยงาม
  * - ไล่สีตามระดับความรุนแรง
  * - Animation สวยงาม
- * - ปุ่ม quick fill ที่เด่นขึ้น
+ * - สถานะการดำเนินการแก้ไขได้เฉพาะ Admin เท่านั้น
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -14,6 +14,7 @@ if (!isLoggedIn()) redirect('index.php');
 $id = $_GET['id'] ?? null;
 $risk = null;
 $is_editable = true;
+$is_admin = isAdmin();
 
 if ($id) {
   $stmt = $pdo->prepare("SELECT * FROM risks WHERE id = ?");
@@ -60,8 +61,10 @@ $severityOptions = [
 ];
 $statuses = ['ยังไม่ดำเนินการ', 'กำลังดำเนินการ', 'ดำเนินการแล้ว', 'ยุติ'];
 
-$event_datetime  = $risk ? date('Y-m-d H:i', strtotime($risk['event_datetime'])) : date('Y-m-d H:i');
-$report_datetime = $risk ? date('Y-m-d H:i', strtotime($risk['report_datetime'])) : date('Y-m-d H:i');
+// ตั้งค่าเริ่มต้นเป็นเวลาปัจจุบัน
+$current_datetime = date('Y-m-d H:i');
+$event_datetime  = $risk ? date('Y-m-d H:i', strtotime($risk['event_datetime'])) : $current_datetime;
+$report_datetime = $risk ? date('Y-m-d H:i', strtotime($risk['report_datetime'])) : $current_datetime;
 
 if ($id) {
   $reporter_code = $risk['reporter_code'] ?? '';
@@ -80,6 +83,7 @@ if ($id) {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
   const isEditable = <?= json_encode($is_editable) ?>;
+  const isAdmin = <?= json_encode($is_admin) ?>;
 </script>
 
 <style>
@@ -90,6 +94,7 @@ if ($id) {
 
   body {
     background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 30%, #ede9fe 60%, #fce7f3 100%);
+    min-height: 100vh;
   }
 
   .form-container {
@@ -106,6 +111,7 @@ if ($id) {
     color: white;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 10px 40px rgba(37, 99, 235, 0.3);
   }
 
   .form-header::before {
@@ -174,17 +180,19 @@ if ($id) {
 
   /* Card */
   .form-card {
-    background: white;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
     border-radius: 1rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.5);
     margin-bottom: 1.25rem;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
     transition: all 0.3s;
   }
 
   .form-card:hover {
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
   }
 
   .card-header {
@@ -192,8 +200,8 @@ if ($id) {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    border-bottom: 1px solid #f1f5f9;
-    background: #fafbfc;
+    border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+    background: rgba(250, 251, 252, 0.7);
   }
 
   .card-header-icon {
@@ -220,6 +228,16 @@ if ($id) {
     margin-left: auto;
   }
 
+  .card-header-badge.admin-only {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .card-header-badge.readonly {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
   .card-body {
     padding: 1.5rem;
   }
@@ -228,28 +246,29 @@ if ($id) {
   .form-input {
     width: 100%;
     padding: 0.7rem 0.9rem;
-    border: 1.5px solid #e2e8f0;
+    border: 1.5px solid rgba(226, 232, 240, 0.8);
     border-radius: 0.6rem;
     font-size: 0.9rem;
     transition: all 0.25s;
     outline: none;
     font-family: 'Sarabun', sans-serif;
-    background: #fafbfc;
+    background: rgba(250, 251, 252, 0.8);
     color: #1e293b;
   }
 
   .form-input:hover {
     border-color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.9);
   }
 
   .form-input:focus {
     border-color: #3b82f6;
     background: white;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   }
 
   .form-input:disabled {
-    background: #f1f5f9;
+    background: rgba(241, 245, 249, 0.6);
     color: #94a3b8;
     cursor: not-allowed;
     border-style: dashed;
@@ -288,7 +307,7 @@ if ($id) {
     align-items: center;
     gap: 0.6rem;
     padding: 0.7rem 0.9rem;
-    border: 2px solid #e2e8f0;
+    border: 2px solid rgba(226, 232, 240, 0.8);
     border-radius: 0.6rem;
     cursor: pointer;
     transition: all 0.2s;
@@ -332,7 +351,7 @@ if ($id) {
     align-items: center;
     gap: 0.35rem;
     padding: 0.8rem 0.5rem;
-    border: 2px solid #e2e8f0;
+    border: 2px solid rgba(226, 232, 240, 0.8);
     border-radius: 0.75rem;
     cursor: pointer;
     transition: all 0.3s;
@@ -372,34 +391,11 @@ if ($id) {
     margin-top: 0.15rem;
   }
 
-  /* Quick Fill Button */
-  .btn-quick-fill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
-    border: 1.5px solid #fcd34d;
-    color: #92400e;
-    padding: 0.6rem 1.5rem;
-    border-radius: 0.6rem;
-    font-weight: 600;
-    font-size: 0.85rem;
-    transition: all 0.3s;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
-  }
-
-  .btn-quick-fill:hover {
-    background: linear-gradient(135deg, #fde68a, #fcd34d);
-    border-color: #f59e0b;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25);
-  }
-
-  .btn-quick-fill.filled {
-    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-    border-color: #6ee7b7;
-    color: #065f46;
+  .severity-card .sev-desc1 {
+    font-size: 0.65rem;
+    color: #64748b;
+    line-height: 1.3;
+    margin-top: 0.15rem;
   }
 
   /* Buttons */
@@ -414,7 +410,7 @@ if ($id) {
     font-family: 'Sarabun', sans-serif;
     background: linear-gradient(135deg, #1e40af, #3b82f6);
     color: white;
-    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -422,7 +418,7 @@ if ($id) {
 
   .btn-submit:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+    box-shadow: 0 10px 32px rgba(37, 99, 235, 0.45);
   }
 
   .btn-submit:disabled {
@@ -435,18 +431,20 @@ if ($id) {
     border-radius: 0.7rem;
     font-weight: 500;
     font-size: 0.9rem;
-    background: #f1f5f9;
+    background: rgba(241, 245, 249, 0.8);
     color: #64748b;
     text-decoration: none;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    border: 1px solid rgba(226, 232, 240, 0.5);
   }
 
   .btn-cancel:hover {
     background: #e2e8f0;
     color: #334155;
+    transform: translateY(-2px);
   }
 
   .btn-back {
@@ -454,22 +452,53 @@ if ($id) {
     border-radius: 0.7rem;
     font-weight: 500;
     font-size: 0.9rem;
-    background: #eff6ff;
+    background: rgba(239, 246, 255, 0.8);
     color: #3b82f6;
     text-decoration: none;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    border: 1px solid rgba(191, 219, 254, 0.5);
   }
 
   .btn-back:hover {
     background: #dbeafe;
+    transform: translateY(-2px);
+  }
+
+  .btn-default {
+    padding: 0.4rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-size: 0.8rem;
+    background: rgba(241, 245, 249, 0.8);
+    color: #64748b;
+    border: 1px solid rgba(226, 232, 240, 0.5);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Sarabun', sans-serif;
+  }
+
+  .btn-default:hover {
+    background: #e2e8f0;
+    transform: translateY(-1px);
+  }
+
+  .btn-default.filled {
+    background: rgba(209, 250, 229, 0.8);
+    border-color: rgba(110, 231, 183, 0.5);
+    color: #065f46;
   }
 
   /* Locked Overlay */
   .locked-overlay {
-    background: #fef3c7;
+    background: rgba(254, 243, 199, 0.9);
+    backdrop-filter: blur(10px);
     border: 2px dashed #fcd34d;
     border-radius: 0.6rem;
     padding: 1rem;
@@ -479,12 +508,23 @@ if ($id) {
     margin-bottom: 1rem;
   }
 
+  .status-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 0.9rem;
+    border: 1.5px solid rgba(226, 232, 240, 0.8);
+    border-radius: 0.6rem;
+    background: rgba(241, 245, 249, 0.6);
+    color: #64748b;
+    font-size: 0.9rem;
+  }
+
   @keyframes slideUp {
     from {
       opacity: 0;
       transform: translateY(20px);
     }
-
     to {
       opacity: 1;
       transform: translateY(0);
@@ -495,36 +535,15 @@ if ($id) {
     animation: slideUp 0.5s ease forwards;
   }
 
-  .animate-in:nth-child(1) {
-    animation-delay: 0s;
-  }
-
-  .animate-in:nth-child(2) {
-    animation-delay: 0.05s;
-  }
-
-  .animate-in:nth-child(3) {
-    animation-delay: 0.1s;
-  }
-
-  .animate-in:nth-child(4) {
-    animation-delay: 0.15s;
-  }
-
-  .animate-in:nth-child(5) {
-    animation-delay: 0.2s;
-  }
-
-  .animate-in:nth-child(6) {
-    animation-delay: 0.25s;
-  }
-
-  .animate-in:nth-child(7) {
-    animation-delay: 0.3s;
-  }
+  .animate-in:nth-child(1) { animation-delay: 0s; }
+  .animate-in:nth-child(2) { animation-delay: 0.05s; }
+  .animate-in:nth-child(3) { animation-delay: 0.1s; }
+  .animate-in:nth-child(4) { animation-delay: 0.15s; }
+  .animate-in:nth-child(5) { animation-delay: 0.2s; }
+  .animate-in:nth-child(6) { animation-delay: 0.25s; }
+  .animate-in:nth-child(7) { animation-delay: 0.3s; }
 
   @media (max-width: 768px) {
-
     .radio-grid,
     .severity-grid {
       grid-template-columns: 1fr;
@@ -532,7 +551,7 @@ if ($id) {
   }
 </style>
 
-<div class="flex h-screen">
+<div class="flex h-screen" style="position:relative;z-index:1;">
   <?php include 'includes/sidebar.php'; ?>
   <div class="flex-1 p-4 md:p-6 overflow-y-auto">
     <div class="form-container">
@@ -568,9 +587,9 @@ if ($id) {
         <!-- รหัสผู้รายงาน -->
         <div class="form-card animate-in">
           <div class="card-header">
-            <div class="card-header-icon bg-blue-100 text-blue-600"><i class="fas fa-id-card"></i></div>
+            <div class="card-header-icon" style="background:rgba(219,234,254,0.8);color:#2563eb;"><i class="fas fa-id-card"></i></div>
             <h3 class="card-header-title">รหัสผู้รายงาน</h3>
-            <span class="card-header-badge bg-red-100 text-red-600">จำเป็น</span>
+            <span class="card-header-badge" style="background:rgba(254,226,226,0.8);color:#dc2626;">จำเป็น</span>
           </div>
           <div class="card-body">
             <input type="text" name="reporter_code" id="reporter_code" value="<?= htmlspecialchars($reporter_code) ?>"
@@ -581,9 +600,9 @@ if ($id) {
         <!-- กลุ่มงาน -->
         <div class="form-card animate-in">
           <div class="card-header">
-            <div class="card-header-icon bg-indigo-100 text-indigo-600"><i class="fas fa-building"></i></div>
+            <div class="card-header-icon" style="background:rgba(224,231,255,0.8);color:#4338ca;"><i class="fas fa-building"></i></div>
             <h3 class="card-header-title">กลุ่มงานที่เกิดความเสี่ยง</h3>
-            <span class="card-header-badge bg-red-100 text-red-600">จำเป็น</span>
+            <span class="card-header-badge" style="background:rgba(254,226,226,0.8);color:#dc2626;">จำเป็น</span>
           </div>
           <div class="card-body">
             <div class="radio-grid">
@@ -607,7 +626,7 @@ if ($id) {
         <!-- ประเภทความเสี่ยง -->
         <div class="form-card animate-in">
           <div class="card-header">
-            <div class="card-header-icon bg-amber-100 text-amber-600"><i class="fas fa-tag"></i></div>
+            <div class="card-header-icon" style="background:rgba(252,211,77,0.2);color:#d97706;"><i class="fas fa-tag"></i></div>
             <h3 class="card-header-title">ประเภทของความเสี่ยง</h3>
           </div>
           <div class="card-body">
@@ -632,7 +651,7 @@ if ($id) {
         <!-- ระดับความรุนแรง -->
         <div class="form-card animate-in">
           <div class="card-header">
-            <div class="card-header-icon bg-red-100 text-red-600"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="card-header-icon" style="background:rgba(254,226,226,0.8);color:#dc2626;"><i class="fas fa-exclamation-triangle"></i></div>
             <h3 class="card-header-title">ระดับความรุนแรง</h3>
           </div>
           <div class="card-body">
@@ -655,9 +674,9 @@ if ($id) {
         <!-- วันเวลา -->
         <div class="form-card animate-in">
           <div class="card-header">
-            <div class="card-header-icon bg-green-100 text-green-600"><i class="fas fa-calendar-alt"></i></div>
+            <div class="card-header-icon" style="background:rgba(209,250,229,0.8);color:#16a34a;"><i class="fas fa-calendar-alt"></i></div>
             <h3 class="card-header-title">วันเวลา</h3>
-            <span class="card-header-badge bg-red-100 text-red-600">จำเป็น</span>
+            <span class="card-header-badge" style="background:rgba(254,226,226,0.8);color:#dc2626;">จำเป็น</span>
           </div>
           <div class="card-body">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -665,11 +684,13 @@ if ($id) {
                 <label class="form-label">📅 วันที่เกิดเหตุการณ์ <span class="required">*</span></label>
                 <input type="text" id="event_datetime" name="event_datetime" value="<?= $event_datetime ?>"
                   class="form-input" required placeholder="เลือกวันที่และเวลา" autocomplete="off" <?= !$is_editable ? 'disabled' : '' ?>>
+                <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> กรุณาเลือกวันที่และเวลาเกิดเหตุการณ์</p>
               </div>
               <div>
                 <label class="form-label">📅 วันที่รายงาน <span class="required">*</span></label>
                 <input type="text" id="report_datetime" name="report_datetime" value="<?= $report_datetime ?>"
                   class="form-input" required placeholder="เลือกวันที่และเวลา" autocomplete="off" <?= !$is_editable ? 'disabled' : '' ?>>
+                <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> กรุณาเลือกวันที่และเวลาที่รายงาน</p>
               </div>
             </div>
           </div>
@@ -678,9 +699,9 @@ if ($id) {
         <!-- รายละเอียด -->
         <div class="form-card animate-in">
           <div class="card-header">
-            <div class="card-header-icon bg-violet-100 text-violet-600"><i class="fas fa-pen-to-square"></i></div>
+            <div class="card-header-icon" style="background:rgba(237,233,254,0.8);color:#6d28d9;"><i class="fas fa-pen-to-square"></i></div>
             <h3 class="card-header-title">รายละเอียดและแนวทางแก้ไข</h3>
-            <span class="card-header-badge bg-red-100 text-red-600">จำเป็น</span>
+            <span class="card-header-badge" style="background:rgba(254,226,226,0.8);color:#dc2626;">จำเป็น</span>
           </div>
           <div class="card-body space-y-4">
             <div>
@@ -700,31 +721,48 @@ if ($id) {
             </div>
             <?php if ($is_editable): ?>
               <div class="flex justify-end pt-2">
-                <button type="button" id="fillDefaultBtn" class="btn-quick-fill"
+                <a href="#" id="fillDefaultLink" class="btn-default"
                   data-default-detail="ไม่มีรายละเอียดเพิ่มเติม"
                   data-default-solution="ไม่มีการแก้ไขเบื้องต้น"
                   data-default-suggestion="ไม่มีข้อเสนอแนะเพิ่มเติม">
                   <i class="fas fa-pen"></i> ไม่มีข้อมูลในส่วนนี้
-                </button>
+                </a>
               </div>
             <?php endif; ?>
           </div>
         </div>
 
-        <!-- สถานะ -->
+        <!-- สถานะการดำเนินการ - แก้ไขได้เฉพาะ Admin -->
         <?php if ($id): ?>
           <div class="form-card animate-in">
             <div class="card-header">
-              <div class="card-header-icon bg-teal-100 text-teal-600"><i class="fas fa-chart-simple"></i></div>
+              <div class="card-header-icon" style="background:rgba(153,246,228,0.8);color:#0d9488;"><i class="fas fa-chart-simple"></i></div>
               <h3 class="card-header-title">สถานะการดำเนินการ</h3>
+              <?php if ($is_admin): ?>
+                <span class="card-header-badge admin-only"><i class="fas fa-crown"></i> Admin เท่านั้น</span>
+              <?php else: ?>
+                <span class="card-header-badge readonly"><i class="fas fa-lock"></i> อ่านอย่างเดียว</span>
+              <?php endif; ?>
             </div>
             <div class="card-body">
-              <select name="status" id="status" class="form-input" required <?= !$is_editable ? 'disabled' : '' ?>>
-                <option value="">-- กรุณาเลือกสถานะ --</option>
-                <?php foreach ($statuses as $st): ?>
-                  <option value="<?= $st ?>" <?= (($risk['status'] ?? '') == $st) ? 'selected' : '' ?>><?= $st ?></option>
-                <?php endforeach; ?>
-              </select>
+              <?php if ($is_admin && $is_editable): ?>
+                <select name="status" id="status" class="form-input" required>
+                  <option value="">-- กรุณาเลือกสถานะ --</option>
+                  <?php foreach ($statuses as $st): ?>
+                    <option value="<?= $st ?>" <?= (($risk['status'] ?? '') == $st) ? 'selected' : '' ?>><?= $st ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
+              <?php else: ?>
+                <input type="hidden" name="status" value="<?= htmlspecialchars($risk['status'] ?? 'ยังไม่ดำเนินการ') ?>">
+                <div class="status-display">
+                  <i class="fas fa-lock text-gray-400"></i>
+                  <span>สถานะปัจจุบัน: <strong><?= htmlspecialchars($risk['status'] ?? 'ยังไม่ดำเนินการ') ?></strong></span>
+                </div>
+                <?php if (!$is_admin): ?>
+                  <p class="text-xs text-amber-600 mt-1"><i class="fas fa-exclamation-triangle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
+                <?php endif; ?>
+              <?php endif; ?>
             </div>
           </div>
         <?php else: ?>
@@ -771,7 +809,8 @@ if ($id) {
       altFormat: "j F Y H:i",
       locale: "th",
       allowInput: true,
-      minuteIncrement: 1
+      minuteIncrement: 1,
+      defaultDate: new Date() // ตั้งค่าเริ่มต้นเป็นเวลาปัจจุบัน
     };
     const eventPicker = flatpickr('#event_datetime', dateConfig);
     const reportPicker = flatpickr('#report_datetime', dateConfig);
@@ -801,7 +840,6 @@ if ($id) {
       card.addEventListener('click', function() {
         const radio = this.querySelector('input[type="radio"]');
         if (radio && !radio.disabled) radio.checked = true;
-        // Update styles
         document.querySelectorAll('.severity-card').forEach(c => {
           c.style.borderColor = '#e2e8f0';
           c.style.background = 'white';
@@ -814,10 +852,11 @@ if ($id) {
       });
     });
 
-    // Quick Fill Button
-    const fillBtn = document.getElementById('fillDefaultBtn');
-    if (fillBtn) {
-      fillBtn.addEventListener('click', function() {
+    // Quick Fill Link - ไม่ reset ข้อมูล
+    const fillLink = document.getElementById('fillDefaultLink');
+    if (fillLink) {
+      fillLink.addEventListener('click', function(e) {
+        e.preventDefault();
         const detail = document.getElementById('detail');
         const solution = document.getElementById('initial_solution');
         const suggestion = document.getElementById('suggestion');
@@ -825,21 +864,27 @@ if ($id) {
         const defSolution = this.dataset.defaultSolution;
         const defSuggestion = this.dataset.defaultSuggestion;
 
-        const isAllDefault = detail.value.trim() === defDetail &&
-          solution.value.trim() === defSolution &&
-          suggestion.value.trim() === defSuggestion;
-
-        if (isAllDefault) {
-          detail.value = '';
-          solution.value = '';
-          suggestion.value = '';
-          this.innerHTML = '<i class="fas fa-pen"></i> ไม่มีข้อมูลในส่วนนี้';
-          this.classList.remove('filled');
-        } else {
+        let filled = false;
+        if (detail.value.trim() === '') {
           detail.value = defDetail;
+          filled = true;
+        }
+        if (solution.value.trim() === '') {
           solution.value = defSolution;
+          filled = true;
+        }
+        if (suggestion.value.trim() === '') {
           suggestion.value = defSuggestion;
+          filled = true;
+        }
+
+        if (filled) {
           this.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
+          this.classList.add('filled');
+        }
+
+        if (detail.value.trim() !== '' && solution.value.trim() !== '' && suggestion.value.trim() !== '') {
+          this.innerHTML = '<i class="fas fa-check-circle"></i> ข้อมูลครบถ้วน';
           this.classList.add('filled');
         }
       });
@@ -879,9 +924,25 @@ if ($id) {
         return;
       }
 
-      const ev = eventPicker.selectedDates[0],
-        rp = reportPicker.selectedDates[0];
-      if (ev && rp && rp < ev) {
+      // ตรวจสอบวันที่ - ถ้าไม่ได้เลือก ให้ใช้เวลาปัจจุบัน
+      const evInput = document.getElementById('event_datetime');
+      const rpInput = document.getElementById('report_datetime');
+      
+      if (!evInput.value.trim()) {
+        evInput.value = '<?= date('Y-m-d H:i') ?>';
+      }
+      if (!rpInput.value.trim()) {
+        rpInput.value = '<?= date('Y-m-d H:i') ?>';
+      }
+
+      const ev = eventPicker.selectedDates[0];
+      const rp = reportPicker.selectedDates[0];
+      
+      // ถ้ายังไม่มีค่าที่เลือก ให้ใช้ค่าจาก input
+      const evDate = ev || new Date(evInput.value);
+      const rpDate = rp || new Date(rpInput.value);
+
+      if (rpDate && evDate && rpDate < evDate) {
         Swal.fire({
           icon: 'warning',
           title: 'วันที่ไม่ถูกต้อง',
