@@ -20,27 +20,17 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. ตาราง token สำหรับ Remember Me
-CREATE TABLE IF NOT EXISTS user_tokens (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    token VARCHAR(64) NOT NULL,
-    expires_at DATETIME NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 3. ตารางรีเซ็ตรหัสผ่าน
+-- 2. ตารางรหัสผ่าน
 CREATE TABLE IF NOT EXISTS password_resets (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     token VARCHAR(64) NOT NULL,
     expires_at DATETIME NOT NULL,
-    used TINYINT(1) DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. ตารางข้อมูลความเสี่ยง
+-- 3. ตารางการอนุญาต
 CREATE TABLE IF NOT EXISTS risks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -62,18 +52,6 @@ CREATE TABLE IF NOT EXISTS risks (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 5. ตารางบันทึก Cookie Consent
-CREATE TABLE IF NOT EXISTS cookie_consent_log (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NULL,
-    consent TINYINT(1) DEFAULT 0,
-    preferences JSON NULL,
-    ip VARCHAR(45) NULL,
-    user_agent TEXT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ข้อมูลเริ่มต้น: ผู้ดูแลระบบ (รหัสผ่าน: password)

@@ -1,9 +1,8 @@
 <?php
 /**
  * generate_pdf.php – สร้าง PDF รายงานความเสี่ยง (ภาษาไทยสมบูรณ์)
- *
- * - ใช้ฟอนต์ Sarabun จาก Google Fonts (ในเครื่อง)
- * - ไม่ต้องใช้อินเทอร์เน็ต
+ * - ใช้ฟอนต์ Sarabun จากเครื่อง
+ * - รองรับภาษาไทย 100%
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -44,16 +43,34 @@ $html = '<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <style>
-    @page { margin: 1.8cm 1.5cm; }
+    @font-face {
+        font-family: "Sarabun";
+        src: url("' . __DIR__ . '/fonts/Sarabun-Regular.ttf' . '") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+    }
+    @font-face {
+        font-family: "Sarabun";
+        src: url("' . __DIR__ . '/fonts/Sarabun-Bold.ttf' . '") format("truetype");
+        font-weight: bold;
+        font-style: normal;
+    }
+    
+    @page { 
+        margin: 1.8cm 1.5cm; 
+    }
+    
     body {
-        font-family: "Sarabun", sans-serif;   /* ใช้ชื่อฟอนต์ที่ลงทะเบียน */
+        font-family: "Sarabun", "Garuda", sans-serif;
         font-size: 14px;
-        line-height: 1.6;
-        color: #1e3a8a;
+        line-height: 1.8;
+        color: #1e293b;
         background: #fff;
         position: relative;
     }
+    
     .watermark {
         position: fixed;
         top: 50%;
@@ -65,26 +82,138 @@ $html = '<!DOCTYPE html>
         white-space: nowrap;
         font-weight: bold;
         pointer-events: none;
+        font-family: "Sarabun", sans-serif;
     }
-    .header { text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; margin-bottom: 20px; }
-    .header h1 { font-size: 22px; margin: 0; color: #1e3a8a; }
-    .header .sub { font-size: 16px; color: #2563eb; }
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #dbeafe; padding-top: 6px; }
-    .title-section { font-weight: bold; font-size: 18px; color: #1e3a8a; margin-top: 20px; margin-bottom: 10px; border-left: 5px solid #3b82f6; padding-left: 10px; }
-    .objectives { background: #eff6ff; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #3b82f6; }
-    .objectives ul { margin: 6px 0 0 20px; padding: 0; }
-    .info-grid { display: table; width: 100%; margin-bottom: 20px; border-collapse: collapse; }
-    .info-row { display: table-row; }
-    .info-label { display: table-cell; width: 30%; font-weight: bold; padding: 6px 10px 6px 0; border-bottom: 1px dashed #dbeafe; color: #1e3a8a; }
-    .info-value { display: table-cell; padding: 6px 0; border-bottom: 1px dashed #dbeafe; }
-    .detail-box { background: #f8faff; padding: 12px 16px; border-left: 4px solid #3b82f6; margin: 10px 0; border-radius: 4px; }
-    .badge { display: inline-block; padding: 2px 12px; border-radius: 20px; font-weight: bold; font-size: 14px; }
+    
+    .header { 
+        text-align: center; 
+        border-bottom: 3px solid #3b82f6; 
+        padding-bottom: 12px; 
+        margin-bottom: 20px; 
+    }
+    
+    .header h1 { 
+        font-size: 24px; 
+        margin: 0 0 5px 0; 
+        color: #1e3a8a; 
+        font-family: "Sarabun", sans-serif;
+        font-weight: bold;
+    }
+    
+    .header .sub { 
+        font-size: 16px; 
+        color: #2563eb; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
+    .footer { 
+        position: fixed; 
+        bottom: 0; 
+        left: 0; 
+        right: 0; 
+        text-align: center; 
+        font-size: 12px; 
+        color: #6b7280; 
+        border-top: 1px solid #dbeafe; 
+        padding-top: 8px; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
+    .title-section { 
+        font-weight: bold; 
+        font-size: 18px; 
+        color: #1e3a8a; 
+        margin-top: 20px; 
+        margin-bottom: 10px; 
+        border-left: 5px solid #3b82f6; 
+        padding-left: 12px; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
+    .objectives { 
+        background: #eff6ff; 
+        padding: 12px 16px; 
+        border-radius: 6px; 
+        margin-bottom: 20px; 
+        border-left: 4px solid #3b82f6; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
+    .objectives ul { 
+        margin: 6px 0 0 20px; 
+        padding: 0; 
+    }
+    
+    .objectives li {
+        margin-bottom: 4px;
+    }
+    
+    .info-grid { 
+        display: table; 
+        width: 100%; 
+        margin-bottom: 20px; 
+        border-collapse: collapse; 
+    }
+    
+    .info-row { 
+        display: table-row; 
+    }
+    
+    .info-label { 
+        display: table-cell; 
+        width: 35%; 
+        font-weight: bold; 
+        padding: 8px 10px 8px 0; 
+        border-bottom: 1px dashed #dbeafe; 
+        color: #1e3a8a; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
+    .info-value { 
+        display: table-cell; 
+        padding: 8px 0; 
+        border-bottom: 1px dashed #dbeafe; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
+    .detail-box { 
+        background: #f8faff; 
+        padding: 14px 16px; 
+        border-left: 4px solid #3b82f6; 
+        margin: 10px 0; 
+        border-radius: 4px; 
+        font-family: "Sarabun", sans-serif;
+        line-height: 1.8;
+    }
+    
+    .badge { 
+        display: inline-block; 
+        padding: 3px 14px; 
+        border-radius: 20px; 
+        font-weight: bold; 
+        font-size: 14px; 
+        font-family: "Sarabun", sans-serif;
+    }
+    
     .badge-A { background: #dbeafe; color: #1e40af; }
     .badge-B { background: #bfdbfe; color: #1e3a8a; }
     .badge-C { background: #93c5fd; color: #1e3a8a; }
     .badge-D { background: #60a5fa; color: #ffffff; }
     .badge-F { background: #3b82f6; color: #ffffff; }
     .badge-E { background: #1e40af; color: #ffffff; }
+    
+    .risk-content {
+        font-family: "Sarabun", sans-serif;
+        line-height: 1.8;
+    }
+    
+    .section-label {
+        font-weight: bold;
+        font-size: 16px;
+        color: #1e3a8a;
+        margin-bottom: 8px;
+        font-family: "Sarabun", sans-serif;
+    }
 </style>
 </head>
 <body>';
@@ -99,62 +228,120 @@ $severityMap = [
 ];
 
 foreach ($risks as $index => $risk) {
-    if ($index > 0) $html .= '<div style="page-break-before: always;"></div>';
-    $severityText = $severityMap[$risk['severity']] ?? $risk['severity'];
+    if ($index > 0) {
+        $html .= '<div style="page-break-before: always;"></div>';
+    }
+    
+    $severityText = isset($severityMap[$risk['severity']]) ? $severityMap[$risk['severity']] : $risk['severity'];
+    
     $html .= '
     <div class="watermark">ศูนย์อนามัยที่ 8</div>
-    <div class="header"><h1>รายงานอุบัติการณ์ความเสี่ยง</h1><div class="sub">ศูนย์อนามัยที่ 8 อุดรธานี</div></div>
-    <div class="objectives"><strong>วัตถุประสงค์</strong><ul><li>เพื่อแก้ไขเหตุการณ์ที่เกิดขึ้นในหน่วยงานได้อย่างเหมาะสม และทันเวลา</li><li>เพื่อป้องกัน ลดการความเสียหายที่อาจเกิดขึ้นในงานให้น้อยลงหรือไม่มีเลย</li><li>เพื่อให้องค์กรสามารถหาแนวทางป้องกันไม่ให้เกิดอุบัติการณ์เสี่ยงซ้ำ และช่วยให้องค์กรพัฒนาเป็นไปในแนวทางเดียวกัน</li></ul></div>
-    <div class="title-section">รายละเอียดความเสี่ยง</div>
-    <div class="info-grid">
-        <div class="info-row"><div class="info-label">หน่วยงานที่เกิดความเสี่ยง</div><div class="info-value">'.htmlspecialchars($risk['unit'].($risk['unit_other'] ? ' ('.$risk['unit_other'].')' : '')).'</div></div>
-        <div class="info-row"><div class="info-label">ประเภทความเสี่ยง</div><div class="info-value">'.htmlspecialchars($risk['risk_type'].($risk['risk_type_other'] ? ' ('.$risk['risk_type_other'].')' : '')).'</div></div>
-        <div class="info-row"><div class="info-label">ระดับความรุนแรง</div><div class="info-value"><span class="badge badge-'.$risk['severity'].'">'.$risk['severity'].'</span> – '.htmlspecialchars($severityText).'</div></div>
-        <div class="info-row"><div class="info-label">วันเวลาที่เกิดเหตุการณ์ (จริง)</div><div class="info-value">'.getThaiDate($risk['event_datetime']).'</div></div>
-        <div class="info-row"><div class="info-label">วันเวลาที่รายงานเหตุการณ์</div><div class="info-value">'.getThaiDate($risk['report_datetime']).'</div></div>
-        <div class="info-row"><div class="info-label">ผู้รายงาน</div><div class="info-value">'.htmlspecialchars($risk['username'] ?? 'ไม่ระบุ').'</div></div>
-        <div class="info-row"><div class="info-label">📄 สถานะการยินยอม (Consent)</div><div class="info-value">'
-            .($risk['consent'] == 1 ? '✅ ยินยอมแล้ว ('.getThaiDate($risk['consent_at']).')' : '❌ ยังไม่ยินยอม')
-        .'</div></div>
+    
+    <div class="header">
+        <h1>รายงานอุบัติการณ์ความเสี่ยง</h1>
+        <div class="sub">ศูนย์อนามัยที่ 8 อุดรธานี</div>
     </div>
-    <div><div style="font-weight:bold;font-size:16px;color:#1e3a8a;">รายละเอียดเหตุการณ์</div><div class="detail-box">'.nl2br(htmlspecialchars($risk['detail'])).'</div></div>
-    <div><div style="font-weight:bold;font-size:16px;color:#1e3a8a;">การแก้ไขเบื้องต้น</div><div class="detail-box">'.nl2br(htmlspecialchars($risk['initial_solution'])).'</div></div>
-    <div><div style="font-weight:bold;font-size:16px;color:#1e3a8a;">ปัญหาและข้อเสนอแนะ</div><div class="detail-box">'.nl2br(htmlspecialchars($risk['suggestion'])).'</div></div>
-    <div class="footer">พิมพ์เมื่อ '.getThaiDate(date('Y-m-d H:i:s')).' | ระบบจัดการความเสี่ยง ศูนย์อนามัยที่ 8</div>';
+    
+    <div class="objectives">
+        <strong>วัตถุประสงค์</strong>
+        <ul>
+            <li>เพื่อแก้ไขเหตุการณ์ที่เกิดขึ้นในหน่วยงานได้อย่างเหมาะสม และทันเวลา</li>
+            <li>เพื่อป้องกัน ลดการความเสียหายที่อาจเกิดขึ้นในงานให้น้อยลงหรือไม่มีเลย</li>
+            <li>เพื่อให้องค์กรสามารถหาแนวทางป้องกันไม่ให้เกิดอุบัติการณ์เสี่ยงซ้ำ และช่วยให้องค์กรพัฒนาเป็นไปในแนวทางเดียวกัน</li>
+        </ul>
+    </div>
+    
+    <div class="title-section">รายละเอียดความเสี่ยง</div>
+    
+    <div class="info-grid">
+        <div class="info-row">
+            <div class="info-label">หน่วยงานที่เกิดความเสี่ยง</div>
+            <div class="info-value">' . htmlspecialchars($risk['unit'] . ($risk['unit_other'] ? ' (' . $risk['unit_other'] . ')' : '')) . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">ประเภทความเสี่ยง</div>
+            <div class="info-value">' . htmlspecialchars($risk['risk_type'] . ($risk['risk_type_other'] ? ' (' . $risk['risk_type_other'] . ')' : '')) . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">ระดับความรุนแรง</div>
+            <div class="info-value">
+                <span class="badge badge-' . $risk['severity'] . '">' . $risk['severity'] . '</span> 
+                – ' . htmlspecialchars($severityText) . '
+            </div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">วันเวลาที่เกิดเหตุการณ์</div>
+            <div class="info-value">' . getThaiDate($risk['event_datetime']) . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">วันเวลาที่รายงานเหตุการณ์</div>
+            <div class="info-value">' . getThaiDate($risk['report_datetime'] ?? $risk['created_at']) . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">ผู้รายงาน</div>
+            <div class="info-value">' . htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') . '</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">📄 สถานะการยินยอม (Consent)</div>
+            <div class="info-value">' . ($risk['consent'] == 1 ? '✅ ยินยอมแล้ว (' . getThaiDate($risk['consent_at']) . ')' : '❌ ยังไม่ยินยอม') . '</div>
+        </div>
+    </div>
+    
+    <div class="section-label">📝 รายละเอียดเหตุการณ์</div>
+    <div class="detail-box">' . nl2br(htmlspecialchars($risk['detail'] ?? $risk['risk_detail'] ?? '-')) . '</div>
+    
+    <div class="section-label">🔧 การแก้ไขเบื้องต้น</div>
+    <div class="detail-box">' . nl2br(htmlspecialchars($risk['initial_solution'] ?? '-')) . '</div>
+    
+    <div class="section-label">💡 ปัญหาและข้อเสนอแนะ</div>
+    <div class="detail-box">' . nl2br(htmlspecialchars($risk['suggestion'] ?? '-')) . '</div>
+    
+    <div class="footer">พิมพ์เมื่อ ' . getThaiDate(date('Y-m-d H:i:s')) . ' | ระบบจัดการความเสี่ยง ศูนย์อนามัยที่ 8</div>';
 }
+
 $html .= '</body></html>';
 
-// ---------- ตั้งค่า Dompdf + ลงทะเบียนฟอนต์ Sarabun ----------
+// ---------- ตั้งค่า Dompdf ----------
 $options = new Options();
 $options->set('isRemoteEnabled', false);
 $options->set('isHtml5ParserEnabled', true);
+$options->set('isPhpEnabled', false);
 $options->set('defaultFont', 'Sarabun');
+$options->set('chroot', __DIR__);
+$options->set('isFontSubsettingEnabled', true);
 
 $dompdf = new Dompdf($options);
 
-// ลงทะเบียนฟอนต์ Sarabun (ต้องใช้ชื่อ family "Sarabun" ตรงกับในไฟล์)
+// ลงทะเบียนฟอนต์ Sarabun
 $regularFont = __DIR__ . '/fonts/Sarabun-Regular.ttf';
 $boldFont    = __DIR__ . '/fonts/Sarabun-Bold.ttf';
 
-if (file_exists($regularFont) && file_exists($boldFont)) {
+if (file_exists($regularFont)) {
     $fontMetrics = $dompdf->getFontMetrics();
-    // ลงทะเบียนทั้งปกติและตัวหนา
-    $fontMetrics->registerFont('Sarabun', 'normal', 'normal', $regularFont);
-    $fontMetrics->registerFont('Sarabun', 'normal', 'bold', $boldFont);
-} else {
-    // fallback (ถ้าหาไฟล์ไม่เจอ)
-    $options->set('defaultFont', 'Garuda');
+    $fontMetrics->registerFont(
+        ['family' => 'Sarabun', 'style' => 'normal', 'weight' => 'normal'],
+        $regularFont
+    );
+}
+
+if (file_exists($boldFont)) {
+    $fontMetrics = $dompdf->getFontMetrics();
+    $fontMetrics->registerFont(
+        ['family' => 'Sarabun', 'style' => 'normal', 'weight' => 'bold'],
+        $boldFont
+    );
 }
 
 // ---------- เรนเดอร์ PDF ----------
 error_reporting(0);
 ini_set('display_errors', 0);
+
 if (ob_get_length()) ob_clean();
 
-$dompdf->loadHtml($html);
+$dompdf->loadHtml($html, 'UTF-8');
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
 // ---------- ส่ง PDF ----------
-$dompdf->stream('รายงานความเสี่ยง_' . date('Ymd_His') . '.pdf', ['Attachment' => 1]);
+$dompdf->stream('รายงานความเสี่ยง_' . date('Ymd_His') . '.pdf', ['Attachment' => 0]);
 exit;

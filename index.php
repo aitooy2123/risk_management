@@ -94,17 +94,17 @@ $csrf_token = generateCsrfToken();
 
 <style>
     :root {
-        --clr-bg-start: #dbeafe;
-        --clr-bg-mid: #bfdbfe;
-        --clr-bg-end: #93c5fd;
+        --clr-bg-start: #1e3a8a;
+        --clr-bg-mid: #2563eb;
+        --clr-bg-end: #3b82f6;
         --clr-white: #1e293b;
         --clr-text-secondary: #334155;
         --clr-text-muted: #64748b;
         --clr-input-bg: #ffffff;
         --clr-input-border: #cbd5e1;
         --clr-focus: #3b82f6;
-        --clr-button: linear-gradient(135deg, #3b82f6, #60a5fa);
-        --clr-button-hover: linear-gradient(135deg, #2563eb, #3b82f6);
+        --clr-button: linear-gradient(135deg, #1e40af, #3b82f6);
+        --clr-button-hover: linear-gradient(135deg, #1e3a8a, #2563eb);
         --font-size-base: 1rem;
         --font-size-lg: 1.75rem;
         --font-size-sm: 0.9rem;
@@ -114,7 +114,7 @@ $csrf_token = generateCsrfToken();
     }
 
     .login-bg {
-        background: linear-gradient(135deg, var(--clr-bg-start) 0%, var(--clr-bg-mid) 50%, var(--clr-bg-end) 100%);
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 25%, #1e40af 50%, #2563eb 75%, #3b82f6 100%);
         position: relative;
         overflow: hidden;
         min-height: 100vh;
@@ -128,13 +128,13 @@ $csrf_token = generateCsrfToken();
         position: absolute;
         border-radius: 50%;
         filter: blur(80px);
-        opacity: 0.3;
+        opacity: 0.15;
         z-index: 0;
         animation: floatBlob 14s ease-in-out infinite alternate;
     }
-    .blob-1 { width: 350px; height: 350px; background: #93c5fd; top: -5%; left: -5%; }
-    .blob-2 { width: 400px; height: 400px; background: #60a5fa; bottom: -10%; right: -5%; animation-delay: -5s; }
-    .blob-3 { width: 250px; height: 250px; background: #a5b4fc; top: 50%; left: 55%; animation-delay: -9s; }
+    .blob-1 { width: 350px; height: 350px; background: #1e40af; top: -5%; left: -5%; }
+    .blob-2 { width: 400px; height: 400px; background: #2563eb; bottom: -10%; right: -5%; animation-delay: -5s; }
+    .blob-3 { width: 250px; height: 250px; background: #3b82f6; top: 50%; left: 55%; animation-delay: -9s; }
     @keyframes floatBlob {
         0% { transform: translate(0, 0) scale(1); }
         100% { transform: translate(25px, -20px) scale(1.05); }
@@ -145,13 +145,13 @@ $csrf_token = generateCsrfToken();
         z-index: 10;
         width: 100%;
         max-width: 440px;
-        background: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.8);
         border-radius: var(--radius);
         padding: 2.5rem 2.2rem;
-        box-shadow: 0 20px 40px -12px rgba(30, 58, 138, 0.15), 0 4px 12px rgba(30, 58, 138, 0.06);
+        box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15);
         animation: cardEntry 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
     @keyframes cardEntry {
@@ -165,9 +165,9 @@ $csrf_token = generateCsrfToken();
         justify-content: center;
         width: 72px;
         height: 72px;
-        background: var(--clr-button);
+        background: linear-gradient(135deg, #1e40af, #3b82f6);
         border-radius: 1.2rem;
-        box-shadow: 0 8px 20px -6px rgba(37, 99, 235, 0.4);
+        box-shadow: 0 8px 20px -6px rgba(30, 64, 175, 0.5);
         margin-bottom: 1.5rem;
         animation: floatIcon 4s ease-in-out infinite;
     }
@@ -208,12 +208,13 @@ $csrf_token = generateCsrfToken();
         color: #94a3b8;
         font-size: 1.1rem;
         pointer-events: none;
+        transition: color 0.25s;
     }
     .input-group .input-field {
         width: 100%;
         padding: 0.95rem 1.2rem 0.95rem 3rem;
-        background: #f0f4ff;
-        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
         border-radius: 1rem;
         color: #1e293b;
         font-size: var(--font-size-base);
@@ -229,7 +230,7 @@ $csrf_token = generateCsrfToken();
         border-color: #3b82f6;
         box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
     }
-    .input-group .input-field:focus ~ .input-icon {
+    .input-group .input-field:focus + .input-icon {
         color: #3b82f6;
     }
 
@@ -244,7 +245,7 @@ $csrf_token = generateCsrfToken();
         font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
-        box-shadow: 0 6px 18px -4px rgba(37, 99, 235, 0.45);
+        box-shadow: 0 6px 18px -4px rgba(30, 64, 175, 0.5);
         margin-top: 0.5rem;
         display: flex;
         align-items: center;
@@ -254,7 +255,7 @@ $csrf_token = generateCsrfToken();
     .btn-login:hover {
         background: var(--clr-button-hover);
         transform: translateY(-2px);
-        box-shadow: 0 10px 24px -4px rgba(37, 99, 235, 0.55);
+        box-shadow: 0 10px 24px -4px rgba(30, 64, 175, 0.6);
     }
 
     .login-options {
@@ -279,6 +280,7 @@ $csrf_token = generateCsrfToken();
     .login-options .forgot-link {
         color: #64748b;
         text-decoration: none;
+        transition: color 0.2s;
     }
     .login-options .forgot-link:hover {
         color: #2563eb;
@@ -295,6 +297,7 @@ $csrf_token = generateCsrfToken();
         color: #64748b;
         font-size: var(--font-size-sm);
         text-decoration: none;
+        transition: color 0.2s;
     }
     .login-footer .register-link:hover {
         color: #2563eb;
@@ -311,6 +314,16 @@ $csrf_token = generateCsrfToken();
         border-top: 1px solid rgba(0,0,0,0.05);
         font-size: 0.7rem;
         color: #94a3b8;
+    }
+
+    .bg-red-100 {
+        background-color: #fee2e2;
+    }
+    .border-red-200 {
+        border-color: #fecaca;
+    }
+    .text-red-700 {
+        color: #b91c1c;
     }
 
     @media (max-width: 480px) {

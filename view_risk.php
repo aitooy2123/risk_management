@@ -1,4 +1,5 @@
 <?php
+
 /**
  * หน้าแสดงรายละเอียดความเสี่ยง (View Risk)
  * - ดีไซน์สวย อ่านง่าย แยกส่วนชัดเจน
@@ -47,7 +48,8 @@ $statusBadgeColors = [
     'ยุติ' => 'bg-gray-100 text-gray-600 border-gray-300'
 ];
 
-function renderBadge($text, $colorMap, $default = 'bg-gray-100 text-gray-600 border-gray-300') {
+function renderBadge($text, $colorMap, $default = 'bg-gray-100 text-gray-600 border-gray-300')
+{
     $class = $colorMap[$text] ?? $default;
     return "<span class=\"px-3 py-1 rounded-full text-xs font-semibold border {$class}\">" . htmlspecialchars($text) . "</span>";
 }
@@ -62,18 +64,21 @@ function renderBadge($text, $colorMap, $default = 'bg-gray-100 text-gray-600 bor
         color: white;
         box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
     }
+
     .info-card {
         background: white;
         border-radius: 1rem;
         border: 1px solid #e2e8f0;
         padding: 1.5rem;
         transition: all 0.2s ease;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     }
+
     .info-card:hover {
-        box-shadow: 0 8px 20px -6px rgba(0,0,0,0.08);
+        box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.08);
         border-color: #cbd5e1;
     }
+
     .detail-text {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
@@ -82,12 +87,14 @@ function renderBadge($text, $colorMap, $default = 'bg-gray-100 text-gray-600 bor
         line-height: 1.8;
         color: #334155;
     }
+
     .objective-box {
         background: #eff6ff;
         border: 1px solid #bfdbfe;
         border-radius: 1rem;
         padding: 1.25rem;
     }
+
     .info-label {
         font-size: 0.75rem;
         font-weight: 600;
@@ -96,16 +103,21 @@ function renderBadge($text, $colorMap, $default = 'bg-gray-100 text-gray-600 bor
         letter-spacing: 0.5px;
         margin-bottom: 0.25rem;
     }
+
     .info-value {
         font-weight: 500;
         color: #1e293b;
+    }
+
+    body {
+        background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 30%, #ede9fe 60%, #fce7f3 100%);
     }
 </style>
 
 <div class="flex h-screen bg-gray-50/50">
     <?php include 'includes/sidebar.php'; ?>
     <div class="flex-1 p-6 overflow-y-auto">
-        
+
         <!-- Header -->
         <div class="view-header mb-8">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -133,10 +145,10 @@ function renderBadge($text, $colorMap, $default = 'bg-gray-100 text-gray-600 bor
 
         <!-- เนื้อหาหลัก -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             <!-- คอลัมน์ซ้าย: ข้อมูลทั่วไป + รายละเอียด -->
             <div class="lg:col-span-2 space-y-6">
-                
+
                 <!-- ข้อมูลทั่วไป -->
                 <div class="info-card">
                     <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -203,7 +215,7 @@ function renderBadge($text, $colorMap, $default = 'bg-gray-100 text-gray-600 bor
 
             <!-- คอลัมน์ขวา: สถานะ / วัตถุประสงค์ -->
             <div class="space-y-6">
-                
+
                 <!-- วัตถุประสงค์ -->
                 <div class="objective-box">
                     <h3 class="font-semibold text-blue-900 mb-3 flex items-center gap-2">

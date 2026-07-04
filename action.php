@@ -196,17 +196,35 @@ if ($action == 'save_user') {
     }
 
     $id = $_POST['id'] ?? null;
+    $is_edit = isset($_POST['is_edit']) ? (int)$_POST['is_edit'] : 0;
+    
+    // รับค่าจากฟอร์ม
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
     $role = $_POST['role'] ?? 'user';
     $reporter_code = trim($_POST['reporter_code'] ?? '');
+    $fullname = trim($_POST['fullname'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $department = trim($_POST['department'] ?? '');
+    
+    // ถ้าไม่มี department และมี department_select ให้ใช้ department_select
+    if (empty($department) && isset($_POST['department_select'])) {
+        $department = trim($_POST['department_select']);
+        // ถ้าเลือก "อื่นๆ" ให้ใช้ค่าจาก department_other (แต่ตอนนี้ส่งมาเป็น department แล้ว)
+        if ($department === 'อื่นๆ' && !empty($_POST['department_other'])) {
+            $department = trim($_POST['department_other']);
+        }
+    }
 
+    // ตรวจสอบข้อมูลบังคับ
     if (empty($username) || empty($reporter_code)) {
         echo json_encode(['success' => false, 'message' => 'กรุณากรอกชื่อผู้ใช้และรหัสผู้รายงาน']);
         exit;
     }
 
+    // ตรวจสอบ username ซ้ำ (ยกเว้นตัวเอง)
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
     $stmt->execute([$username, $id ?? 0]);
     if ($stmt->fetch()) {
@@ -214,6 +232,7 @@ if ($action == 'save_user') {
         exit;
     }
 
+    // ตรวจสอบ reporter_code ซ้ำ (ยกเว้นตัวเอง)
     $stmt = $pdo->prepare("SELECT id FROM users WHERE reporter_code = ? AND id != ?");
     $stmt->execute([$reporter_code, $id ?? 0]);
     if ($stmt->fetch()) {
@@ -221,6 +240,7 @@ if ($action == 'save_user') {
         exit;
     }
 
+    // ตรวจสอบรหัสผ่าน
     if (!empty($password) || !empty($confirm)) {
         if ($password !== $confirm) {
             echo json_encode(['success' => false, 'message' => 'รหัสผ่านไม่ตรงกัน']);
@@ -232,16 +252,17 @@ if ($action == 'save_user') {
         }
     }
 
+    // จัดการ Avatar
     $avatar = null;
     if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
         $ext = pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION);
-        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
         if (!in_array(strtolower($ext), $allowed)) {
-            echo json_encode(['success' => false, 'message' => 'รองรับเฉพาะไฟล์ .jpg, .png, .gif']);
+            echo json_encode(['success' => false, 'message' => 'รองรับเฉพาะไฟล์ .jpg, .png, .gif, .webp']);
             exit;
         }
-        if ($_FILES['avatar']['size'] > 2 * 1024 * 1024) {
-            echo json_encode(['success' => false, 'message' => 'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 2MB)']);
+        if ($_FILES['avatar']['size'] > 5 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => 'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 5MB)']);
             exit;
         }
         $newName = time() . '_' . uniqid() . '.' . $ext;
@@ -255,15 +276,24 @@ if ($action == 'save_user') {
     }
 
     try {
-        if ($id) {
-            $sql = "UPDATE users SET username = ?, role = ?, reporter_code = ?";
-            $params = [$username, $role, $reporter_code];
+        if ($id && $is_edit) {
+            // โหมดแก้ไข - ไม่แก้ไข username และ reporter_code
+            $sql = "UPDATE users SET 
+                    fullname = ?,
+                    email = ?,
+                    phone = ?,
+                    department = ?,
+                    role = ?";
+            $params = [$fullname, $email, $phone, $department, $role];
+            
             if (!empty($password)) {
                 $hashed = password_hash($password, PASSWORD_DEFAULT);
                 $sql .= ", password = ?";
                 $params[] = $hashed;
             }
+            
             if ($avatar) {
+                // ลบรูปเก่า
                 $stmt = $pdo->prepare("SELECT avatar FROM users WHERE id = ?");
                 $stmt->execute([$id]);
                 $old = $stmt->fetchColumn();
@@ -273,20 +303,31 @@ if ($action == 'save_user') {
                 $sql .= ", avatar = ?";
                 $params[] = $avatar;
             }
+            
             $sql .= " WHERE id = ?";
             $params[] = $id;
+            
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
+            
         } else {
+            // โหมดเพิ่มใหม่
             if (empty($password)) {
                 echo json_encode(['success' => false, 'message' => 'กรุณาระบุรหัสผ่าน']);
                 exit;
             }
             $hashed = password_hash($password, PASSWORD_DEFAULT);
             $avatar = $avatar ?? 'default.png';
-            $stmt = $pdo->prepare("INSERT INTO users (username, password, role, reporter_code, avatar) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$username, $hashed, $role, $reporter_code, $avatar]);
+            
+            $stmt = $pdo->prepare("INSERT INTO users 
+                (username, password, role, reporter_code, fullname, email, phone, department, avatar) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $username, $hashed, $role, $reporter_code, 
+                $fullname, $email, $phone, $department, $avatar
+            ]);
         }
+        
         echo json_encode(['success' => true, 'message' => 'บันทึกข้อมูลผู้ใช้สำเร็จ']);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
@@ -382,3 +423,161 @@ if ($action == 'delete_users') {
     echo json_encode(['success' => true, 'message' => 'ลบผู้ใช้ ' . $stmt->rowCount() . ' คนสำเร็จ']);
     exit;
 }
+
+// ============================================
+// 7. update_profile (อัปเดตโปรไฟล์ส่วนตัว)
+// ============================================
+if ($action == 'update_profile') {
+    if (!isLoggedIn()) {
+        echo json_encode(['success' => false, 'message' => 'กรุณาเข้าสู่ระบบ']);
+        exit;
+    }
+
+    $csrf = $_POST['csrf_token'] ?? '';
+    if (!validateCsrfToken($csrf)) {
+        echo json_encode(['success' => false, 'message' => 'CSRF token ไม่ถูกต้อง']);
+        exit;
+    }
+
+    $user_id = $_SESSION['user_id'];
+    $fullname = trim($_POST['fullname'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $department = trim($_POST['department'] ?? '');
+
+    try {
+        $sql = "UPDATE users SET fullname = ?, email = ?, phone = ?, department = ? WHERE id = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$fullname, $email, $phone, $department, $user_id]);
+        
+        echo json_encode(['success' => true, 'message' => 'อัปเดตโปรไฟล์สำเร็จ']);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ============================================
+// 8. update_avatar (อัปเดตรูปโปรไฟล์)
+// ============================================
+if ($action == 'update_avatar') {
+    if (!isLoggedIn()) {
+        echo json_encode(['success' => false, 'message' => 'กรุณาเข้าสู่ระบบ']);
+        exit;
+    }
+
+    $csrf = $_POST['csrf_token'] ?? '';
+    if (!validateCsrfToken($csrf)) {
+        echo json_encode(['success' => false, 'message' => 'CSRF token ไม่ถูกต้อง']);
+        exit;
+    }
+
+    $user_id = $_SESSION['user_id'];
+
+    if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'message' => 'กรุณาเลือกไฟล์รูปภาพ']);
+        exit;
+    }
+
+    $ext = pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION);
+    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    if (!in_array(strtolower($ext), $allowed)) {
+        echo json_encode(['success' => false, 'message' => 'รองรับเฉพาะไฟล์ .jpg, .png, .gif, .webp']);
+        exit;
+    }
+
+    if ($_FILES['avatar']['size'] > 5 * 1024 * 1024) {
+        echo json_encode(['success' => false, 'message' => 'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 5MB)']);
+        exit;
+    }
+
+    $newName = 'avatar_' . $user_id . '_' . time() . '.' . $ext;
+    $target = __DIR__ . '/avatars/' . $newName;
+
+    if (!move_uploaded_file($_FILES['avatar']['tmp_name'], $target)) {
+        echo json_encode(['success' => false, 'message' => 'ไม่สามารถอัปโหลดไฟล์ได้']);
+        exit;
+    }
+
+    try {
+        // ลบรูปเก่า
+        $stmt = $pdo->prepare("SELECT avatar FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $old = $stmt->fetchColumn();
+        if ($old && file_exists(__DIR__ . '/avatars/' . $old) && $old !== 'default.png') {
+            unlink(__DIR__ . '/avatars/' . $old);
+        }
+
+        $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
+        $stmt->execute([$newName, $user_id]);
+        $_SESSION['avatar'] = $newName;
+
+        echo json_encode(['success' => true, 'message' => 'อัปเดตรูปโปรไฟล์สำเร็จ']);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ============================================
+// 9. change_password (เปลี่ยนรหัสผ่าน)
+// ============================================
+if ($action == 'change_password') {
+    if (!isLoggedIn()) {
+        echo json_encode(['success' => false, 'message' => 'กรุณาเข้าสู่ระบบ']);
+        exit;
+    }
+
+    $csrf = $_POST['csrf_token'] ?? '';
+    if (!validateCsrfToken($csrf)) {
+        echo json_encode(['success' => false, 'message' => 'CSRF token ไม่ถูกต้อง']);
+        exit;
+    }
+
+    $user_id = $_SESSION['user_id'];
+    $old_password = $_POST['old_password'] ?? '';
+    $new_password = $_POST['new_password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
+
+    if (empty($old_password) || empty($new_password) || empty($confirm_password)) {
+        echo json_encode(['success' => false, 'message' => 'กรุณากรอกข้อมูลให้ครบถ้วน']);
+        exit;
+    }
+
+    if ($new_password !== $confirm_password) {
+        echo json_encode(['success' => false, 'message' => 'รหัสผ่านใหม่ไม่ตรงกัน']);
+        exit;
+    }
+
+    if (strlen($new_password) < 8) {
+        echo json_encode(['success' => false, 'message' => 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร']);
+        exit;
+    }
+
+    // ตรวจสอบรหัสผ่านเก่า
+    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+
+    if (!$user || !password_verify($old_password, $user['password'])) {
+        echo json_encode(['success' => false, 'message' => 'รหัสผ่านเก่าไม่ถูกต้อง']);
+        exit;
+    }
+
+    try {
+        $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+        $stmt->execute([$hashed, $user_id]);
+
+        echo json_encode(['success' => true, 'message' => 'เปลี่ยนรหัสผ่านสำเร็จ']);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ============================================
+// Default
+// ============================================
+echo json_encode(['success' => false, 'message' => 'Invalid action']);
+exit;
