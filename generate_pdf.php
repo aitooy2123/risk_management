@@ -7,6 +7,10 @@
  * - แนบไฟล์สรุปผล (risk_reports)
  * - แสดงผลสรุปในหน้าเดียว
  * - ไม่มี badge และ pill
+ * - จัดรูปแบบสวยงาม อ่านง่าย
+ * - ไม่มีสถานะการยินยอม (Consent)
+ * - แสดงหมายเลข ID ของความเสี่ยง
+ * - แก้ไขปัญหาไม้เอกทับกัน (ใช้ line-height และ spacing)
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -74,7 +78,7 @@ if (!function_exists('getThaiDate')) {
     }
 }
 
-// ---------- สร้าง HTML (สรุปในหน้าเดียว) ----------
+// ---------- สร้าง HTML (สรุปในหน้าเดียว จัดสวย) ----------
 $html = '<!DOCTYPE html>
 <html>
 <head>
@@ -95,16 +99,18 @@ $html = '<!DOCTYPE html>
     }
     
     @page { 
-        margin: 1.5cm 1.2cm; 
+        margin: 1.8cm 1.5cm; 
+        size: A4 portrait;
     }
     
     body {
         font-family: "Sarabun", "Garuda", sans-serif;
-        font-size: 16px;
-        line-height: 1.5;
+        font-size: 13px;
+        line-height: 1.8;
         color: #1e293b;
-        background: #fff;
+        background: #ffffff;
         position: relative;
+        letter-spacing: 0.02em;
     }
     
     .watermark {
@@ -112,8 +118,8 @@ $html = '<!DOCTYPE html>
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%) rotate(-30deg);
-        font-size: 70px;
-        color: rgba(30, 58, 138, 0.05);
+        font-size: 80px;
+        color: rgba(30, 58, 138, 0.04);
         z-index: -1;
         white-space: nowrap;
         font-weight: bold;
@@ -123,9 +129,9 @@ $html = '<!DOCTYPE html>
     
     .header { 
         text-align: center; 
-        border-bottom: 2px solid #3b82f6; 
-        padding-bottom: 8px; 
-        margin-bottom: 12px; 
+        border-bottom: 3px solid #1e293b; 
+        padding-bottom: 12px; 
+        margin-bottom: 16px; 
         position: relative;
     }
     
@@ -133,33 +139,32 @@ $html = '<!DOCTYPE html>
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        margin-bottom: 4px;
+        gap: 15px;
+        margin-bottom: 5px;
     }
     
     .header-logo img {
-        height: 50px;
+        height: 55px;
         width: auto;
     }
     
     .header h1 { 
-        font-size: 18px; 
+        font-size: 20px; 
         margin: 0; 
-        color: #1e3a8a; 
-        font-family: "Sarabun", sans-serif;
+        color: #1e293b; 
         font-weight: bold;
+        letter-spacing: 0.5px;
     }
     
     .header .sub { 
-        font-size: 13px; 
-        color: #2563eb; 
-        font-family: "Sarabun", sans-serif;
+        font-size: 14px; 
+        color: #1e293b; 
     }
     
     .header .sub-sub {
-        font-size: 10px;
+        font-size: 11px;
         color: #64748b;
-        font-family: "Sarabun", sans-serif;
+        margin-top: 2px;
     }
     
     .footer { 
@@ -168,52 +173,49 @@ $html = '<!DOCTYPE html>
         left: 0; 
         right: 0; 
         text-align: center; 
-        font-size: 9px; 
-        color: #6b7280; 
-        border-top: 1px solid #dbeafe; 
-        padding-top: 5px; 
-        font-family: "Sarabun", sans-serif;
+        font-size: 10px; 
+        color: #94a3b8; 
+        border-top: 1px solid #e2e8f0; 
+        padding-top: 8px; 
     }
     
     .title-section { 
         font-weight: bold; 
-        font-size: 14px; 
-        color: #1e3a8a; 
-        margin-top: 10px; 
-        margin-bottom: 6px; 
-        border-left: 4px solid #3b82f6; 
-        padding-left: 8px; 
-        font-family: "Sarabun", sans-serif;
+        font-size: 15px; 
+        color: #1e293b; 
+        margin-top: 12px; 
+        margin-bottom: 8px; 
+        padding-bottom: 4px;
+        border-bottom: 2px solid #e2e8f0;
     }
     
     .title-section-sm { 
         font-weight: bold; 
         font-size: 13px; 
-        color: #1e3a8a; 
-        margin-top: 8px; 
-        margin-bottom: 4px; 
-        border-left: 3px solid #3b82f6; 
-        padding-left: 6px; 
-        font-family: "Sarabun", sans-serif;
+        color: #1e293b; 
+        margin-top: 10px; 
+        margin-bottom: 6px; 
+        padding-bottom: 3px;
+        border-bottom: 1px solid #e2e8f0;
     }
     
     .objectives { 
-        background: #eff6ff; 
-        padding: 6px 10px; 
-        border-radius: 4px; 
-        margin-bottom: 10px; 
-        border-left: 3px solid #3b82f6; 
-        font-family: "Sarabun", sans-serif;
-        font-size: 11px;
+        padding: 8px 14px; 
+        margin-bottom: 12px; 
+        font-size: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        background: #f8fafc;
+        line-height: 1.8;
     }
     
     .objectives ul { 
-        margin: 2px 0 0 14px; 
+        margin: 3px 0 0 18px; 
         padding: 0; 
     }
     
     .objectives li {
-        margin-bottom: 1px;
+        margin-bottom: 2px;
     }
     
     .info-grid { 
@@ -221,7 +223,7 @@ $html = '<!DOCTYPE html>
         width: 100%; 
         margin-bottom: 8px; 
         border-collapse: collapse; 
-        font-size: 11px;
+        font-size: 12px;
     }
     
     .info-row { 
@@ -230,50 +232,49 @@ $html = '<!DOCTYPE html>
     
     .info-label { 
         display: table-cell; 
-        width: 28%; 
+        width: 25%; 
         font-weight: bold; 
-        padding: 3px 6px 3px 0; 
-        border-bottom: 1px dashed #dbeafe; 
-        color: #1e3a8a; 
-        font-family: "Sarabun", sans-serif;
+        padding: 6px 8px 6px 0; 
+        border-bottom: 1px solid #f1f5f9; 
+        color: #1e293b; 
+        line-height: 1.8;
     }
     
     .info-value { 
         display: table-cell; 
-        padding: 3px 0; 
-        border-bottom: 1px dashed #dbeafe; 
-        font-family: "Sarabun", sans-serif;
+        padding: 6px 0; 
+        border-bottom: 1px solid #f1f5f9; 
+        line-height: 1.8;
     }
     
     .detail-box { 
-        background: #f8faff; 
-        padding: 6px 10px; 
-        border-left: 3px solid #3b82f6; 
-        margin: 4px 0; 
-        border-radius: 3px; 
-        font-family: "Sarabun", sans-serif;
-        line-height: 1.5;
-        font-size: 11px;
+        padding: 10px 14px; 
+        margin: 5px 0 8px 0; 
+        line-height: 1.8;
+        font-size: 12px;
+        border-left: 3px solid #94a3b8;
+        background: #f8fafc;
+        border-radius: 3px;
     }
     
     .section-label {
         font-weight: bold;
         font-size: 12px;
-        color: #1e3a8a;
+        color: #1e293b;
         margin-bottom: 3px;
         margin-top: 6px;
-        font-family: "Sarabun", sans-serif;
+        line-height: 1.8;
     }
     
     .divider {
         border: none;
-        border-top: 1px dashed #dbeafe;
+        border-top: 1px dashed #e2e8f0;
         margin: 8px 0;
     }
     
     .risk-item {
-        margin-bottom: 12px;
-        padding-bottom: 10px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
         border-bottom: 1px solid #e2e8f0;
     }
     
@@ -284,17 +285,52 @@ $html = '<!DOCTYPE html>
     }
     
     .summary-bar {
-        background: #f8fafc;
-        padding: 5px 10px;
-        border-radius: 4px;
-        margin-bottom: 10px;
+        padding: 8px 14px;
+        margin: 10px 0 12px 0;
         text-align: center;
-        font-size: 12px;
+        font-size: 13px;
+        background: #f8fafc;
         border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        line-height: 1.8;
+    }
+    
+    .summary-bar strong {
+        color: #1e293b;
     }
     
     .severity-text {
         font-weight: normal;
+    }
+    
+    .status-pending { color: #92400e; font-weight: bold; }
+    .status-progress { color: #1e40af; font-weight: bold; }
+    .status-completed { color: #065f46; font-weight: bold; }
+    .status-terminated { color: #475569; font-weight: bold; }
+    
+    .text-muted { color: #94a3b8; font-size: 11px; }
+    
+    .page-break {
+        page-break-before: avoid;
+        page-break-after: avoid;
+    }
+    
+    .id-badge {
+        display: inline-block;
+        background: #f1f5f9;
+        padding: 2px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #64748b;
+        font-weight: normal;
+        margin-left: 8px;
+        line-height: 1.8;
+    }
+    
+    .thai-text {
+        font-family: "Sarabun", "Garuda", sans-serif;
+        letter-spacing: 0.03em;
+        word-spacing: 0.05em;
     }
 </style>
 </head>
@@ -315,11 +351,11 @@ $html .= '
 </div>
 
 <div class="objectives">
-    <strong>วัตถุประสงค์</strong>
+    <strong>📋 วัตถุประสงค์</strong>
     <ul>
         <li>เพื่อแก้ไขเหตุการณ์ที่เกิดขึ้นในหน่วยงานได้อย่างเหมาะสม และทันเวลา</li>
-        <li>เพื่อป้องกัน ลดการความเสียหายที่อาจเกิดขึ้นในงานให้น้อยลง</li>
-        <li>เพื่อหาแนวทางป้องกันไม่ให้เกิดอุบัติการณ์เสี่ยงซ้ำ</li>
+        <li>เพื่อป้องกัน ลดการความเสียหายที่อาจเกิดขึ้นในงานให้น้อยลงหรือไม่มีเลย</li>
+        <li>เพื่อให้องค์กรสามารถหาแนวทางป้องกันไม่ให้เกิดอุบัติการณ์เสี่ยงซ้ำ และช่วยให้องค์กรพัฒนาเป็นไปในแนวทางเดียวกัน</li>
     </ul>
 </div>';
 
@@ -327,36 +363,47 @@ $html .= '
 $totalRisks = count($risks);
 $html .= '
 <div class="summary-bar">
-    📊 สรุปภาพรวม : จำนวนความเสี่ยงทั้งหมด <strong>' . $totalRisks . '</strong> รายการ 
+    📊 <strong>สรุปภาพรวม</strong> : จำนวนความเสี่ยงทั้งหมด <strong>' . $totalRisks . '</strong> รายการ 
     | วันที่พิมพ์ ' . getThaiDate(date('Y-m-d H:i:s')) . '
 </div>';
 
 // ----- Loop ข้อมูล -----
 $severityMap = [
-    'A' => 'ระดับ A : มีโอกาสเกิดแต่ยังไม่เกิดขึ้น',
-    'B' => 'ระดับ B : เกิด ยังไม่ถึงตัวบุคคล ไม่เกิดผลกระทบ',
-    'C' => 'ระดับ C : เกิดถึงตัวบุคคล ผลกระทบเบื้องต้น แก้ไขเองได้',
-    'D' => 'ระดับ D : เกิดถึงตัวบุคคล ผลกระทบปานกลาง ต้องให้ผู้อื่นช่วย',
-    'F' => 'ระดับ F : เกิดถึงตัวบุคคล ผลกระทบสูง ต้องแจ้งหัวหน้า',
-    'E' => 'ระดับ E : เกิดถึงตัวบุคคล ผลกระทบสูงสุด แจ้งผู้บริหาร'
+    'A' => 'ระดับ A : มีโอกาสเกิดความเสี่ยงแต่ยังไม่เกิดขึ้น',
+    'B' => 'ระดับ B : เกิดความเสี่ยง ยังไม่ถึงตัวบุคคล ไม่เกิดผลกระทบต่องาน',
+    'C' => 'ระดับ C : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับเบื้องต้น สามารถแก้ไขได้ด้วยตนเอง',
+    'D' => 'ระดับ D : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับปานกลางต้องให้เพื่อนร่วมงานช่วยแก้ไข',
+    'F' => 'ระดับ F : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงต้องแจ้งหัวหน้างานช่วยแก้ไข',
+    'E' => 'ระดับ E : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงสุดไม่สามารถแก้ไขได้ รายงานผู้บริหาร'
+];
+
+$statusMap = [
+    'ยังไม่ดำเนินการ' => 'status-pending',
+    'กำลังดำเนินการ' => 'status-progress',
+    'ดำเนินการแล้ว' => 'status-completed',
+    'ยุติ' => 'status-terminated'
 ];
 
 foreach ($risks as $index => $risk) {
     $severityText = isset($severityMap[$risk['severity']]) ? $severityMap[$risk['severity']] : $risk['severity'];
+    $statusClass = isset($statusMap[$risk['status']]) ? $statusMap[$risk['status']] : 'status-pending';
     $statusText = $risk['status'] ?? 'ยังไม่ดำเนินการ';
     $report = isset($reportData[$risk['id']]) ? $reportData[$risk['id']] : null;
     
     $html .= '
-<div class="risk-item">
-    <div class="title-section">📋 ความเสี่ยง #' . ($index + 1) . '</div>
+<div class="risk-item page-break thai-text">
+    <div class="title-section">
+        📋 ความเสี่ยง #' . ($index + 1) . '
+        <span class="id-badge">ID: ' . $risk['id'] . '</span>
+    </div>
     
     <div class="info-grid">
         <div class="info-row">
-            <div class="info-label">หน่วยงาน</div>
+            <div class="info-label">หน่วยงานที่เกิดความเสี่ยง</div>
             <div class="info-value">' . htmlspecialchars($risk['unit'] . ($risk['unit_other'] ? ' (' . $risk['unit_other'] . ')' : '')) . '</div>
         </div>
         <div class="info-row">
-            <div class="info-label">ประเภท</div>
+            <div class="info-label">ประเภทความเสี่ยง</div>
             <div class="info-value">' . htmlspecialchars($risk['risk_type'] . ($risk['risk_type_other'] ? ' (' . $risk['risk_type_other'] . ')' : '')) . '</div>
         </div>
         <div class="info-row">
@@ -367,15 +414,15 @@ foreach ($risks as $index => $risk) {
             </div>
         </div>
         <div class="info-row">
-            <div class="info-label">สถานะ</div>
-            <div class="info-value">' . htmlspecialchars($statusText) . '</div>
+            <div class="info-label">สถานะการดำเนินการ</div>
+            <div class="info-value"><span class="' . $statusClass . '">' . htmlspecialchars($statusText) . '</span></div>
         </div>
         <div class="info-row">
-            <div class="info-label">วันที่เกิดเหตุการณ์</div>
+            <div class="info-label">วันเวลาที่เกิดเหตุการณ์</div>
             <div class="info-value">' . getThaiDate($risk['event_datetime']) . '</div>
         </div>
         <div class="info-row">
-            <div class="info-label">วันที่รายงาน</div>
+            <div class="info-label">วันเวลาที่รายงานเหตุการณ์</div>
             <div class="info-value">' . getThaiDate($risk['report_datetime'] ?? $risk['created_at']) . '</div>
         </div>
         <div class="info-row">
@@ -385,7 +432,7 @@ foreach ($risks as $index => $risk) {
     </div>
     
     <div class="section-label">📝 รายละเอียดเหตุการณ์</div>
-    <div class="detail-box">' . nl2br(htmlspecialchars($risk['detail'] ?? '-')) . '</div>
+    <div class="detail-box">' . nl2br(htmlspecialchars($risk['detail'] ?? $risk['risk_detail'] ?? '-')) . '</div>
     
     <div class="section-label">🔧 การแก้ไขเบื้องต้น</div>
     <div class="detail-box">' . nl2br(htmlspecialchars($risk['initial_solution'] ?? '-')) . '</div>
@@ -401,26 +448,26 @@ foreach ($risks as $index => $risk) {
     
     <div class="info-grid">
         <div class="info-row">
-            <div class="info-label">มาตรการแก้ไข</div>
+            <div class="info-label">📋 มาตรการแก้ไข</div>
             <div class="info-value">' . nl2br(htmlspecialchars($report['corrective_action'] ?? '-')) . '</div>
         </div>
         <div class="info-row">
-            <div class="info-label">ผู้รับผิดชอบ</div>
+            <div class="info-label">👤 ผู้รับผิดชอบ</div>
             <div class="info-value">' . htmlspecialchars($report['responsible_person'] ?? '-') . '</div>
         </div>
         <div class="info-row">
-            <div class="info-label">การติดตามผล</div>
+            <div class="info-label">📈 การติดตามผล</div>
             <div class="info-value">' . nl2br(htmlspecialchars($report['follow_up'] ?? '-')) . '</div>
         </div>
         <div class="info-row">
-            <div class="info-label">ผลที่คาดว่าจะได้รับ</div>
+            <div class="info-label">🎯 ผลที่คาดว่าจะได้รับ</div>
             <div class="info-value">' . nl2br(htmlspecialchars($report['expected_outcome'] ?? '-')) . '</div>
         </div>';
         
         if (!empty($report['report_file'])) {
             $html .= '
         <div class="info-row">
-            <div class="info-label">ไฟล์แนบ</div>
+            <div class="info-label">📎 ไฟล์แนบ</div>
             <div class="info-value">' . htmlspecialchars(basename($report['report_file'])) . '</div>
         </div>';
         }
@@ -428,7 +475,7 @@ foreach ($risks as $index => $risk) {
         if (!empty($report['created_at'])) {
             $html .= '
         <div class="info-row">
-            <div class="info-label">วันที่บันทึกสรุปผล</div>
+            <div class="info-label">📅 วันที่บันทึกสรุปผล</div>
             <div class="info-value">' . getThaiDate($report['created_at']) . '</div>
         </div>';
         }
