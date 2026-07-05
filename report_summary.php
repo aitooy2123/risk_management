@@ -2,7 +2,7 @@
 
 /**
  * หน้าสรุปผลการรายงาน - UI สวยงาม ทันสมัย พร้อม Animation
- * - User: เห็นเฉพาะรายการของตัวเอง / Admin: เห็นทั้งหมด
+ * - User: เห็นเฉพาะรายการของตัวเอง / Admin: เห็นทั้งหมด และแก้ไขได้
  * - แสดงเฉพาะสถานะ "ดำเนินการแล้ว" เท่านั้น
  * - บันทึก: มาตรการแก้ไข, ผู้รับผิดชอบ, การติดตามผล, ผลที่คาดว่าจะได้รับ
  * - แนบไฟล์สรุปผลได้ + Lightbox
@@ -44,8 +44,13 @@ if ($risk_id) {
     $existingReport = $stmt->fetch();
 }
 
+// เฉพาะ Admin เท่านั้นที่บันทึก/แก้ไขได้
+$canEdit = isAdmin();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+    if (!isAdmin()) {
+        $error = 'คุณไม่มีสิทธิ์ในการบันทึกหรือแก้ไขข้อมูล';
+    } elseif (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = 'Invalid request (CSRF token ไม่ถูกต้อง)';
     } else {
         $risk_id = (int)($_POST['risk_id'] ?? 0);
@@ -218,6 +223,7 @@ function buildReportPageUrl($page, $currentParams)
 }
 
 $csrf_token = generateCsrfToken();
+$isAdmin = isAdmin();
 ?>
 <?php include 'includes/header.php'; ?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
@@ -533,6 +539,7 @@ $csrf_token = generateCsrfToken();
         font-size: 0.7rem;
         font-weight: 600;
         white-space: nowrap;
+        border: 1px solid transparent;
     }
 
     .btn-icon {
@@ -550,6 +557,12 @@ $csrf_token = generateCsrfToken();
 
     .btn-icon:hover {
         transform: scale(1.12);
+    }
+    
+    .btn-icon.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
     }
 
     .empty-state {
@@ -627,6 +640,19 @@ $csrf_token = generateCsrfToken();
         padding: 1.5rem;
         margin-bottom: 1.5rem;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    
+    .form-card.disabled {
+        opacity: 0.7;
+        background: #f8fafc;
+    }
+    
+    .form-card.disabled .form-textarea,
+    .form-card.disabled .form-input,
+    .form-card.disabled .upload-area {
+        cursor: not-allowed;
+        pointer-events: none;
+        background: #f1f5f9;
     }
 
     .form-group {
@@ -708,6 +734,12 @@ $csrf_token = generateCsrfToken();
     .btn-action.blue:hover {
         background: #dbeafe;
     }
+    
+    .btn-action.blue.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
 
     .btn-action.gray {
         background: #f1f5f9;
@@ -736,6 +768,16 @@ $csrf_token = generateCsrfToken();
         display: flex;
         align-items: center;
         gap: 0.5rem;
+    }
+    
+    .admin-badge {
+        background: #dbeafe;
+        color: #1e40af;
+        font-size: 0.6rem;
+        padding: 0.15rem 0.6rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        margin-left: 0.5rem;
     }
 
     /* File Upload */
@@ -854,8 +896,13 @@ $csrf_token = generateCsrfToken();
         transition: all 0.2s;
         display: block;
     }
+    
+    .upload-area.disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
 
-    .upload-area:hover {
+    .upload-area:hover:not(.disabled) {
         border-color: #3b82f6;
         background: #eff6ff;
     }
@@ -940,6 +987,9 @@ $csrf_token = generateCsrfToken();
                     <div class="stat-badge"><i class="fas fa-file-alt"></i> หน้า <strong><?= $page ?></strong> / <?= max(1, $totalPages) ?></div>
                     <?php if ($search || $unit_filter || $type_filter || $severity_filter || $date_from || $date_to): ?>
                         <div class="stat-badge"><i class="fas fa-filter text-blue-500"></i> กรอง <strong><?= number_format($totalRows) ?></strong> รายการ</div>
+                    <?php endif; ?>
+                    <?php if ($isAdmin): ?>
+                        <div class="stat-badge"><i class="fas fa-user-shield text-indigo-500"></i> <span class="text-indigo-600">Admin</span> <span class="text-gray-400 text-xs">(ดูและแก้ไขได้ทั้งหมด)</span></div>
                     <?php endif; ?>
                 </div>
 
@@ -1070,8 +1120,6 @@ $csrf_token = generateCsrfToken();
                                         <th>ระดับ</th>
                                         <th>วันที่</th>
                                         <th>ผู้รายงาน</th>
-                                        <th>สถานะ</th>
-                                        <th>รายงาน</th>
                                         <th style="width:100px;text-align:center;">จัดการ</th>
                                     </tr>
                                 </thead>
@@ -1096,31 +1144,27 @@ $csrf_token = generateCsrfToken();
                                             </td>
                                             <td class="text-gray-500 text-sm"><?= date('d/m/Y', strtotime($item['event_datetime'])) ?></td>
                                             <td class="text-gray-500"><?= htmlspecialchars($item['username'] ?? 'ไม่ระบุ') ?></td>
-                                            <td>
-                                                <span class="badge bg-emerald-50 text-emerald-700 border-emerald-200">
-                                                    <i class="fas fa-check-circle text-xs"></i> ดำเนินการแล้ว
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <?php if ($item['report_id']): ?>
-                                                    <span class="badge bg-emerald-50 text-emerald-700 border-emerald-200">
-                                                        <i class="fas fa-check-circle text-xs"></i> มีรายงาน
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-amber-50 text-amber-700 border-amber-200">
-                                                        <i class="fas fa-clock text-xs"></i> รอรายงาน
-                                                    </span>
-                                                <?php endif; ?>
-                                            </td>
                                             <td onclick="event.stopPropagation();">
                                                 <div style="display:flex;gap:3px;justify-content:center;">
-                                                    <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-blue-50 text-blue-600 hover:bg-blue-100" title="<?= $item['report_id'] ? 'แก้ไขรายงาน' : 'เพิ่มรายงาน' ?>">
-                                                        <i class="fas fa-<?= $item['report_id'] ? 'edit' : 'plus' ?> text-sm"></i>
-                                                    </a>
-                                                    <?php if ($item['report_id']): ?>
-                                                        <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-green-50 text-green-600 hover:bg-green-100" title="ดูรายงาน">
-                                                            <i class="fas fa-eye text-sm"></i>
+                                                    <?php if ($isAdmin): ?>
+                                                        <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-blue-50 text-blue-600 hover:bg-blue-100" title="<?= $item['report_id'] ? 'แก้ไขรายงาน' : 'เพิ่มรายงาน' ?>">
+                                                            <i class="fas fa-<?= $item['report_id'] ? 'edit' : 'plus' ?> text-sm"></i>
                                                         </a>
+                                                        <?php if ($item['report_id']): ?>
+                                                            <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-green-50 text-green-600 hover:bg-green-100" title="ดูรายงาน">
+                                                                <i class="fas fa-eye text-sm"></i>
+                                                            </a>
+                                                        <?php endif; ?>
+                                                    <?php else: ?>
+                                                        <?php if ($item['report_id']): ?>
+                                                            <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-green-50 text-green-600 hover:bg-green-100" title="ดูรายงาน">
+                                                                <i class="fas fa-eye text-sm"></i>
+                                                            </a>
+                                                        <?php else: ?>
+                                                            <span class="btn-icon bg-gray-50 text-gray-400 disabled" title="เฉพาะ Admin เท่านั้นที่เพิ่มรายงาน">
+                                                                <i class="fas fa-plus text-sm"></i>
+                                                            </span>
+                                                        <?php endif; ?>
                                                     <?php endif; ?>
                                                 </div>
                                             </td>
@@ -1180,7 +1224,12 @@ $csrf_token = generateCsrfToken();
 
                 <!-- Info Detail Card -->
                 <div class="info-detail-card">
-                    <h3><i class="fas fa-info-circle text-blue-600"></i> ข้อมูลความเสี่ยง</h3>
+                    <h3>
+                        <i class="fas fa-info-circle text-blue-600"></i> ข้อมูลความเสี่ยง
+                        <?php if ($isAdmin): ?>
+                            <span class="admin-badge"><i class="fas fa-user-shield"></i> Admin</span>
+                        <?php endif; ?>
+                    </h3>
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; font-size: 0.85rem;">
                         <div><span style="color: #94a3b8;">ประเภท:</span> <span style="font-weight: 600;"><?= htmlspecialchars($risk['risk_type'] ?? '-') ?></span></div>
                         <div><span style="color: #94a3b8;">กลุ่มงาน:</span> <span style="font-weight: 600;"><?= htmlspecialchars($risk['unit'] ?? '-') ?></span></div>
@@ -1189,6 +1238,12 @@ $csrf_token = generateCsrfToken();
                         <div><span style="color: #94a3b8;">ผู้รายงาน:</span> <span style="font-weight: 600;"><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></span></div>
                         <div><span style="color: #94a3b8;">สถานะ:</span> <span class="badge bg-emerald-50 text-emerald-700 border-emerald-200"><i class="fas fa-check-circle text-xs"></i> <?= htmlspecialchars($risk['status'] ?? 'ดำเนินการแล้ว') ?></span></div>
                     </div>
+                    <?php if (!$isAdmin): ?>
+                        <div style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #fef3c7; border-radius: 0.5rem; font-size: 0.8rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-info-circle"></i>
+                            <span>คุณอยู่ในโหมด <strong>อ่านอย่างเดียว</strong> เฉพาะ Admin เท่านั้นที่สามารถแก้ไขข้อมูลได้</span>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Alert Messages -->
@@ -1205,28 +1260,28 @@ $csrf_token = generateCsrfToken();
                 <?php endif; ?>
 
                 <!-- Form -->
-                <form method="POST" enctype="multipart/form-data" class="form-card">
+                <form method="POST" enctype="multipart/form-data" class="form-card <?= !$isAdmin ? 'disabled' : '' ?>">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="risk_id" value="<?= $risk_id ?>">
 
                     <div class="form-group">
                         <label class="form-label">มาตรการแก้ไข</label>
-                        <textarea name="corrective_action" class="form-textarea" placeholder="ระบุมาตรการแก้ไขที่ดำเนินการ..." rows="4"><?= htmlspecialchars($existingReport['corrective_action'] ?? '') ?></textarea>
+                        <textarea name="corrective_action" class="form-textarea" placeholder="ระบุมาตรการแก้ไขที่ดำเนินการ..." rows="4" <?= !$isAdmin ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['corrective_action'] ?? '') ?></textarea>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">ผู้รับผิดชอบ</label>
-                        <input type="text" name="responsible_person" class="form-input" placeholder="ระบุชื่อผู้รับผิดชอบ..." value="<?= htmlspecialchars($existingReport['responsible_person'] ?? $_SESSION['username'] ?? '') ?>">
+                        <input type="text" name="responsible_person" class="form-input" placeholder="ระบุชื่อผู้รับผิดชอบ..." value="<?= htmlspecialchars($existingReport['responsible_person'] ?? $_SESSION['username'] ?? '') ?>" <?= !$isAdmin ? 'readonly' : '' ?>>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">การติดตามผล</label>
-                        <textarea name="follow_up" class="form-textarea" placeholder="ระบุผลการติดตาม..." rows="4"><?= htmlspecialchars($existingReport['follow_up'] ?? '') ?></textarea>
+                        <textarea name="follow_up" class="form-textarea" placeholder="ระบุผลการติดตาม..." rows="4" <?= !$isAdmin ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['follow_up'] ?? '') ?></textarea>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">ผลที่คาดว่าจะได้รับ</label>
-                        <textarea name="expected_outcome" class="form-textarea" placeholder="ระบุผลที่คาดว่าจะได้รับ..." rows="4"><?= htmlspecialchars($existingReport['expected_outcome'] ?? '') ?></textarea>
+                        <textarea name="expected_outcome" class="form-textarea" placeholder="ระบุผลที่คาดว่าจะได้รับ..." rows="4" <?= !$isAdmin ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['expected_outcome'] ?? '') ?></textarea>
                     </div>
 
                     <div class="form-group">
@@ -1275,10 +1330,10 @@ $csrf_token = generateCsrfToken();
                             </div>
                         <?php endif; ?>
 
-                        <label class="upload-area" for="report_file">
-                            <input type="file" id="report_file" name="report_file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" onchange="handleFileSelect(this)">
+                        <label class="upload-area <?= !$isAdmin ? 'disabled' : '' ?>" for="report_file">
+                            <input type="file" id="report_file" name="report_file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" onchange="handleFileSelect(this)" <?= !$isAdmin ? 'disabled' : '' ?>>
                             <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
-                            <p style="font-weight: 600; color: #475569; font-size: 0.9rem;">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง</p>
+                            <p style="font-weight: 600; color: #475569; font-size: 0.9rem;"><?= $isAdmin ? 'คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง' : 'เฉพาะ Admin เท่านั้นที่สามารถอัปโหลดไฟล์ได้' ?></p>
                             <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem;">PDF, Word, Excel, รูปภาพ (สูงสุด 10MB)</p>
                             <div id="file-preview-area" class="file-preview-inline" style="display:none;">
                                 <i class="fas fa-file text-blue-600"></i>
@@ -1291,7 +1346,11 @@ $csrf_token = generateCsrfToken();
 
                     <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9;">
                         <a href="report_summary.php" class="btn-action gray"><i class="fas fa-times"></i> ยกเลิก</a>
-                        <button type="submit" class="btn-action blue"><i class="fas fa-save"></i> <?= $existingReport ? 'อัปเดต' : 'บันทึก' ?></button>
+                        <?php if ($isAdmin): ?>
+                            <button type="submit" class="btn-action blue"><i class="fas fa-save"></i> <?= $existingReport ? 'อัปเดต' : 'บันทึก' ?></button>
+                        <?php else: ?>
+                            <button type="button" class="btn-action blue disabled" disabled><i class="fas fa-lock"></i> เฉพาะ Admin</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             <?php endif; ?>
@@ -1304,7 +1363,8 @@ $csrf_token = generateCsrfToken();
                         <p class="font-semibold mb-1">📌 หมายเหตุ</p>
                         <ul class="list-disc ml-4 space-y-0.5 text-sm">
                             <li>แสดงเฉพาะรายการที่มีสถานะ <strong>"ดำเนินการแล้ว"</strong> เท่านั้น</li>
-                            <li>สามารถบันทึกมาตรการแก้ไข ผู้รับผิดชอบ และการติดตามผลได้</li>
+                            <li><strong>Admin</strong> สามารถดูและแก้ไขข้อมูลได้ทั้งหมด</li>
+                            <li><strong>User</strong> สามารถดูได้เฉพาะรายการของตนเอง และไม่สามารถแก้ไขได้</li>
                             <li>รองรับการแนบไฟล์สรุปผล (PDF, Word, Excel, รูปภาพ)</li>
                         </ul>
                     </div>
@@ -1384,7 +1444,7 @@ $csrf_token = generateCsrfToken();
 
     // ========== Drag & Drop ==========
     const uploadArea = document.querySelector('.upload-area');
-    if (uploadArea) {
+    if (uploadArea && !uploadArea.classList.contains('disabled')) {
         uploadArea.addEventListener('dragover', function(e) {
             e.preventDefault();
             e.stopPropagation();
@@ -1417,7 +1477,7 @@ $csrf_token = generateCsrfToken();
     }
 
     // ========== Form Submit ==========
-    const form = document.querySelector('form');
+    const form = document.querySelector('form:not(.disabled)');
     if (form) {
         form.addEventListener('submit', function(e) {
             const submitBtn = this.querySelector('button[type="submit"]');

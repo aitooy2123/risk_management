@@ -9,6 +9,7 @@
  * - Badge สีแยกตามระดับและสถานะ
  * - ค้นหาอัตโนมัติเมื่อพิมพ์/เปลี่ยนค่า
  * - ใช้ SweetAlert2 สำหรับการแจ้งเตือนและการยืนยัน
+ * - เฉพาะ Admin เท่านั้นที่ลบได้
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -16,13 +17,17 @@ require_once 'includes/functions.php';
 
 if (!isLoggedIn()) redirect('index.php');
 
-if (!function_exists('canModify')) {
-    function canModify($risk_user_id)
-    {
-        if (!isset($_SESSION['user_id'])) return false;
-        if (isAdmin()) return true;
-        return $_SESSION['user_id'] == $risk_user_id;
-    }
+// ===== ฟังก์ชันตรวจสอบสิทธิ์ =====
+function canModify($risk_user_id)
+{
+    if (!isset($_SESSION['user_id'])) return false;
+    if (isAdmin()) return true;
+    return $_SESSION['user_id'] == $risk_user_id;
+}
+
+function canDelete()
+{
+    return isAdmin(); // เฉพาะ Admin เท่านั้นที่ลบได้
 }
 
 function getStatusIcon($status)
@@ -33,6 +38,7 @@ function getStatusIcon($status)
     return 'fa-clock';
 }
 
+// ===== ตัวแปร Filter =====
 $type_filter     = $_GET['risk_type'] ?? '';
 $severity_filter = $_GET['severity'] ?? '';
 $group_filter    = $_GET['unit'] ?? '';
@@ -45,6 +51,7 @@ $page    = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 10;
 $offset  = ($page - 1) * $perPage;
 
+// ===== สร้าง Query =====
 $where  = "WHERE 1=1";
 $params = [];
 
@@ -81,22 +88,26 @@ if (!isAdmin()) {
     $params[] = $_SESSION['user_id'];
 }
 
+// ===== นับจำนวนทั้งหมด =====
 $countSql  = "SELECT COUNT(*) FROM risks r $where";
 $countStmt = $pdo->prepare($countSql);
 $countStmt->execute($params);
 $totalRows  = $countStmt->fetchColumn();
 $totalPages = ceil($totalRows / $perPage);
 
+// ===== ดึง ID ทั้งหมด (สำหรับพิมพ์ทั้งหมด) =====
 $allIdsSql  = "SELECT r.id FROM risks r $where ORDER BY r.created_at DESC";
 $allIdsStmt = $pdo->prepare($allIdsSql);
 $allIdsStmt->execute($params);
 $allIds = $allIdsStmt->fetchAll(PDO::FETCH_COLUMN);
 
+// ===== ดึงข้อมูลตามหน้า =====
 $dataSql = "SELECT r.*, u.username FROM risks r LEFT JOIN users u ON r.user_id = u.id $where ORDER BY r.created_at DESC LIMIT $perPage OFFSET $offset";
 $stmt = $pdo->prepare($dataSql);
 $stmt->execute($params);
 $risks = $stmt->fetchAll();
 
+// ===== ดึงข้อมูลสำหรับ Filter =====
 $types      = $pdo->query("SELECT DISTINCT risk_type FROM risks ORDER BY risk_type")->fetchAll(PDO::FETCH_COLUMN);
 $severities = $pdo->query("SELECT DISTINCT severity FROM risks ORDER BY severity")->fetchAll(PDO::FETCH_COLUMN);
 $units      = $pdo->query("SELECT DISTINCT unit FROM risks ORDER BY unit")->fetchAll(PDO::FETCH_COLUMN);
@@ -110,6 +121,7 @@ try {
 
 $csrf_token = generateCsrfToken();
 
+// ===== ฟังก์ชันสร้าง URL Page =====
 function buildRiskPageUrl($page, $currentParams)
 {
     $query = $currentParams;
@@ -117,6 +129,7 @@ function buildRiskPageUrl($page, $currentParams)
     return 'risks.php?' . http_build_query($query);
 }
 
+// ===== Badge สี =====
 $severityBadgeMap = [
     'A' => 'bg-blue-50 text-blue-700 border-blue-200',
     'B' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -139,6 +152,8 @@ if (!isAdmin()) {
     $myCaseStmt->execute([$_SESSION['user_id']]);
     $myCaseCount = $myCaseStmt->fetchColumn();
 }
+
+$isAdmin = isAdmin();
 ?>
 <?php include 'includes/header.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -589,6 +604,16 @@ if (!isAdmin()) {
         flex-shrink: 0;
     }
 
+    .admin-badge-small {
+        background: #fef3c7;
+        color: #92400e;
+        font-size: 0.6rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        margin-left: 0.3rem;
+    }
+
     @media (max-width: 1024px) {
         .filter-grid {
             grid-template-columns: 1fr 1fr 1fr;
@@ -621,6 +646,9 @@ if (!isAdmin()) {
                 <div class="stat-badge"><i class="fas fa-file-alt"></i> หน้า <strong><?= $page ?></strong> / <?= max(1, $totalPages) ?></div>
                 <?php if ($search || $type_filter || $severity_filter || $group_filter || $status_filter || $date_from || $date_to): ?>
                     <div class="stat-badge"><i class="fas fa-filter text-blue-500"></i> กรอง <strong><?= number_format($totalRows) ?></strong> รายการ</div>
+                <?php endif; ?>
+                <?php if (isAdmin()): ?>
+                    <div class="stat-badge"><i class="fas fa-crown text-amber-500"></i> Admin <span class="text-gray-400 text-xs">(ลบได้ทุกรายการ)</span></div>
                 <?php endif; ?>
             </div>
 
@@ -742,6 +770,10 @@ if (!isAdmin()) {
             <div class="action-bar">
                 <?php if (isAdmin()): ?>
                     <button id="deleteSelected" class="btn-action red"><i class="fas fa-trash-alt"></i> ลบที่เลือก</button>
+                <?php else: ?>
+                    <button id="deleteSelected" class="btn-action red" disabled style="opacity:0.5;cursor:not-allowed;">
+                        <i class="fas fa-trash-alt"></i> ลบที่เลือก (Admin เท่านั้น)
+                    </button>
                 <?php endif; ?>
                 <button id="printSelected" class="btn-action blue"><i class="fas fa-print"></i> พิมพ์ PDF ที่เลือก</button>
                 <a href="generate_pdf.php?ids=<?= implode(',', $allIds) ?>" target="_blank" class="btn-action green"><i class="fas fa-file-pdf"></i> พิมพ์ทั้งหมด</a>
@@ -767,6 +799,8 @@ if (!isAdmin()) {
                                 <tr>
                                     <?php if (isAdmin()): ?>
                                         <th style="width:40px;"><input type="checkbox" id="selectAll"></th>
+                                    <?php else: ?>
+                                        <th style="width:40px;color:#94a3b8;text-align:center;">☐</th>
                                     <?php endif; ?>
                                     <th style="width:40px;">#</th>
                                     <th>กลุ่มงาน</th>
@@ -787,9 +821,13 @@ if (!isAdmin()) {
                                     $statusIcon = getStatusIcon($risk['status']);
                                 ?>
                                     <tr>
-                                        <?php if (isAdmin()): ?>
-                                            <td><input type="checkbox" class="risk-checkbox" value="<?= $risk['id'] ?>"></td>
-                                        <?php endif; ?>
+                                        <td>
+                                            <?php if (isAdmin()): ?>
+                                                <input type="checkbox" class="risk-checkbox" value="<?= $risk['id'] ?>">
+                                            <?php else: ?>
+                                                <span class="text-gray-300 text-sm" style="display:block;text-align:center;">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-gray-400"><?= $rowNum ?></td>
                                         <td><span class="font-medium"><?= htmlspecialchars(mb_substr($risk['unit'] ?? '-', 0, 25)) ?></span></td>
                                         <td><?= htmlspecialchars(mb_substr($risk['risk_type'] . ($risk['risk_type_other'] ? ' (' . $risk['risk_type_other'] . ')' : ''), 0, 30)) ?></td>
@@ -820,7 +858,13 @@ if (!isAdmin()) {
                                                 <a href="generate_pdf.php?id=<?= $risk['id'] ?>" target="_blank" class="btn-icon bg-green-50 text-green-600 hover:bg-green-100" title="พิมพ์ PDF"><i class="fas fa-print text-sm"></i></a>
                                                 <?php if (canModify($risk['user_id'])): ?>
                                                     <a href="risk_form.php?id=<?= $risk['id'] ?>" class="btn-icon bg-amber-50 text-amber-600 hover:bg-amber-100" title="แก้ไข"><i class="fas fa-edit text-sm"></i></a>
+                                                <?php else: ?>
+                                                    <span class="btn-icon bg-gray-50 text-gray-400 disabled" title="ไม่มีสิทธิ์แก้ไข"><i class="fas fa-edit text-sm"></i></span>
+                                                <?php endif; ?>
+                                                <?php if (isAdmin()): ?>
                                                     <button class="btn-icon bg-red-50 text-red-600 hover:bg-red-100 delete-single" data-id="<?= $risk['id'] ?>" title="ลบ"><i class="fas fa-trash text-sm"></i></button>
+                                                <?php else: ?>
+                                                    <span class="btn-icon bg-gray-50 text-gray-400 disabled" title="เฉพาะ Admin เท่านั้นที่ลบได้"><i class="fas fa-trash text-sm"></i></span>
                                                 <?php endif; ?>
                                             </div>
                                         </td>
@@ -876,6 +920,7 @@ if (!isAdmin()) {
                             <li>ระดับความเสี่ยง: <strong>A (ต่ำสุด)</strong> ถึง <strong>F (สูงสุด)</strong></li>
                             <li><strong>Admin</strong> สามารถเห็นและจัดการทุกรายการ</li>
                             <li><strong>User</strong> เห็นเฉพาะรายการของตัวเอง</li>
+                            <li><strong>เฉพาะ Admin เท่านั้น</strong> ที่สามารถลบรายการได้</li>
                             <li>การลบรายการจะลบ<strong>ข้อมูลความเสี่ยง</strong>นั้นทั้งหมด</li>
                         </ul>
                     </div>
@@ -889,6 +934,7 @@ if (!isAdmin()) {
 
 <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const isAdmin = <?= json_encode(isAdmin()) ?>;
 
     // ========== Auto Submit ==========
     function debounce(func, delay) {
@@ -920,7 +966,7 @@ if (!isAdmin()) {
 
     // ========== Delete ==========
     function deleteRisks(ids) {
-        const loading = Swal.fire({
+        Swal.fire({
             title: 'กำลังลบ...',
             html: 'กรุณารอสักครู่',
             allowOutsideClick: false,
@@ -967,12 +1013,12 @@ if (!isAdmin()) {
     }
 
     <?php if (isAdmin()): ?>
-        // Select All
+        // ========== Select All (Admin เท่านั้น) ==========
         document.getElementById('selectAll')?.addEventListener('change', function() {
             document.querySelectorAll('.risk-checkbox').forEach(cb => cb.checked = this.checked);
         });
 
-        // Delete Selected
+        // ========== Delete Selected (Admin เท่านั้น) ==========
         document.getElementById('deleteSelected')?.addEventListener('click', function() {
             const checked = document.querySelectorAll('.risk-checkbox:checked');
             if (checked.length === 0) {
@@ -1010,40 +1056,50 @@ if (!isAdmin()) {
                 }
             });
         });
-    <?php endif; ?>
 
-    // Delete Single
-    document.querySelectorAll('.delete-single').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const riskId = this.dataset.id;
+        // ========== Delete Single (Admin เท่านั้น) ==========
+        document.querySelectorAll('.delete-single').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const riskId = this.dataset.id;
 
-            Swal.fire({
-                title: '⚠️ ยืนยันการลบ',
-                html: `
-                    <div style="text-align:left;">
-                        <p>คุณต้องการลบรายการนี้?</p>
-                        <p style="color:#ef4444;font-size:0.9rem;margin-top:0.5rem;">
-                            <i class="fas fa-exclamation-triangle"></i> 
-                            ข้อมูลทั้งหมดจะถูกลบอย่างถาวร!
-                        </p>
-                    </div>
-                `,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: '🗑️ ลบ',
-                cancelButtonText: 'ยกเลิก',
-                reverseButtons: true
-            }).then(result => {
-                if (result.isConfirmed) {
-                    deleteRisks([riskId]);
-                }
+                Swal.fire({
+                    title: '⚠️ ยืนยันการลบ',
+                    html: `
+                        <div style="text-align:left;">
+                            <p>คุณต้องการลบรายการนี้?</p>
+                            <p style="color:#ef4444;font-size:0.9rem;margin-top:0.5rem;">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                ข้อมูลทั้งหมดจะถูกลบอย่างถาวร!
+                            </p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: '🗑️ ลบ',
+                    cancelButtonText: 'ยกเลิก',
+                    reverseButtons: true
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        deleteRisks([riskId]);
+                    }
+                });
             });
         });
-    });
+    <?php else: ?>
+        // ========== User: ไม่มีสิทธิ์ลบ ==========
+        document.getElementById('deleteSelected')?.addEventListener('click', function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'ไม่มีสิทธิ์ลบ',
+                text: 'เฉพาะ Admin เท่านั้นที่สามารถลบรายการได้',
+                confirmButtonColor: '#3b82f6'
+            });
+        });
+    <?php endif; ?>
 
-    // Print Selected
+    // ========== Print Selected ==========
     document.getElementById('printSelected')?.addEventListener('click', function() {
         const selected = document.querySelectorAll('.risk-checkbox:checked');
         if (selected.length === 0) {

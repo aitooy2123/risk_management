@@ -5,6 +5,7 @@
  * - ไล่สีตามระดับความรุนแรง
  * - Animation สวยงาม
  * - สถานะการดำเนินการแก้ไขได้เฉพาะ Admin เท่านั้น
+ * - สถานะการดำเนินการมีสีแตกต่างกัน
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -59,7 +60,14 @@ $severityOptions = [
   'F' => ['label' => 'ระดับ F : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงต้องแจ้งหัวหน้างานช่วยแก้ไข', 'color' => '#f97316', 'bg' => '#fff7ed', 'border' => '#fdba74', 'icon' => 'fa-fire'],
   'E' => ['label' => 'ระดับ E : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงสุดไม่สามารถแก้ไขได้ รายงานผู้บริหาร', 'color' => '#ef4444', 'bg' => '#fef2f2', 'border' => '#fca5a5', 'icon' => 'fa-skull']
 ];
-$statuses = ['ยังไม่ดำเนินการ', 'กำลังดำเนินการ', 'ดำเนินการแล้ว', 'ยุติ'];
+
+// ===== สถานะการดำเนินการ พร้อมสี =====
+$statuses = [
+  'ยังไม่ดำเนินการ' => ['color' => '#6b7280', 'bg' => '#f3f4f6', 'icon' => 'fa-clock', 'label' => 'ยังไม่ดำเนินการ'],
+  'กำลังดำเนินการ' => ['color' => '#3b82f6', 'bg' => '#eff6ff', 'icon' => 'fa-spinner', 'label' => 'กำลังดำเนินการ'],
+  'ดำเนินการแล้ว' => ['color' => '#22c55e', 'bg' => '#f0fdf4', 'icon' => 'fa-check-circle', 'label' => 'ดำเนินการแล้ว'],
+  'ยุติ' => ['color' => '#ef4444', 'bg' => '#fef2f2', 'icon' => 'fa-ban', 'label' => 'ยุติ']
+];
 
 // ตั้งค่าเริ่มต้นเป็นเวลาปัจจุบัน
 $current_datetime = date('Y-m-d H:i');
@@ -384,18 +392,53 @@ if ($id) {
     font-weight: 700;
   }
 
-  .severity-card .sev-desc {
+  .severity-card .sev-desc1 {
     font-size: 0.65rem;
     color: #64748b;
     line-height: 1.3;
     margin-top: 0.15rem;
   }
 
-  .severity-card .sev-desc1 {
-    font-size: 0.65rem;
-    color: #64748b;
-    line-height: 1.3;
-    margin-top: 0.15rem;
+  /* Status Select - สีต่างกัน */
+  .status-select {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 2px solid rgba(226, 232, 240, 0.8);
+    border-radius: 0.6rem;
+    font-size: 0.9rem;
+    transition: all 0.25s;
+    outline: none;
+    font-family: 'Sarabun', sans-serif;
+    background: rgba(250, 251, 252, 0.8);
+    color: #1e293b;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    padding-right: 2.5rem;
+  }
+
+  .status-select:focus {
+    border-color: #3b82f6;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+
+  .status-select option {
+    padding: 0.5rem;
+    font-weight: 500;
+  }
+
+  /* Status Badge แสดงสถานะ */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
   }
 
   /* Buttons */
@@ -732,41 +775,74 @@ if ($id) {
           </div>
         </div>
 
-        <!-- สถานะการดำเนินการ - แก้ไขได้เฉพาะ Admin -->
-        <?php if ($id): ?>
+        <!-- ===== สถานะการดำเนินการ - แสดงเฉพาะ Admin ===== -->
+        <?php if ($is_admin): ?>
           <div class="form-card animate-in">
             <div class="card-header">
               <div class="card-header-icon" style="background:rgba(153,246,228,0.8);color:#0d9488;"><i class="fas fa-chart-simple"></i></div>
               <h3 class="card-header-title">สถานะการดำเนินการ</h3>
-              <?php if ($is_admin): ?>
-                <span class="card-header-badge admin-only"><i class="fas fa-crown"></i> Admin เท่านั้น</span>
-              <?php else: ?>
-                <span class="card-header-badge readonly"><i class="fas fa-lock"></i> อ่านอย่างเดียว</span>
-              <?php endif; ?>
+              <span class="card-header-badge admin-only"><i class="fas fa-crown"></i> Admin เท่านั้น</span>
             </div>
             <div class="card-body">
               <?php if ($is_admin && $is_editable): ?>
-                <select name="status" id="status" class="form-input" required>
+                <select name="status" id="status" class="status-select">
                   <option value="">-- กรุณาเลือกสถานะ --</option>
-                  <?php foreach ($statuses as $st): ?>
-                    <option value="<?= $st ?>" <?= (($risk['status'] ?? '') == $st) ? 'selected' : '' ?>><?= $st ?></option>
+                  <?php foreach ($statuses as $key => $st): ?>
+                    <?php 
+                      $selected = (($risk['status'] ?? '') == $key) ? 'selected' : '';
+                      $color = $st['color'];
+                    ?>
+                    <option value="<?= $key ?>" <?= $selected ?> style="color:<?= $color ?>; font-weight:600;">
+                      <?= $st['label'] ?>
+                    </option>
                   <?php endforeach; ?>
                 </select>
                 <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
+                
+                <!-- แสดงสถานะปัจจุบันแบบ Badge -->
+                <?php if (!empty($risk['status'])): ?>
+                  <?php 
+                    $currentStatus = $risk['status'];
+                    $statusInfo = $statuses[$currentStatus] ?? null;
+                    if ($statusInfo):
+                  ?>
+                    <div class="mt-3 flex items-center gap-2">
+                      <span class="text-sm text-gray-500">สถานะปัจจุบัน:</span>
+                      <span class="status-badge" style="background:<?= $statusInfo['bg'] ?>; color:<?= $statusInfo['color'] ?>; border:1px solid <?= $statusInfo['color'] ?>40;">
+                        <i class="fas <?= $statusInfo['icon'] ?>"></i>
+                        <?= $statusInfo['label'] ?>
+                      </span>
+                    </div>
+                  <?php endif; ?>
+                <?php endif; ?>
+                
               <?php else: ?>
                 <input type="hidden" name="status" value="<?= htmlspecialchars($risk['status'] ?? 'ยังไม่ดำเนินการ') ?>">
                 <div class="status-display">
                   <i class="fas fa-lock text-gray-400"></i>
-                  <span>สถานะปัจจุบัน: <strong><?= htmlspecialchars($risk['status'] ?? 'ยังไม่ดำเนินการ') ?></strong></span>
+                  <span>สถานะปัจจุบัน: 
+                    <strong>
+                      <?php 
+                        $currentStatus = $risk['status'] ?? 'ยังไม่ดำเนินการ';
+                        $statusInfo = $statuses[$currentStatus] ?? null;
+                        if ($statusInfo):
+                      ?>
+                        <span class="status-badge" style="background:<?= $statusInfo['bg'] ?>; color:<?= $statusInfo['color'] ?>; border:1px solid <?= $statusInfo['color'] ?>40;">
+                          <i class="fas <?= $statusInfo['icon'] ?>"></i>
+                          <?= $statusInfo['label'] ?>
+                        </span>
+                      <?php else: ?>
+                        <?= htmlspecialchars($currentStatus) ?>
+                      <?php endif; ?>
+                    </strong>
+                  </span>
                 </div>
-                <?php if (!$is_admin): ?>
-                  <p class="text-xs text-amber-600 mt-1"><i class="fas fa-exclamation-triangle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
-                <?php endif; ?>
               <?php endif; ?>
             </div>
           </div>
         <?php else: ?>
-          <input type="hidden" name="status" value="ยังไม่ดำเนินการ">
+          <!-- ถ้าไม่ใช่ Admin ให้ส่งสถานะเริ่มต้นไปแบบ hidden -->
+          <input type="hidden" name="status" value="<?= htmlspecialchars($risk['status'] ?? 'ยังไม่ดำเนินการ') ?>">
         <?php endif; ?>
 
         <!-- Buttons -->
@@ -810,7 +886,7 @@ if ($id) {
       locale: "th",
       allowInput: true,
       minuteIncrement: 1,
-      defaultDate: new Date() // ตั้งค่าเริ่มต้นเป็นเวลาปัจจุบัน
+      defaultDate: new Date()
     };
     const eventPicker = flatpickr('#event_datetime', dateConfig);
     const reportPicker = flatpickr('#report_datetime', dateConfig);
@@ -852,7 +928,7 @@ if ($id) {
       });
     });
 
-    // Quick Fill Link - ไม่ reset ข้อมูล
+    // Quick Fill Link
     const fillLink = document.getElementById('fillDefaultLink');
     if (fillLink) {
       fillLink.addEventListener('click', function(e) {
@@ -924,7 +1000,6 @@ if ($id) {
         return;
       }
 
-      // ตรวจสอบวันที่ - ถ้าไม่ได้เลือก ให้ใช้เวลาปัจจุบัน
       const evInput = document.getElementById('event_datetime');
       const rpInput = document.getElementById('report_datetime');
       
@@ -938,7 +1013,6 @@ if ($id) {
       const ev = eventPicker.selectedDates[0];
       const rp = reportPicker.selectedDates[0];
       
-      // ถ้ายังไม่มีค่าที่เลือก ให้ใช้ค่าจาก input
       const evDate = ev || new Date(evInput.value);
       const rpDate = rp || new Date(rpInput.value);
 
