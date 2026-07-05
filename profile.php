@@ -2,6 +2,12 @@
 
 /**
  * หน้าโปรไฟล์ผู้ใช้ - UI สวยงาม ทันสมัย
+ * - แก้ไขข้อมูลส่วนตัว
+ * - อัปโหลดรูปโปรไฟล์
+ * - เปลี่ยนรหัสผ่าน (Modal)
+ * - แสดงสถิติความเสี่ยง
+ * - แสดงความเสี่ยงล่าสุด
+ * - ใช้ SweetAlert2 สำหรับการแจ้งเตือน
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -28,19 +34,6 @@ try {
 } catch (Exception $e) {
 }
 
-// รายการแผนกทั้งหมด
-$departmentsList = [
-    'กลุ่มผู้บริหาร',
-    'กลุ่มอำนวยการ',
-    'กลุ่มขับเคลื่อนยุทธศาสตร์และพัฒนากำลังคน',
-    'กลุ่มพัฒนาอนามัยแม่และเด็ก',
-    'กลุ่มพัฒนาการส่งเสริมสุขภาพวัยเรียน',
-    'กลุ่มพัฒนาการส่งเสริมสุขภาพวัยรุ่น',
-    'กลุ่มพัฒนาการส่งเสริมสุขภาพวัยทำงาน',
-    'กลุ่มพัฒนาการส่งเสริมสุขภาพวัยสูงอายุ',
-    'กลุ่มพัฒนาอนามัยและสิ่งแวดล้อม'
-];
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -51,12 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fullname = trim($_POST['fullname'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $phone = trim($_POST['phone'] ?? '');
-            $department = trim($_POST['department'] ?? '');
-
-            // ตรวจสอบว่าถ้าเลือก "อื่นๆ" ให้ใช้ค่าจาก department_other
-            if ($department === 'อื่นๆ' && !empty($_POST['department_other'])) {
-                $department = trim($_POST['department_other']);
-            }
 
             $updateFields = ["fullname = ?"];
             $updateParams = [$fullname];
@@ -68,10 +55,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($hasPhone) {
                 $updateFields[] = "phone = ?";
                 $updateParams[] = $phone;
-            }
-            if ($hasDepartment) {
-                $updateFields[] = "department = ?";
-                $updateParams[] = $department;
             }
             $updateParams[] = $_SESSION['user_id'];
 
@@ -119,6 +102,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+
+    if ($action === 'change_password') {
+        if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+            $error = 'Invalid request';
+        } else {
+            $current_password = $_POST['current_password'] ?? '';
+            $new_password = $_POST['new_password'] ?? '';
+            $confirm_password = $_POST['confirm_password'] ?? '';
+
+            if (empty($current_password) || empty($new_password) || empty($confirm_password)) {
+                $error = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
+            } elseif (!password_verify($current_password, $user['password'])) {
+                $error = 'รหัสผ่านปัจจุบันไม่ถูกต้อง';
+            } elseif (strlen($new_password) < 6) {
+                $error = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร';
+            } elseif ($new_password !== $confirm_password) {
+                $error = 'รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน';
+            } elseif ($current_password === $new_password) {
+                $error = 'รหัสผ่านใหม่ต้องไม่เหมือนกับรหัสผ่านปัจจุบัน';
+            } else {
+                $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+                $stmt->execute([$hashed_password, $_SESSION['user_id']]);
+                $success = 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว';
+            }
+        }
+    }
 }
 
 // สถิติ
@@ -148,7 +158,6 @@ try {
 
 $csrf_token = generateCsrfToken();
 
-// ฟังก์ชันช่วยเหลือ
 function getStatusStyle($status)
 {
     if ($status == 'ดำเนินการแล้ว') {
@@ -163,6 +172,7 @@ function getStatusStyle($status)
 }
 ?>
 <?php include 'includes/header.php'; ?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
     body {
@@ -174,7 +184,6 @@ function getStatusStyle($status)
         margin: 0 auto;
     }
 
-    /* Header */
     .page-header {
         background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
         border-radius: 1.5rem;
@@ -190,58 +199,77 @@ function getStatusStyle($status)
         position: absolute;
         top: -50%;
         right: -10%;
-        width: 300px;
-        height: 300px;
+        width: 350px;
+        height: 350px;
         background: rgba(255, 255, 255, 0.03);
         border-radius: 50%;
     }
 
     .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
         position: relative;
         z-index: 1;
     }
 
     .page-header p {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.85rem;
         position: relative;
         z-index: 1;
-        color: rgba(255, 255, 255, 0.7);
     }
 
-    /* Card */
+    .stats-row {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.25rem;
+        background: white;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        font-size: 0.85rem;
+        color: #1e293b;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .stat-badge i {
+        color: #3b82f6;
+    }
+
+    .stat-badge strong {
+        color: #1e40af;
+    }
+
     .card {
         background: white;
         border-radius: 1rem;
         border: 1px solid #e2e8f0;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        overflow: hidden;
         margin-bottom: 1.5rem;
-        transition: all 0.3s;
-    }
-
-    .card:hover {
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
     }
 
     .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         padding: 1rem 1.25rem;
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        align-items: center;
-        gap: 0.65rem;
         background: #fafbfc;
-    }
-
-    .card-header-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
+        border-bottom: 1px solid #e2e8f0;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
 
     .card-header-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         font-weight: 700;
         color: #1e293b;
         font-size: 0.95rem;
@@ -259,8 +287,8 @@ function getStatusStyle($status)
     .profile-top {
         display: flex;
         align-items: center;
-        gap: 2rem;
-        padding: 2rem;
+        gap: 1.5rem;
+        padding: 1.5rem;
     }
 
     .avatar-wrap {
@@ -268,32 +296,13 @@ function getStatusStyle($status)
         flex-shrink: 0;
     }
 
-    .avatar-ring {
-        position: absolute;
-        inset: -4px;
-        border-radius: 50%;
-        border: 2px solid transparent;
-        border-top-color: #3b82f6;
-        border-right-color: #60a5fa;
-        animation: spin 3s linear infinite;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
     .avatar-img {
-        width: 100px;
-        height: 100px;
+        width: 90px;
+        height: 90px;
         border-radius: 50%;
         object-fit: cover;
-        border: 4px solid white;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-        position: relative;
-        z-index: 2;
-        transition: transform 0.3s;
+        border: 3px solid #e2e8f0;
+        transition: transform 0.2s;
     }
 
     .avatar-img:hover {
@@ -309,8 +318,7 @@ function getStatusStyle($status)
         align-items: center;
         justify-content: center;
         opacity: 0;
-        transition: opacity 0.3s;
-        z-index: 3;
+        transition: opacity 0.2s;
         cursor: pointer;
     }
 
@@ -320,7 +328,7 @@ function getStatusStyle($status)
 
     .avatar-overlay i {
         color: white;
-        font-size: 1.3rem;
+        font-size: 1.1rem;
     }
 
     .profile-info {
@@ -328,7 +336,7 @@ function getStatusStyle($status)
     }
 
     .profile-name {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         font-weight: 700;
         color: #1e293b;
     }
@@ -336,12 +344,12 @@ function getStatusStyle($status)
     .profile-role {
         display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
-        padding: 0.2rem 0.7rem;
+        gap: 0.2rem;
+        padding: 0.15rem 0.6rem;
         border-radius: 9999px;
         font-size: 0.7rem;
         font-weight: 600;
-        margin-top: 0.35rem;
+        margin-top: 0.3rem;
     }
 
     .profile-role.admin {
@@ -354,18 +362,29 @@ function getStatusStyle($status)
         color: #1e40af;
     }
 
-    /* Stats Row */
-    .stats-row {
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* Stat Grid */
+    .stat-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         border-top: 1px solid #f1f5f9;
     }
 
     .stat-item {
-        padding: 1.25rem 0.75rem;
+        padding: 1rem 0.5rem;
         text-align: center;
         position: relative;
-        transition: all 0.2s;
+        transition: all 0.15s;
     }
 
     .stat-item:not(:last-child)::after {
@@ -379,27 +398,11 @@ function getStatusStyle($status)
     }
 
     .stat-item:hover {
-        background: #f8fafc;
-    }
-
-    .stat-icon-circle {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 0.6rem;
-        font-size: 1.1rem;
-        transition: all 0.2s;
-    }
-
-    .stat-item:hover .stat-icon-circle {
-        transform: scale(1.1);
+        background: #fafbfc;
     }
 
     .stat-number {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         font-weight: 700;
         color: #1e293b;
     }
@@ -407,7 +410,7 @@ function getStatusStyle($status)
     .stat-label-text {
         font-size: 0.7rem;
         color: #94a3b8;
-        margin-top: 0.15rem;
+        margin-top: 0.1rem;
     }
 
     /* Form */
@@ -426,25 +429,25 @@ function getStatusStyle($status)
     }
 
     .form-label {
-        display: block;
-        font-size: 0.72rem;
+        font-size: 0.65rem;
         font-weight: 700;
         color: #94a3b8;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 0.3rem;
+        display: block;
     }
 
     .form-input {
         width: 100%;
-        padding: 0.65rem 0.85rem;
+        padding: 0.55rem 0.7rem;
         border: 1.5px solid #e2e8f0;
-        border-radius: 0.6rem;
-        font-size: 0.88rem;
-        transition: all 0.25s;
+        border-radius: 0.5rem;
+        font-size: 0.85rem;
         outline: none;
         font-family: 'Sarabun', sans-serif;
         background: #fafbfc;
+        transition: all 0.2s;
         color: #1e293b;
     }
 
@@ -461,54 +464,54 @@ function getStatusStyle($status)
         border-style: dashed;
     }
 
-    select.form-input {
-        cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 0.9rem center;
-        padding-right: 2.5rem;
-    }
-
     .form-hint {
         font-size: 0.65rem;
         color: #94a3b8;
         margin-top: 0.2rem;
     }
 
-    .btn {
+    .btn-action {
+        padding: 0.5rem 0.9rem;
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid;
+        transition: all 0.2s;
+        font-family: 'Sarabun', sans-serif;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        padding: 0.65rem 1.25rem;
-        border-radius: 0.6rem;
-        font-weight: 600;
-        font-size: 0.85rem;
-        transition: all 0.3s;
-        cursor: pointer;
-        border: none;
-        font-family: 'Sarabun', sans-serif;
+        gap: 0.35rem;
         text-decoration: none;
     }
 
-    .btn-primary {
-        background: linear-gradient(135deg, #1e40af, #3b82f6);
-        color: white;
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    .btn-action.blue {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
     }
 
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+    .btn-action.blue:hover {
+        background: #dbeafe;
     }
 
-    .btn-outline {
+    .btn-action.red {
+        background: #fef2f2;
+        color: #dc2626;
+        border-color: #fecaca;
+    }
+
+    .btn-action.red:hover {
+        background: #fee2e2;
+    }
+
+    .btn-action.outline {
         background: white;
         color: #3b82f6;
-        border: 1.5px solid #bfdbfe;
+        border-color: #bfdbfe;
     }
 
-    .btn-outline:hover {
+    .btn-action.outline:hover {
         background: #eff6ff;
     }
 
@@ -517,16 +520,35 @@ function getStatusStyle($status)
         font-size: 0.75rem;
     }
 
-    /* Recent List */
-    .recent-list {
-        list-style: none;
+    /* Info Row */
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid #f8fafc;
     }
 
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        color: #94a3b8;
+        font-size: 0.82rem;
+    }
+
+    .info-value {
+        font-weight: 600;
+        color: #334155;
+    }
+
+    /* Recent List */
     .recent-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.85rem 1.5rem;
+        padding: 0.75rem 1.5rem;
         border-bottom: 1px solid #f8fafc;
         transition: all 0.15s;
         gap: 1rem;
@@ -537,13 +559,13 @@ function getStatusStyle($status)
     }
 
     .recent-item:hover {
-        background: #fafbfc;
+        background: #f0f9ff;
     }
 
     .recent-left {
         display: flex;
         align-items: center;
-        gap: 0.65rem;
+        gap: 0.5rem;
         min-width: 0;
         flex: 1;
     }
@@ -577,29 +599,6 @@ function getStatusStyle($status)
         white-space: nowrap;
     }
 
-    /* Alert */
-    .alert {
-        padding: 0.8rem 1.25rem;
-        border-radius: 0.8rem;
-        display: flex;
-        align-items: center;
-        gap: 0.65rem;
-        font-size: 0.85rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .alert-success {
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
-        color: #166534;
-    }
-
-    .alert-error {
-        background: #fef2f2;
-        border: 1px solid #fecaca;
-        color: #991b1b;
-    }
-
     .empty-state {
         text-align: center;
         padding: 3rem 2rem;
@@ -612,33 +611,113 @@ function getStatusStyle($status)
         opacity: 0.4;
     }
 
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        padding-bottom: 0.6rem;
-        border-bottom: 1px solid #f8fafc;
+    .info-card {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+        margin-top: 1.5rem;
+        font-size: 0.85rem;
+        color: #1e40af;
     }
 
-    .info-row:last-child {
-        border-bottom: none;
-    }
-
-    .info-label {
-        color: #94a3b8;
-        font-size: 0.82rem;
-    }
-
-    .info-value {
-        font-weight: 600;
-    }
-
-    .dept-other-input {
-        margin-top: 0.5rem;
+    /* Modal */
+    .modal-overlay {
         display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
     }
 
-    .dept-other-input.visible {
-        display: block;
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 1rem;
+        width: 90%;
+        max-width: 480px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-header h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: none;
+        background: #f1f5f9;
+        color: #64748b;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-size: 1rem;
+    }
+
+    .modal-close:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .password-field {
+        position: relative;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 0.7rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 0.3rem;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .password-toggle:hover {
+        color: #64748b;
+    }
+
+    .password-field .form-input {
+        padding-right: 2.5rem;
     }
 
     @media (max-width: 768px) {
@@ -648,7 +727,7 @@ function getStatusStyle($status)
             gap: 1rem;
         }
 
-        .stats-row {
+        .stat-grid {
             grid-template-columns: repeat(2, 1fr);
         }
 
@@ -657,337 +736,494 @@ function getStatusStyle($status)
         }
 
         .avatar-img {
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
         }
 
-        .page-container {
-            padding: 0 0.5rem;
+        .modal-content {
+            width: 95%;
+            margin: 1rem;
         }
     }
 </style>
 
 <div class="flex h-screen">
     <?php include 'includes/sidebar.php'; ?>
-    <div class="flex-1 overflow-y-auto">
-        <div class="p-4 md:p-5">
-            <div class="page-container">
+    <div class="flex-1 p-4 md:p-5 overflow-y-auto">
+        <div class="page-container">
 
-                <!-- Header -->
-                <div class="page-header">
-                    <h1 class="text-xl font-bold"><i class="fas fa-user-circle mr-2"></i>โปรไฟล์ผู้ใช้</h1>
-                    <p class="text-sm mt-1">จัดการข้อมูลส่วนตัวของคุณ</p>
+            <!-- Header -->
+            <div class="page-header">
+                <h1>👤 โปรไฟล์ผู้ใช้</h1>
+                <p>จัดการข้อมูลส่วนตัวของคุณ · @<?= htmlspecialchars($user['username']) ?></p>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-row">
+                <div class="stat-badge"><i class="fas fa-layer-group"></i> ทั้งหมด <strong><?= number_format($stats['total']) ?></strong> รายการ</div>
+                <div class="stat-badge"><i class="fas fa-clock text-yellow-500"></i> รอดำเนินการ <strong><?= number_format($stats['pending']) ?></strong></div>
+                <div class="stat-badge"><i class="fas fa-spinner text-blue-500"></i> กำลังดำเนินการ <strong><?= number_format($stats['in_progress']) ?></strong></div>
+                <div class="stat-badge"><i class="fas fa-check-circle text-green-500"></i> ดำเนินการแล้ว <strong><?= number_format($stats['completed']) ?></strong></div>
+            </div>
+
+            <!-- Main Profile Card -->
+            <div class="card">
+                <div class="profile-top">
+                    <div class="avatar-wrap">
+                        <img src="avatars/<?= htmlspecialchars($user['avatar'] ?: 'default.png') ?>"
+                            alt="Avatar" class="avatar-img"
+                            onerror="this.src='avatars/default.png'">
+                        <form method="POST" enctype="multipart/form-data" id="avatarForm" style="display:none;">
+                            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                            <input type="hidden" name="action" value="update_avatar">
+                            <input type="file" id="avatar-input" name="avatar" accept="image/*">
+                        </form>
+                        <label class="avatar-overlay" for="avatar-input">
+                            <i class="fas fa-camera"></i>
+                        </label>
+                    </div>
+                    <div class="profile-info">
+                        <h2 class="profile-name"><?= htmlspecialchars($user['fullname'] ?: $user['username']) ?></h2>
+                        <p class="text-gray-500 text-sm">
+                            @<?= htmlspecialchars($user['username']) ?> ·
+                            <?= htmlspecialchars($user['reporter_code'] ?? '-') ?>
+                        </p>
+                        <span class="profile-role <?= isAdmin() ? 'admin' : 'user' ?>">
+                            <i class="fas <?= isAdmin() ? 'fa-crown' : 'fa-user' ?> text-xs"></i>
+                            <?= isAdmin() ? 'ผู้ดูแลระบบ' : 'ผู้ใช้ทั่วไป' ?>
+                        </span>
+                    </div>
                 </div>
 
-                <!-- Alerts -->
-                <?php if ($success): ?>
-                    <div class="alert alert-success">
-                        <i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?>
+                <!-- Stats Grid -->
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" style="color: #1e293b;"><?= number_format($stats['total']) ?></div>
+                        <div class="stat-label-text">ทั้งหมด</div>
                     </div>
-                <?php endif; ?>
-
-                <?php if ($error): ?>
-                    <div class="alert alert-error">
-                        <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($error) ?>
+                    <div class="stat-item">
+                        <div class="stat-number" style="color: #eab308;"><?= number_format($stats['pending']) ?></div>
+                        <div class="stat-label-text">รอดำเนินการ</div>
                     </div>
-                <?php endif; ?>
+                    <div class="stat-item">
+                        <div class="stat-number" style="color: #3b82f6;"><?= number_format($stats['in_progress']) ?></div>
+                        <div class="stat-label-text">กำลังดำเนินการ</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" style="color: #22c55e;"><?= number_format($stats['completed']) ?></div>
+                        <div class="stat-label-text">ดำเนินการแล้ว</div>
+                    </div>
+                </div>
+            </div>
 
-                <!-- Main Profile Card -->
+            <!-- Content Grid -->
+            <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:1.5rem;">
+                <!-- ข้อมูลส่วนตัว -->
                 <div class="card">
-                    <div class="profile-top">
-                        <div class="avatar-wrap">
-                            <div class="avatar-ring"></div>
-                            <img src="avatars/<?= htmlspecialchars($user['avatar'] ?: 'default.png') ?>"
-                                alt="Avatar" class="avatar-img"
-                                onerror="this.src='avatars/default.png'">
-                            <form method="POST" enctype="multipart/form-data" id="avatarForm" style="display:none;">
-                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                                <input type="hidden" name="action" value="update_avatar">
-                                <input type="file" id="avatar-input" name="avatar" accept="image/*">
-                            </form>
-                            <label class="avatar-overlay" for="avatar-input">
-                                <i class="fas fa-camera"></i>
-                            </label>
-                        </div>
-                        <div class="profile-info">
-                            <h2 class="profile-name"><?= htmlspecialchars($user['fullname'] ?: $user['username']) ?></h2>
-                            <p class="text-gray-500 text-sm">
-                                @<?= htmlspecialchars($user['username']) ?> ·
-                                <?= htmlspecialchars($user['reporter_code'] ?? '-') ?>
-                            </p>
-                            <span class="profile-role <?= isAdmin() ? 'admin' : 'user' ?>">
-                                <i class="fas <?= isAdmin() ? 'fa-crown' : 'fa-user' ?> text-xs"></i>
-                                <?= isAdmin() ? 'ผู้ดูแลระบบ' : 'ผู้ใช้ทั่วไป' ?>
-                            </span>
-                        </div>
+                    <div class="card-header">
+                        <span class="card-header-title">
+                            <i class="fas fa-info-circle text-blue-600"></i> ข้อมูลส่วนตัว
+                        </span>
                     </div>
-
-                    <!-- Stats -->
-                    <div class="stats-row">
-                        <div class="stat-item">
-                            <div class="stat-icon-circle bg-blue-50 text-blue-600">
-                                <i class="fas fa-layer-group"></i>
+                    <div class="card-body">
+                        <div style="display:flex;flex-direction:column;">
+                            <div class="info-row">
+                                <span class="info-label">ชื่อผู้ใช้</span>
+                                <span class="info-value"><?= htmlspecialchars($user['username']) ?></span>
                             </div>
-                            <div class="stat-number"><?= number_format($stats['total']) ?></div>
-                            <div class="stat-label-text">ทั้งหมด</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-icon-circle bg-yellow-50 text-yellow-600">
-                                <i class="fas fa-clock"></i>
+                            <div class="info-row">
+                                <span class="info-label">ชื่อ-นามสกุล</span>
+                                <span class="info-value"><?= htmlspecialchars($user['fullname'] ?: '-') ?></span>
                             </div>
-                            <div class="stat-number"><?= number_format($stats['pending']) ?></div>
-                            <div class="stat-label-text">รอดำเนินการ</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-icon-circle bg-blue-50 text-blue-600">
-                                <i class="fas fa-spinner"></i>
+                            <?php if ($hasEmail): ?>
+                                <div class="info-row">
+                                    <span class="info-label">อีเมล</span>
+                                    <span class="info-value"><?= htmlspecialchars($user['email'] ?: '-') ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($hasPhone && !empty($user['phone'])): ?>
+                                <div class="info-row">
+                                    <span class="info-label">เบอร์โทร</span>
+                                    <span class="info-value"><?= htmlspecialchars($user['phone']) ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($hasDepartment && !empty($user['department'])): ?>
+                                <div class="info-row">
+                                    <span class="info-label">กลุ่มงาน</span>
+                                    <span class="info-value"><?= htmlspecialchars($user['department']) ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <div class="info-row">
+                                <span class="info-label">สมาชิกตั้งแต่</span>
+                                <span class="info-value"><?= date('d M Y', strtotime($user['created_at'])) ?></span>
                             </div>
-                            <div class="stat-number"><?= number_format($stats['in_progress']) ?></div>
-                            <div class="stat-label-text">กำลังดำเนินการ</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-icon-circle bg-green-50 text-green-600">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <div class="stat-number"><?= number_format($stats['completed']) ?></div>
-                            <div class="stat-label-text">ดำเนินการแล้ว</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Content Grid -->
-                <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:1.5rem;">
-                    <!-- ข้อมูลส่วนตัว -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-header-icon bg-blue-50 text-blue-600">
-                                <i class="fas fa-info-circle"></i>
-                            </div>
-                            <h3 class="card-header-title">ข้อมูลส่วนตัว</h3>
-                        </div>
-                        <div class="card-body">
-                            <div style="display:flex;flex-direction:column;gap:0.85rem;">
-                                <div class="info-row">
-                                    <span class="info-label">ชื่อผู้ใช้</span>
-                                    <span class="info-value"><?= htmlspecialchars($user['username']) ?></span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">ชื่อ-นามสกุล</span>
-                                    <span class="info-value"><?= htmlspecialchars($user['fullname'] ?: '-') ?></span>
-                                </div>
-                                <?php if ($hasEmail): ?>
-                                    <div class="info-row">
-                                        <span class="info-label">อีเมล</span>
-                                        <span class="info-value"><?= htmlspecialchars($user['email'] ?: '-') ?></span>
-                                    </div>
-                                <?php endif; ?>
-                                <?php if ($hasPhone && !empty($user['phone'])): ?>
-                                    <div class="info-row">
-                                        <span class="info-label">เบอร์โทร</span>
-                                        <span class="info-value"><?= htmlspecialchars($user['phone']) ?></span>
-                                    </div>
-                                <?php endif; ?>
-                                <?php if ($hasDepartment && !empty($user['department'])): ?>
-                                    <div class="info-row">
-                                        <span class="info-label">แผนก</span>
-                                        <span class="info-value"><?= htmlspecialchars($user['department']) ?></span>
-                                    </div>
-                                <?php endif; ?>
-                                <div class="info-row">
-                                    <span class="info-label">สมาชิกตั้งแต่</span>
-                                    <span class="info-value"><?= date('d M Y', strtotime($user['created_at'])) ?></span>
-                                </div>
-                            </div>
-                        </div>
+                <!-- แก้ไขข้อมูล -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-header-title">
+                            <i class="fas fa-edit text-indigo-600"></i> แก้ไขข้อมูล
+                        </span>
                     </div>
+                    <div class="card-body">
+                        <form method="POST" id="profileForm">
+                            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                            <input type="hidden" name="action" value="update_profile">
 
-                    <!-- แก้ไขข้อมูล -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-header-icon bg-indigo-50 text-indigo-600">
-                                <i class="fas fa-edit"></i>
-                            </div>
-                            <h3 class="card-header-title">แก้ไขข้อมูล</h3>
-                        </div>
-                        <div class="card-body">
-                            <form method="POST">
-                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                                <input type="hidden" name="action" value="update_profile">
-
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <label class="form-label">ชื่อผู้ใช้</label>
-                                        <input type="text" value="<?= htmlspecialchars($user['username']) ?>" class="form-input" disabled>
-                                        <p class="form-hint">🔒 เปลี่ยนไม่ได้</p>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">ชื่อ-นามสกุล</label>
-                                        <input type="text" name="fullname" value="<?= htmlspecialchars($user['fullname'] ?? '') ?>" class="form-input" placeholder="กรอกชื่อ-นามสกุล">
-                                    </div>
-
-                                    <?php if ($hasEmail): ?>
-                                        <div class="form-group">
-                                            <label class="form-label">อีเมล</label>
-                                            <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" class="form-input" placeholder="example@email.com">
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <?php if ($hasPhone): ?>
-                                        <div class="form-group">
-                                            <label class="form-label">เบอร์โทรศัพท์</label>
-                                            <input type="text" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" class="form-input" placeholder="08x-xxx-xxxx">
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <?php if ($hasDepartment): ?>
-                                        <div class="form-group full">
-                                            <label class="form-label">แผนก/หน่วยงาน</label>
-                                            <select name="department" id="departmentSelect" class="form-input">
-                                                <option value="">-- เลือกแผนก/หน่วยงาน --</option>
-                                                <?php foreach ($departmentsList as $dept):
-                                                    $selected = ($user['department'] ?? '') == $dept ? 'selected' : '';
-                                                ?>
-                                                    <option value="<?= htmlspecialchars($dept) ?>" <?= $selected ?>>
-                                                        <?= htmlspecialchars($dept) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                                <option value="อื่นๆ"
-                                                    <?= !empty($user['department']) && !in_array($user['department'], $departmentsList) ? 'selected' : '' ?>>
-                                                    ➕ อื่นๆ (ระบุ)
-                                                </option>
-                                            </select>
-                                            <input type="text" name="department_other" id="deptOther"
-                                                class="form-input dept-other-input <?= !empty($user['department']) && !in_array($user['department'], $departmentsList) ? 'visible' : '' ?>"
-                                                placeholder="ระบุแผนก/หน่วยงานอื่น"
-                                                value="<?= !empty($user['department']) && !in_array($user['department'], $departmentsList) ? htmlspecialchars($user['department']) : '' ?>">
-                                        </div>
-                                    <?php endif; ?>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">ชื่อผู้ใช้</label>
+                                    <input type="text" value="<?= htmlspecialchars($user['username']) ?>" class="form-input" disabled>
+                                    <p class="form-hint">🔒 เปลี่ยนไม่ได้</p>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">ชื่อ-นามสกุล</label>
+                                    <input type="text" name="fullname" value="<?= htmlspecialchars($user['fullname'] ?? '') ?>" class="form-input" placeholder="กรอกชื่อ-นามสกุล">
                                 </div>
 
-                                <div style="display:flex;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #f8fafc;">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> บันทึกข้อมูล
+                                <?php if ($hasEmail): ?>
+                                    <div class="form-group">
+                                        <label class="form-label">อีเมล</label>
+                                        <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" class="form-input" placeholder="example@email.com">
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($hasPhone): ?>
+                                    <div class="form-group">
+                                        <label class="form-label">เบอร์โทรศัพท์</label>
+                                        <input type="text" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" class="form-input" placeholder="08x-xxx-xxxx">
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($hasDepartment): ?>
+                                    <div class="form-group full">
+                                        <label class="form-label">กลุ่มงาน</label>
+                                        <input type="text" value="<?= htmlspecialchars($user['department'] ?? '') ?>" class="form-input" disabled>
+                                        <p class="form-hint">🔒 กลุ่มงานถูกกำหนดโดยผู้ดูแลระบบ ไม่สามารถเปลี่ยนแปลงได้</p>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="form-group full">
+                                    <label class="form-label">รหัสผ่าน</label>
+                                    <button type="button" class="btn-action red" onclick="openPasswordModal()" style="width:100%;justify-content:center;">
+                                        <i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน
                                     </button>
                                 </div>
-                            </form>
-                        </div>
+                            </div>
+
+                            <div style="display:flex;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #f1f5f9;">
+                                <button type="submit" class="btn-action blue">
+                                    <i class="fas fa-save"></i> บันทึกข้อมูล
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
+            </div>
 
-                <!-- Recent Risks -->
-                <div class="card" style="margin-top:1.5rem;">
-                    <div class="card-header">
-                        <div class="card-header-icon bg-emerald-50 text-emerald-600">
-                            <i class="fas fa-history"></i>
-                        </div>
-                        <h3 class="card-header-title">ความเสี่ยงล่าสุดของคุณ</h3>
-                        <?php if (!empty($recentRisks)): ?>
-                            <a href="risks.php" class="btn btn-outline btn-sm" style="margin-left:auto;">
-                                ดูทั้งหมด <i class="fas fa-arrow-right"></i>
-                            </a>
-                        <?php endif; ?>
-                    </div>
-
-                    <?php if (empty($recentRisks)): ?>
-                        <div class="empty-state">
-                            <i class="fas fa-inbox"></i>
-                            <p>ยังไม่มีรายการความเสี่ยง</p>
-                            <a href="risk_form.php" class="btn btn-primary btn-sm" style="margin-top:0.75rem;">
-                                <i class="fas fa-plus"></i> เพิ่มรายการแรก
-                            </a>
-                        </div>
-                    <?php else: ?>
-                        <div class="card-body no-pad">
-                            <ul class="recent-list">
-                                <?php foreach ($recentRisks as $risk):
-                                    $status = $risk['status'] ?? 'ยังไม่ดำเนินการ';
-                                    $style = getStatusStyle($status);
-                                ?>
-                                    <li class="recent-item">
-                                        <div class="recent-left">
-                                            <div class="recent-dot" style="background:<?= $style['dot'] ?>;"></div>
-                                            <div>
-                                                <div class="recent-title"><?= htmlspecialchars($risk['risk_type'] ?? '-') ?></div>
-                                                <div class="recent-meta"><?= htmlspecialchars($risk['unit'] ?? '-') ?></div>
-                                            </div>
-                                        </div>
-                                        <div style="display:flex;align-items:center;gap:0.6rem;">
-                                            <span style="font-size:0.75rem;color:#94a3b8;">
-                                                <?= date('d/m/Y', strtotime($risk['created_at'])) ?>
-                                            </span>
-                                            <span class="status-badge" style="background:<?= $style['bg'] ?>;color:<?= $style['color'] ?>;">
-                                                <?= htmlspecialchars($status) ?>
-                                            </span>
-                                        </div>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
+            <!-- Recent Risks -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-title">
+                        <i class="fas fa-history text-emerald-600"></i> ความเสี่ยงล่าสุดของคุณ
+                    </span>
+                    <?php if (!empty($recentRisks)): ?>
+                        <a href="risks.php" class="btn-action outline btn-sm">
+                            ดูทั้งหมด <i class="fas fa-arrow-right"></i>
+                        </a>
                     <?php endif; ?>
+                </div>
+
+                <?php if (empty($recentRisks)): ?>
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>ยังไม่มีรายการความเสี่ยง</p>
+                        <a href="risk_form.php" class="btn-action blue btn-sm" style="margin-top:0.75rem;">
+                            <i class="fas fa-plus"></i> เพิ่มรายการแรก
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <div class="card-body no-pad">
+                        <?php foreach ($recentRisks as $risk):
+                            $status = $risk['status'] ?? 'ยังไม่ดำเนินการ';
+                            $style = getStatusStyle($status);
+                        ?>
+                            <div class="recent-item">
+                                <div class="recent-left">
+                                    <div class="recent-dot" style="background:<?= $style['dot'] ?>;"></div>
+                                    <div>
+                                        <div class="recent-title"><?= htmlspecialchars($risk['risk_type'] ?? '-') ?></div>
+                                        <div class="recent-meta"><?= htmlspecialchars($risk['unit'] ?? '-') ?></div>
+                                    </div>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:0.6rem;">
+                                    <span style="font-size:0.75rem;color:#94a3b8;">
+                                        <?= date('d/m/Y', strtotime($risk['created_at'])) ?>
+                                    </span>
+                                    <span class="status-badge" style="background:<?= $style['bg'] ?>;color:<?= $style['color'] ?>;">
+                                        <?= htmlspecialchars($status) ?>
+                                    </span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Info -->
+            <div class="info-card">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-info-circle text-blue-500 text-lg mt-0.5"></i>
+                    <div>
+                        <p class="font-semibold mb-1">📌 หมายเหตุ</p>
+                        <ul class="list-disc ml-4 space-y-0.5 text-sm">
+                            <li>คุณสามารถอัปเดตข้อมูลส่วนตัวได้ตลอดเวลา</li>
+                            <li>รูปโปรไฟล์รองรับ JPG, PNG, GIF, WebP (สูงสุด 5MB)</li>
+                            <li><strong>ชื่อผู้ใช้ กลุ่มงาน และบทบาท ไม่สามารถเปลี่ยนแปลงได้</strong></li>
+                            <li>หากต้องการเปลี่ยนกลุ่มงาน กรุณาติดต่อผู้ดูแลระบบ</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-lock text-red-500"></i> เปลี่ยนรหัสผ่าน</h3>
+            <button class="modal-close" onclick="closePasswordModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" id="passwordForm">
+            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+            <input type="hidden" name="action" value="change_password">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">รหัสผ่านปัจจุบัน</label>
+                    <div class="password-field">
+                        <input type="password" name="current_password" id="currentPassword" class="form-input" placeholder="กรอกรหัสผ่านปัจจุบัน" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword('currentPassword', this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">รหัสผ่านใหม่</label>
+                    <div class="password-field">
+                        <input type="password" name="new_password" id="newPassword" class="form-input" placeholder="รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร" required minlength="6">
+                        <button type="button" class="password-toggle" onclick="togglePassword('newPassword', this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">ยืนยันรหัสผ่านใหม่</label>
+                    <div class="password-field">
+                        <input type="password" name="confirm_password" id="confirmPassword" class="form-input" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" required minlength="6">
+                        <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword', this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-action outline" onclick="closePasswordModal()">
+                    <i class="fas fa-times"></i> ยกเลิก
+                </button>
+                <button type="submit" class="btn-action red">
+                    <i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-    // Avatar upload
+    // ========== Avatar Upload ==========
     document.getElementById('avatar-input')?.addEventListener('change', function() {
         if (this.files && this.files[0]) {
             if (this.files[0].size > 5 * 1024 * 1024) {
-                alert('ขนาดไฟล์ต้องไม่เกิน 5MB');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไฟล์ใหญ่เกินไป',
+                    text: 'ขนาดไฟล์ต้องไม่เกิน 5MB',
+                    confirmButtonColor: '#3b82f6'
+                });
                 this.value = '';
                 return;
             }
+
+            Swal.fire({
+                title: 'กำลังอัปโหลด...',
+                html: '<div class="flex justify-center"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i></div>',
+                allowOutsideClick: false,
+                showConfirmButton: false
+            });
+
             document.getElementById('avatarForm').submit();
         }
     });
 
-    // Toggle other department
-    function toggleOtherDept() {
-        const select = document.getElementById('departmentSelect');
-        const other = document.getElementById('deptOther');
-        if (select && other) {
-            if (select.value === 'อื่นๆ') {
-                other.classList.add('visible');
-                other.focus();
-                other.required = true;
-            } else {
-                other.classList.remove('visible');
-                other.value = '';
-                other.required = false;
-            }
-        }
+    // ========== Password Modal ==========
+    function openPasswordModal() {
+        document.getElementById('passwordModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => {
+            document.getElementById('currentPassword').focus();
+        }, 100);
     }
 
-    // Initial check
-    document.addEventListener('DOMContentLoaded', function() {
-        const select = document.getElementById('departmentSelect');
-        const other = document.getElementById('deptOther');
-        if (select && other && select.value === 'อื่นๆ') {
-            other.classList.add('visible');
-            other.required = true;
+    function closePasswordModal() {
+        document.getElementById('passwordModal').classList.remove('active');
+        document.body.style.overflow = '';
+        document.getElementById('passwordForm').reset();
+        document.querySelectorAll('#passwordForm .password-toggle i').forEach(icon => {
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        });
+        document.querySelectorAll('#passwordForm input[type="text"]').forEach(input => {
+            input.type = 'password';
+        });
+    }
+
+    document.getElementById('passwordModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closePasswordModal();
         }
     });
 
-    // Toggle on change
-    document.getElementById('departmentSelect')?.addEventListener('change', toggleOtherDept);
-
-    // Handle form submit for department
-    document.querySelector('form[action*="update_profile"]')?.addEventListener('submit', function(e) {
-        const select = document.getElementById('departmentSelect');
-        const other = document.getElementById('deptOther');
-
-        if (select && select.value === 'อื่นๆ') {
-            if (!other.value.trim()) {
-                e.preventDefault();
-                alert('กรุณาระบุแผนก/หน่วยงาน');
-                other.focus();
-                return;
-            }
-            // Rename other field to department
-            other.name = 'department';
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('passwordModal').classList.contains('active')) {
+            closePasswordModal();
         }
     });
+
+    function togglePassword(inputId, button) {
+        const input = document.getElementById(inputId);
+        const icon = button.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+        
+        input.focus();
+    }
+
+    // ========== Password Form Submit ==========
+    document.getElementById('passwordForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลไม่ครบถ้วน',
+                text: 'กรุณากรอกข้อมูลให้ครบทุกช่อง',
+                confirmButtonColor: '#3b82f6'
+            });
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'รหัสผ่านสั้นเกินไป',
+                text: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร',
+                confirmButtonColor: '#3b82f6'
+            });
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'รหัสผ่านไม่ตรงกัน',
+                text: 'รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน',
+                confirmButtonColor: '#3b82f6'
+            });
+            return;
+        }
+
+        if (currentPassword === newPassword) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'รหัสผ่านซ้ำ',
+                text: 'รหัสผ่านใหม่ต้องไม่เหมือนกับรหัสผ่านปัจจุบัน',
+                confirmButtonColor: '#3b82f6'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'กำลังเปลี่ยนรหัสผ่าน...',
+            html: '<div class="flex justify-center"><i class="fas fa-spinner fa-spin text-2xl text-red-500"></i></div>',
+            allowOutsideClick: false,
+            showConfirmButton: false
+        });
+
+        this.submit();
+    });
+
+    // ========== Profile Form Submit ==========
+    document.getElementById('profileForm')?.addEventListener('submit', function() {
+        Swal.fire({
+            title: 'กำลังบันทึกข้อมูล...',
+            html: '<div class="flex justify-center"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i></div>',
+            allowOutsideClick: false,
+            showConfirmButton: false
+        });
+    });
+
+    // ========== Success/Error Messages ==========
+    <?php if ($success): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'สำเร็จ!',
+            text: '<?= htmlspecialchars($success) ?>',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    <?php endif; ?>
+
+    <?php if ($error): ?>
+        const errorMsg = '<?= htmlspecialchars($error) ?>';
+        if (errorMsg.includes('รหัสผ่าน')) {
+            Swal.fire({
+                icon: 'error',
+                title: 'เปลี่ยนรหัสผ่านไม่สำเร็จ',
+                text: errorMsg,
+                confirmButtonColor: '#dc2626'
+            }).then(() => {
+                openPasswordModal();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: errorMsg,
+                confirmButtonColor: '#3b82f6'
+            });
+        }
+    <?php endif; ?>
 </script>
 <?php include 'includes/footer.php'; ?>

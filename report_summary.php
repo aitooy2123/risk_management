@@ -1,12 +1,14 @@
 <?php
+
 /**
- * หน้าสรุปผลการรายงาน - UI สวยงาม พร้อมพื้นหลัง
- * - แสดงเฉพาะรายการที่สรุปผลเรียบร้อยแล้ว (มีข้อมูลใน risk_reports)
+ * หน้าสรุปผลการรายงาน - UI สวยงาม ทันสมัย พร้อม Animation
  * - User: เห็นเฉพาะรายการของตัวเอง / Admin: เห็นทั้งหมด
+ * - แสดงเฉพาะสถานะ "ดำเนินการแล้ว" เท่านั้น
  * - บันทึก: มาตรการแก้ไข, ผู้รับผิดชอบ, การติดตามผล, ผลที่คาดว่าจะได้รับ
  * - แนบไฟล์สรุปผลได้ + Lightbox
- * - Pagination 10 รายการ/หน้า + Filter & Search + Hover Tooltip
+ * - Pagination 10 รายการ/หน้า
  * - ผู้รับผิดชอบแสดงชื่อผู้ใช้ปัจจุบันเป็นค่าเริ่มต้น
+ * - ใช้ SweetAlert2 สำหรับการแจ้งเตือน
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -19,20 +21,20 @@ $error = '';
 
 $risk_id = isset($_GET['risk_id']) ? (int)$_GET['risk_id'] : 0;
 
-$search = $_GET['search'] ?? '';
+$search = trim($_GET['search'] ?? '');
 $unit_filter = $_GET['unit'] ?? '';
 $type_filter = $_GET['risk_type'] ?? '';
 $severity_filter = $_GET['severity'] ?? '';
-$status_filter = $_GET['status'] ?? '';
 $date_from = $_GET['date_from'] ?? '';
+$date_to = $_GET['date_to'] ?? '';
 
 $risk = null;
 if ($risk_id) {
-    $stmt = $pdo->prepare("SELECT r.*, u.username FROM risks r LEFT JOIN users u ON r.user_id = u.id WHERE r.id = ?");
+    $stmt = $pdo->prepare("SELECT r.*, u.username FROM risks r LEFT JOIN users u ON r.user_id = u.id WHERE r.id = ? AND r.status = 'ดำเนินการแล้ว'");
     $stmt->execute([$risk_id]);
     $risk = $stmt->fetch();
-    if (!$risk) redirect('report_summary.php');
-    if (!isAdmin() && $risk['user_id'] != $_SESSION['user_id']) redirect('report_summary.php');
+    if (!$risk) redirect('risks.php');
+    if (!isAdmin() && $risk['user_id'] != $_SESSION['user_id']) redirect('risks.php');
 }
 
 $existingReport = null;
@@ -40,7 +42,6 @@ if ($risk_id) {
     $stmt = $pdo->prepare("SELECT * FROM risk_reports WHERE risk_id = ? ORDER BY created_at DESC LIMIT 1");
     $stmt->execute([$risk_id]);
     $existingReport = $stmt->fetch();
-    if (!$existingReport) redirect('report_summary.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -87,14 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $params[] = $risk_id;
                     $stmt = $pdo->prepare($sql);
                     $stmt->execute($params);
-                    $stmtUpdate = $pdo->prepare("UPDATE risks SET status = 'ดำเนินการแล้ว' WHERE id = ?");
-                    $stmtUpdate->execute([$risk_id]);
                     $success = 'อัปเดตสรุปผลการรายงานเรียบร้อยแล้ว';
                 } else {
                     $stmt = $pdo->prepare("INSERT INTO risk_reports (risk_id, corrective_action, responsible_person, follow_up, expected_outcome, report_file, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([$risk_id, $corrective_action, $responsible_person, $follow_up, $expected_outcome, $uploaded_file, $_SESSION['user_id']]);
-                    $stmtUpdate = $pdo->prepare("UPDATE risks SET status = 'ดำเนินการแล้ว' WHERE id = ?");
-                    $stmtUpdate->execute([$risk_id]);
                     $success = 'บันทึกสรุปผลการรายงานเรียบร้อยแล้ว';
                 }
                 $stmt = $pdo->prepare("SELECT * FROM risk_reports WHERE risk_id = ? ORDER BY created_at DESC LIMIT 1");
@@ -112,25 +109,21 @@ $allRisks = [];
 $totalRows = 0;
 $totalPages = 0;
 
-$filterUnits = $pdo->query("SELECT DISTINCT unit FROM risks WHERE unit IS NOT NULL AND unit != '' ORDER BY unit")->fetchAll(PDO::FETCH_COLUMN);
-$filterTypes = $pdo->query("SELECT DISTINCT risk_type FROM risks ORDER BY risk_type")->fetchAll(PDO::FETCH_COLUMN);
-$filterSeverities = $pdo->query("SELECT DISTINCT severity FROM risks ORDER BY severity")->fetchAll(PDO::FETCH_COLUMN);
+$filterUnits = $pdo->query("SELECT DISTINCT unit FROM risks WHERE unit IS NOT NULL AND unit != '' AND status = 'ดำเนินการแล้ว' ORDER BY unit")->fetchAll(PDO::FETCH_COLUMN);
+$filterTypes = $pdo->query("SELECT DISTINCT risk_type FROM risks WHERE status = 'ดำเนินการแล้ว' ORDER BY risk_type")->fetchAll(PDO::FETCH_COLUMN);
+$filterSeverities = $pdo->query("SELECT DISTINCT severity FROM risks WHERE status = 'ดำเนินการแล้ว' ORDER BY severity")->fetchAll(PDO::FETCH_COLUMN);
 
 if ($risk_id === 0) {
-    // แสดงเฉพาะรายการที่มีสรุปผลแล้ว (มีข้อมูลใน risk_reports)
-    $whereClause = "WHERE 1=1";
+    $whereClause = "WHERE r.status = 'ดำเนินการแล้ว'";
     $countParams = [];
     $queryParams = [];
-    
-    // เฉพาะรายการที่มี risk_reports
-    $whereClause .= " AND rr.id IS NOT NULL";
     
     if (!isAdmin()) {
         $whereClause .= " AND r.user_id = ?";
         $countParams[] = $_SESSION['user_id'];
         $queryParams[] = $_SESSION['user_id'];
     }
-    if ($search) {
+    if ($search !== '') {
         $whereClause .= " AND (r.risk_type LIKE ? OR r.risk_detail LIKE ? OR r.unit LIKE ? OR r.risk_type_other LIKE ?)";
         $searchTerm = "%{$search}%";
         for ($i = 0; $i < 4; $i++) {
@@ -138,74 +131,77 @@ if ($risk_id === 0) {
             $queryParams[] = $searchTerm;
         }
     }
-    if ($unit_filter) {
+    if ($unit_filter !== '') {
         $whereClause .= " AND r.unit = ?";
         $countParams[] = $unit_filter;
         $queryParams[] = $unit_filter;
     }
-    if ($type_filter) {
+    if ($type_filter !== '') {
         $whereClause .= " AND r.risk_type = ?";
         $countParams[] = $type_filter;
         $queryParams[] = $type_filter;
     }
-    if ($severity_filter) {
+    if ($severity_filter !== '') {
         $whereClause .= " AND r.severity = ?";
         $countParams[] = $severity_filter;
         $queryParams[] = $severity_filter;
     }
-    if ($status_filter) {
-        $whereClause .= " AND r.status = ?";
-        $countParams[] = $status_filter;
-        $queryParams[] = $status_filter;
-    }
-    if ($date_from) {
+    if ($date_from !== '') {
         $whereClause .= " AND DATE(r.event_datetime) >= ?";
         $countParams[] = $date_from;
         $queryParams[] = $date_from;
     }
+    if ($date_to !== '') {
+        $whereClause .= " AND DATE(r.event_datetime) <= ?";
+        $countParams[] = $date_to;
+        $queryParams[] = $date_to;
+    }
 
-    $countSql = "SELECT COUNT(*) FROM risks r 
-                 LEFT JOIN risk_reports rr ON r.id = rr.risk_id 
-                 {$whereClause}";
+    $countSql = "SELECT COUNT(*) FROM risks r {$whereClause}";
     $countStmt = $pdo->prepare($countSql);
     $countStmt->execute($countParams);
     $totalRows = $countStmt->fetchColumn();
     $totalPages = ceil($totalRows / $perPage);
 
-    $limit = (int)$perPage;
-    $offsetVal = (int)$offset;
-    $sql = "SELECT r.*, u.username, rr.id as report_id, rr.corrective_action, rr.responsible_person, rr.follow_up, rr.expected_outcome, rr.report_file 
-            FROM risks r 
-            LEFT JOIN users u ON r.user_id = u.id 
-            LEFT JOIN risk_reports rr ON r.id = rr.risk_id 
-            {$whereClause} 
-            ORDER BY r.created_at DESC 
-            LIMIT {$limit} OFFSET {$offsetVal}";
-    $stmt = $pdo->prepare($sql);
+    $dataSql = "SELECT r.*, u.username, rr.id as report_id FROM risks r LEFT JOIN users u ON r.user_id = u.id LEFT JOIN risk_reports rr ON r.id = rr.risk_id {$whereClause} ORDER BY r.created_at DESC LIMIT $perPage OFFSET $offset";
+    $stmt = $pdo->prepare($dataSql);
     $stmt->execute($queryParams);
     $allRisks = $stmt->fetchAll();
 }
 
-function getStatusClass($status)
+function getSeverityBadgeClass($severity)
 {
-    if ($status == 'ดำเนินการแล้ว') return 'bg-green-100 text-green-700';
-    if ($status == 'กำลังดำเนินการ') return 'bg-blue-100 text-blue-700';
-    if ($status == 'ยุติ') return 'bg-gray-100 text-gray-500';
-    return 'bg-yellow-100 text-yellow-700';
+    $map = [
+        'A' => 'bg-blue-50 text-blue-700 border-blue-200',
+        'B' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'C' => 'bg-lime-50 text-lime-700 border-lime-200',
+        'D' => 'bg-amber-50 text-amber-700 border-amber-200',
+        'E' => 'bg-red-50 text-red-700 border-red-200',
+        'F' => 'bg-orange-50 text-orange-700 border-orange-200'
+    ];
+    return $map[$severity] ?? 'bg-slate-100 text-slate-600 border-slate-200';
 }
+
 function isImageFile($filename)
 {
     if (empty($filename)) return false;
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 }
+
 function getFileIcon($filename)
 {
     if (empty($filename)) return 'fa-file';
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-    $icons = ['pdf' => 'fa-file-pdf', 'doc' => 'fa-file-word', 'docx' => 'fa-file-word', 'xls' => 'fa-file-excel', 'xlsx' => 'fa-file-excel', 'jpg' => 'fa-file-image', 'jpeg' => 'fa-file-image', 'png' => 'fa-file-image', 'gif' => 'fa-file-image', 'webp' => 'fa-file-image'];
-    return isset($icons[$ext]) ? $icons[$ext] : 'fa-file';
+    $icons = [
+        'pdf' => 'fa-file-pdf', 'doc' => 'fa-file-word', 'docx' => 'fa-file-word',
+        'xls' => 'fa-file-excel', 'xlsx' => 'fa-file-excel',
+        'jpg' => 'fa-file-image', 'jpeg' => 'fa-file-image', 'png' => 'fa-file-image',
+        'gif' => 'fa-file-image', 'webp' => 'fa-file-image'
+    ];
+    return $icons[$ext] ?? 'fa-file';
 }
+
 function formatFileSize($bytes)
 {
     if ($bytes === false || $bytes === null) return 'ไม่ทราบขนาด';
@@ -213,113 +209,30 @@ function formatFileSize($bytes)
     if ($bytes < 1048576) return number_format($bytes / 1024, 1) . ' KB';
     return number_format($bytes / 1048576, 1) . ' MB';
 }
-function getSeverityBadgeClass($severity)
-{
-    if ($severity == 'A') return 'bg-blue-100 text-blue-700';
-    if ($severity == 'B') return 'bg-green-100 text-green-700';
-    if ($severity == 'C') return 'bg-lime-100 text-lime-700';
-    if ($severity == 'D') return 'bg-yellow-100 text-yellow-700';
-    if ($severity == 'F') return 'bg-orange-100 text-orange-700';
-    if ($severity == 'E') return 'bg-red-100 text-red-700';
-    return 'bg-gray-100 text-gray-600';
-}
+
 function buildReportPageUrl($page, $currentParams)
 {
     $query = $currentParams;
-    unset($query['page']);
-    if ($page > 1) $query['page'] = $page;
-    $url = 'report_summary.php';
-    if (!empty($query)) $url .= '?' . http_build_query($query);
-    return $url;
+    $query['page'] = $page;
+    return 'report_summary.php?' . http_build_query($query);
 }
 
 $csrf_token = generateCsrfToken();
 ?>
 <?php include 'includes/header.php'; ?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    :root {
-        --primary: #3b82f6;
-        --primary-dark: #1e40af;
-    }
-
-    body { 
+    body {
         background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 30%, #ede9fe 60%, #fce7f3 100%);
-        min-height: 100vh;
-        position: relative;
-    }
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: 
-            radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
-            radial-gradient(circle at 50% 80%, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
-        pointer-events: none;
-        z-index: 0;
     }
 
     .page-container {
-        max-width: 1300px;
+        max-width: 1400px;
         margin: 0 auto;
-        position: relative;
-        z-index: 1;
     }
 
-    /* Floating shapes decoration */
-    .floating-shapes {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        pointer-events: none;
-        z-index: 0;
-        overflow: hidden;
-    }
-    .floating-shapes .shape {
-        position: absolute;
-        border-radius: 50%;
-        opacity: 0.3;
-    }
-    .floating-shapes .shape:nth-child(1) {
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(59,130,246,0.1), transparent);
-        top: -100px;
-        right: -100px;
-        animation: float 20s ease-in-out infinite;
-    }
-    .floating-shapes .shape:nth-child(2) {
-        width: 200px;
-        height: 200px;
-        background: radial-gradient(circle, rgba(139,92,246,0.1), transparent);
-        bottom: 50px;
-        left: -50px;
-        animation: float 25s ease-in-out infinite reverse;
-    }
-    .floating-shapes .shape:nth-child(3) {
-        width: 150px;
-        height: 150px;
-        background: radial-gradient(circle, rgba(236,72,153,0.1), transparent);
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        animation: float 30s ease-in-out infinite;
-    }
-    @keyframes float {
-        0%, 100% { transform: translate(0, 0) scale(1); }
-        25% { transform: translate(30px, -30px) scale(1.1); }
-        50% { transform: translate(-20px, 20px) scale(0.9); }
-        75% { transform: translate(20px, -10px) scale(1.05); }
-    }
-
-    /* Header */
     .page-header {
         background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
         border-radius: 1.5rem;
@@ -328,7 +241,6 @@ $csrf_token = generateCsrfToken();
         color: white;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 10px 40px rgba(37, 99, 235, 0.3);
     }
 
     .page-header::before {
@@ -340,6 +252,13 @@ $csrf_token = generateCsrfToken();
         height: 350px;
         background: rgba(255, 255, 255, 0.03);
         border-radius: 50%;
+    }
+
+    .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
     }
 
     .page-header h2 {
@@ -356,20 +275,60 @@ $csrf_token = generateCsrfToken();
         z-index: 1;
     }
 
-    /* Filter */
+    .page-header .back-link {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .page-header .back-link:hover {
+        color: white;
+    }
+
+    .stats-row {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.25rem;
+        background: white;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        font-size: 0.85rem;
+        color: #1e293b;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .stat-badge i {
+        color: #3b82f6;
+    }
+
+    .stat-badge strong {
+        color: #1e40af;
+    }
+
     .filter-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
+        background: white;
         border-radius: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        border: 1px solid #e2e8f0;
         padding: 1.25rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
 
     .filter-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
         gap: 0.75rem;
     }
 
@@ -389,25 +348,29 @@ $csrf_token = generateCsrfToken();
 
     .filter-input {
         padding: 0.55rem 0.7rem;
-        border: 1.5px solid rgba(226, 232, 240, 0.8);
+        border: 1.5px solid #e2e8f0;
         border-radius: 0.5rem;
         font-size: 0.85rem;
         outline: none;
         font-family: 'Sarabun', sans-serif;
-        background: rgba(250, 251, 252, 0.8);
+        background: #fafbfc;
         transition: all 0.2s;
-        width: 100%;
-        backdrop-filter: blur(10px);
+        color: #1e293b;
     }
 
     .filter-input:focus {
         border-color: #3b82f6;
         background: white;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
     }
 
     select.filter-input {
         cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.7rem center;
+        padding-right: 2rem;
     }
 
     .search-box {
@@ -446,11 +409,12 @@ $csrf_token = generateCsrfToken();
 
     .filter-actions {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         align-items: center;
         padding-top: 0.75rem;
         margin-top: 0.5rem;
-        border-top: 1px solid rgba(241, 245, 249, 0.8);
+        border-top: 1px solid #f1f5f9;
+        flex-wrap: wrap;
         gap: 0.5rem;
     }
 
@@ -466,54 +430,42 @@ $csrf_token = generateCsrfToken();
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
-    }
-
-    .btn-filter.primary {
-        background: #3b82f6;
-        color: white;
-    }
-
-    .btn-filter.primary:hover {
-        background: #2563eb;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        text-decoration: none;
     }
 
     .btn-filter.danger {
         background: #fee2e2;
         color: #dc2626;
-        text-decoration: none;
     }
 
     .btn-filter.danger:hover {
         background: #fecaca;
     }
 
-    .btn-filter.success {
-        background: #dcfce7;
-        color: #16a34a;
-        text-decoration: none;
+    .filter-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        background: #eff6ff;
+        color: #2563eb;
     }
 
-    .btn-filter.success:hover {
-        background: #bbf7d0;
+    .filter-badge .remove {
+        cursor: pointer;
+        margin-left: 0.2rem;
+        color: #ef4444;
     }
 
-    .filter-stats {
-        font-size: 0.8rem;
-        color: #94a3b8;
-        margin-right: auto;
-    }
-
-    /* Table */
     .table-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
+        background: white;
         border-radius: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        border: 1px solid #e2e8f0;
         overflow: hidden;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
 
     .table-header-bar {
@@ -521,8 +473,8 @@ $csrf_token = generateCsrfToken();
         align-items: center;
         justify-content: space-between;
         padding: 1rem 1.25rem;
-        background: rgba(250, 251, 252, 0.7);
-        border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        background: #fafbfc;
+        border-bottom: 1px solid #e2e8f0;
         flex-wrap: wrap;
         gap: 0.5rem;
     }
@@ -540,14 +492,14 @@ $csrf_token = generateCsrfToken();
         color: #94a3b8;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        background: rgba(250, 251, 252, 0.5);
-        border-bottom: 2px solid rgba(226, 232, 240, 0.5);
+        background: #fafbfc;
+        border-bottom: 2px solid #e2e8f0;
         white-space: nowrap;
     }
 
     td {
         padding: 0.75rem 0.9rem;
-        border-bottom: 1px solid rgba(248, 250, 252, 0.8);
+        border-bottom: 1px solid #f8fafc;
         font-size: 0.85rem;
         color: #334155;
     }
@@ -561,15 +513,15 @@ $csrf_token = generateCsrfToken();
     }
 
     tbody tr:hover {
-        background: rgba(240, 249, 255, 0.5);
+        background: #f0f9ff;
     }
 
     tbody tr:nth-child(even) {
-        background: rgba(250, 251, 252, 0.3);
+        background: #fafbfc;
     }
 
     tbody tr:nth-child(even):hover {
-        background: rgba(240, 249, 255, 0.5);
+        background: #f0f9ff;
     }
 
     .badge {
@@ -581,11 +533,6 @@ $csrf_token = generateCsrfToken();
         font-size: 0.7rem;
         font-weight: 600;
         white-space: nowrap;
-    }
-
-    .badge-completed {
-        background: #d1fae5;
-        color: #065f46;
     }
 
     .btn-icon {
@@ -605,14 +552,12 @@ $csrf_token = generateCsrfToken();
         transform: scale(1.12);
     }
 
-    /* Empty */
     .empty-state {
         text-align: center;
         padding: 5rem 2rem;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
+        background: white;
         border-radius: 1rem;
-        border: 2px dashed rgba(226, 232, 240, 0.8);
+        border: 2px dashed #e2e8f0;
     }
 
     .empty-state i {
@@ -621,7 +566,6 @@ $csrf_token = generateCsrfToken();
         margin-bottom: 1rem;
     }
 
-    /* Pagination */
     .pagination-bar {
         display: flex;
         align-items: center;
@@ -639,20 +583,18 @@ $csrf_token = generateCsrfToken();
         height: 36px;
         padding: 0 0.5rem;
         border-radius: 0.5rem;
-        border: 1px solid rgba(226, 232, 240, 0.8);
+        border: 1px solid #e2e8f0;
         font-size: 0.85rem;
         font-weight: 500;
         color: #64748b;
         text-decoration: none;
         transition: all 0.2s;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
+        background: white;
     }
 
     .page-link:hover {
         background: #f1f5f9;
         border-color: #cbd5e1;
-        transform: translateY(-2px);
     }
 
     .page-link.active {
@@ -667,215 +609,188 @@ $csrf_token = generateCsrfToken();
         pointer-events: none;
     }
 
-    /* Form */
-    .form-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
-        border-radius: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    .info-card {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+        margin-top: 1.5rem;
+        font-size: 0.85rem;
+        color: #1e40af;
     }
 
-    .info-card {
-        background: rgba(248, 250, 252, 0.8);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(226, 232, 240, 0.5);
-        border-radius: 0.75rem;
-        padding: 1.25rem 1.5rem;
+    /* Form Styles */
+    .form-card {
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        padding: 1.5rem;
         margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
 
     .form-group {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
     }
 
     .form-label {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 600;
-        color: #1e293b;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-    }
-
-    .form-label i {
-        width: 28px;
-        height: 28px;
-        background: rgba(239, 246, 255, 0.8);
-        border-radius: 7px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #3b82f6;
-        font-size: 0.8rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.3rem;
+        display: block;
     }
 
     .form-textarea {
         width: 100%;
-        min-height: 120px;
-        padding: 0.85rem 1rem;
-        border: 1.5px solid rgba(226, 232, 240, 0.8);
-        border-radius: 0.7rem;
-        background: rgba(250, 251, 252, 0.8);
-        color: #1e293b;
-        font-size: 0.9rem;
+        min-height: 110px;
+        padding: 0.55rem 0.7rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background: #fafbfc;
+        color: #334155;
+        font-size: 0.85rem;
         resize: vertical;
         transition: all 0.2s;
         outline: none;
         font-family: 'Sarabun', sans-serif;
-        backdrop-filter: blur(10px);
+        line-height: 1.6;
     }
 
     .form-textarea:focus {
         border-color: #3b82f6;
         background: white;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
     }
 
     .form-input {
         width: 100%;
-        padding: 0.7rem 0.9rem;
-        border: 1.5px solid rgba(226, 232, 240, 0.8);
-        border-radius: 0.7rem;
-        background: rgba(250, 251, 252, 0.8);
-        color: #1e293b;
-        font-size: 0.9rem;
+        padding: 0.55rem 0.7rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background: #fafbfc;
+        color: #334155;
+        font-size: 0.85rem;
         transition: all 0.2s;
         outline: none;
         font-family: 'Sarabun', sans-serif;
-        backdrop-filter: blur(10px);
     }
 
     .form-input:focus {
         border-color: #3b82f6;
         background: white;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
     }
 
-    .btn-submit {
-        background: linear-gradient(135deg, #1e40af, #3b82f6);
-        color: white;
-        padding: 0.7rem 1.8rem;
-        border-radius: 0.7rem;
-        font-weight: 600;
-        border: none;
+    .btn-action {
+        padding: 0.5rem 0.9rem;
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 500;
         cursor: pointer;
-        transition: all 0.3s;
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+        border: 1px solid;
+        transition: all 0.2s;
         font-family: 'Sarabun', sans-serif;
-        font-size: 0.9rem;
         display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        text-decoration: none;
+    }
+
+    .btn-action.blue {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
+    }
+
+    .btn-action.blue:hover {
+        background: #dbeafe;
+    }
+
+    .btn-action.gray {
+        background: #f1f5f9;
+        color: #64748b;
+        border-color: #e2e8f0;
+    }
+
+    .btn-action.gray:hover {
+        background: #e2e8f0;
+    }
+
+    .info-detail-card {
+        background: white;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .info-detail-card h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 0.75rem;
+        display: flex;
         align-items: center;
         gap: 0.5rem;
     }
 
-    .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 32px rgba(37, 99, 235, 0.45);
-    }
-
-    .btn-cancel {
-        padding: 0.7rem 1.5rem;
-        border-radius: 0.7rem;
-        font-weight: 500;
-        font-size: 0.9rem;
-        background: rgba(241, 245, 249, 0.8);
-        color: #64748b;
-        text-decoration: none;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(226, 232, 240, 0.5);
-    }
-
-    .btn-cancel:hover {
-        background: #e2e8f0;
-        color: #334155;
-        transform: translateY(-2px);
-    }
-
-    /* File */
+    /* File Upload */
     .file-card {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(226, 232, 240, 0.5);
+        background: white;
+        border: 1.5px solid #e2e8f0;
         border-radius: 0.75rem;
         overflow: hidden;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
     }
 
     .file-card-header {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.7rem 1rem;
-        background: rgba(248, 250, 252, 0.7);
-        border-bottom: 1px solid rgba(226, 232, 240, 0.5);
-        font-size: 0.85rem;
+        gap: 0.4rem;
+        padding: 0.6rem 1rem;
+        background: #fafbfc;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
     }
 
     .file-card-preview {
-        background: rgba(241, 245, 249, 0.5);
+        background: #f8fafc;
         padding: 1rem;
         text-align: center;
-        border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        border-bottom: 1px solid #e2e8f0;
     }
 
     .img-preview-link {
-        position: relative;
         display: inline-block;
         border-radius: 0.5rem;
         overflow: hidden;
-        border: 2px solid rgba(226, 232, 240, 0.8);
+        border: 1px solid #e2e8f0;
         cursor: pointer;
-        transition: all 0.3s;
-        max-width: 100%;
+        transition: all 0.2s;
     }
 
     .img-preview-link:hover {
         border-color: #3b82f6;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
     }
 
     .img-preview-link img {
         display: block;
         max-width: 100%;
-        max-height: 200px;
+        max-height: 180px;
         object-fit: contain;
-    }
-
-    .img-overlay {
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.4);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        opacity: 0;
-        transition: opacity 0.3s;
-        color: white;
-    }
-
-    .img-preview-link:hover .img-overlay {
-        opacity: 1;
-    }
-
-    .img-overlay i {
-        font-size: 1.5rem;
     }
 
     .file-info-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 1rem;
+        padding: 0.75rem 1rem;
         gap: 1rem;
         flex-wrap: wrap;
     }
@@ -887,20 +802,20 @@ $csrf_token = generateCsrfToken();
     }
 
     .file-icon-box {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .btn-sm {
         padding: 0.4rem 0.7rem;
         border-radius: 0.4rem;
         font-size: 0.75rem;
-        font-weight: 500;
+        font-weight: 600;
         text-decoration: none;
         transition: all 0.2s;
         border: 1px solid;
@@ -910,63 +825,54 @@ $csrf_token = generateCsrfToken();
     }
 
     .btn-sm.download {
-        background: rgba(239, 246, 255, 0.8);
+        background: #eff6ff;
         color: #2563eb;
-        border-color: rgba(191, 219, 254, 0.5);
+        border-color: #bfdbfe;
     }
 
     .btn-sm.download:hover {
         background: #dbeafe;
-        transform: translateY(-2px);
     }
 
     .btn-sm.view {
-        background: rgba(240, 253, 244, 0.8);
+        background: #f0fdf4;
         color: #16a34a;
-        border-color: rgba(187, 247, 208, 0.5);
+        border-color: #bbf7d0;
     }
 
     .btn-sm.view:hover {
         background: #dcfce7;
-        transform: translateY(-2px);
     }
 
     .upload-area {
-        border: 2px dashed rgba(203, 213, 225, 0.8);
+        border: 2px dashed #cbd5e1;
         border-radius: 0.75rem;
         padding: 2rem;
         text-align: center;
-        background: rgba(248, 250, 252, 0.5);
+        background: #fafbfc;
         cursor: pointer;
         transition: all 0.2s;
         display: block;
-        backdrop-filter: blur(10px);
     }
 
     .upload-area:hover {
         border-color: #3b82f6;
-        background: rgba(239, 246, 255, 0.5);
+        background: #eff6ff;
     }
 
     .upload-icon {
-        width: 50px;
-        height: 50px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
-        background: rgba(239, 246, 255, 0.8);
+        background: #eff6ff;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 0.75rem;
-        transition: all 0.3s;
-    }
-
-    .upload-area:hover .upload-icon {
-        background: #dbeafe;
-        transform: scale(1.1);
     }
 
     .upload-icon i {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         color: #3b82f6;
     }
 
@@ -974,10 +880,10 @@ $csrf_token = generateCsrfToken();
         margin-top: 0.75rem;
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
         padding: 0.4rem 0.7rem;
-        background: rgba(239, 246, 255, 0.8);
-        border: 1px solid rgba(191, 219, 254, 0.5);
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
         border-radius: 0.4rem;
         font-size: 0.8rem;
     }
@@ -989,171 +895,170 @@ $csrf_token = generateCsrfToken();
         cursor: pointer;
         padding: 0.2rem;
         border-radius: 50%;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .btn-remove:hover {
         background: #fee2e2;
     }
 
-    /* Status Badge for Completed */
-    .badge-completed {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    /* Report summary badge */
-    .report-summary-box {
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
-        border-radius: 0.5rem;
-        padding: 0.5rem 0.75rem;
-        font-size: 0.7rem;
-        color: #065f46;
+    .hidden {
+        display: none !important;
     }
 
     @media (max-width: 1024px) {
         .filter-grid {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
         }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
         .filter-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    @media print {
-
-        .sidebar,
-        .filter-card,
-        .pagination-bar,
-        .floating-shapes {
-            display: none !important;
+            grid-template-columns: 1fr 1fr;
         }
     }
 </style>
 
-<div class="flex h-screen" style="position:relative;z-index:1;">
+<div class="flex h-screen">
     <?php include 'includes/sidebar.php'; ?>
     <div class="flex-1 p-4 md:p-5 overflow-y-auto">
-        <!-- Floating Shapes Background -->
-        <div class="floating-shapes">
-            <div class="shape"></div>
-            <div class="shape"></div>
-            <div class="shape"></div>
-        </div>
-        
         <div class="page-container">
 
             <?php if (!$risk_id): ?>
                 <!-- ========== LIST VIEW ========== -->
                 <div class="page-header">
-                    <h2>📋 สรุปผลการรายงาน</h2>
-                    <p>รายการความเสี่ยงที่สรุปผลเรียบร้อยแล้ว <span>(<?= number_format($totalRows) ?> รายการ)</span></p>
+                    <h1>✅ สรุปผลการรายงาน</h1>
+                    <p>รายการความเสี่ยงที่ดำเนินการเสร็จสิ้นแล้ว · ทั้งหมด <strong><?= number_format($totalRows) ?></strong> รายการ</p>
                 </div>
 
+                <!-- Stats -->
+                <div class="stats-row">
+                    <div class="stat-badge"><i class="fas fa-check-circle text-emerald-500"></i> ดำเนินการแล้ว <strong><?= number_format($totalRows) ?></strong> รายการ</div>
+                    <div class="stat-badge"><i class="fas fa-file-alt"></i> หน้า <strong><?= $page ?></strong> / <?= max(1, $totalPages) ?></div>
+                    <?php if ($search || $unit_filter || $type_filter || $severity_filter || $date_from || $date_to): ?>
+                        <div class="stat-badge"><i class="fas fa-filter text-blue-500"></i> กรอง <strong><?= number_format($totalRows) ?></strong> รายการ</div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Filter -->
                 <div class="filter-card">
-                    <form method="GET" action="report_summary.php" id="filterForm">
+                    <form method="GET" id="filterForm" action="report_summary.php">
                         <div class="filter-grid">
                             <div class="search-box filter-group">
                                 <label class="filter-label">🔍 ค้นหา</label>
-                                <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" class="filter-input" placeholder="พิมพ์คำค้นหา..." onkeyup="if(event.key==='Enter') this.form.submit();">
-                                <i class="fas fa-search search-icon"></i>
-                                <?php if ($search): ?>
-                                    <a href="report_summary.php" class="search-clear" title="ล้างคำค้นหา"><i class="fas fa-times"></i></a>
-                                <?php endif; ?>
+                                <div style="position:relative;">
+                                    <i class="fas fa-search search-icon"></i>
+                                    <input type="text" name="search" id="searchInput" value="<?= htmlspecialchars($search) ?>" class="filter-input" placeholder="ประเภท, กลุ่มงาน, รายละเอียด..." style="width:100%;">
+                                    <?php if ($search): ?>
+                                        <a href="<?= buildReportPageUrl(1, array_merge($_GET, ['search' => ''])) ?>" class="search-clear"><i class="fas fa-times"></i></a>
+                                    <?php endif; ?>
+                                </div>
                             </div>
-
                             <div class="filter-group">
-                                <label class="filter-label">กลุ่มงาน</label>
-                                <select name="unit" class="filter-input" onchange="this.form.submit()">
+                                <label class="filter-label">🏢 กลุ่มงาน</label>
+                                <select name="unit" class="filter-input auto-submit">
                                     <option value="">ทั้งหมด</option>
                                     <?php foreach ($filterUnits as $u): ?>
                                         <option value="<?= htmlspecialchars($u) ?>" <?= $unit_filter == $u ? 'selected' : '' ?>><?= htmlspecialchars($u) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-
                             <div class="filter-group">
-                                <label class="filter-label">ประเภท</label>
-                                <select name="risk_type" class="filter-input" onchange="this.form.submit()">
+                                <label class="filter-label">🏷️ ประเภท</label>
+                                <select name="risk_type" class="filter-input auto-submit">
                                     <option value="">ทั้งหมด</option>
                                     <?php foreach ($filterTypes as $t): ?>
                                         <option value="<?= htmlspecialchars($t) ?>" <?= $type_filter == $t ? 'selected' : '' ?>><?= htmlspecialchars($t) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-
                             <div class="filter-group">
-                                <label class="filter-label">ระดับ</label>
-                                <select name="severity" class="filter-input" onchange="this.form.submit()">
+                                <label class="filter-label">⚠️ ระดับ</label>
+                                <select name="severity" class="filter-input auto-submit">
                                     <option value="">ทั้งหมด</option>
                                     <?php foreach ($filterSeverities as $s): ?>
                                         <option value="<?= htmlspecialchars($s) ?>" <?= $severity_filter == $s ? 'selected' : '' ?>>ระดับ <?= htmlspecialchars($s) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-
                             <div class="filter-group">
-                                <label class="filter-label">สถานะ</label>
-                                <select name="status" class="filter-input" onchange="this.form.submit()">
-                                    <option value="">ทั้งหมด</option>
-                                    <option value="ยังไม่ดำเนินการ" <?= $status_filter == 'ยังไม่ดำเนินการ' ? 'selected' : '' ?>>ยังไม่ดำเนินการ</option>
-                                    <option value="กำลังดำเนินการ" <?= $status_filter == 'กำลังดำเนินการ' ? 'selected' : '' ?>>กำลังดำเนินการ</option>
-                                    <option value="ดำเนินการแล้ว" <?= $status_filter == 'ดำเนินการแล้ว' ? 'selected' : '' ?>>ดำเนินการแล้ว</option>
-                                    <option value="ยุติ" <?= $status_filter == 'ยุติ' ? 'selected' : '' ?>>ยุติ</option>
-                                </select>
+                                <label class="filter-label">📅 ตั้งแต่</label>
+                                <input type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>" class="filter-input auto-submit">
                             </div>
-
                             <div class="filter-group">
-                                <label class="filter-label">ตั้งแต่วันที่</label>
-                                <input type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>" class="filter-input" onchange="this.form.submit()">
+                                <label class="filter-label">📅 ถึง</label>
+                                <input type="date" name="date_to" value="<?= htmlspecialchars($date_to) ?>" class="filter-input auto-submit">
                             </div>
                         </div>
 
+                        <!-- Active Filters -->
+                        <?php if ($search || $unit_filter || $type_filter || $severity_filter || $date_from || $date_to): ?>
+                            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.75rem;">
+                                <?php if ($search): ?>
+                                    <span class="filter-badge">🔍 "<?= htmlspecialchars($search) ?>"
+                                        <a href="<?= buildReportPageUrl(1, array_merge($_GET, ['search' => ''])) ?>" class="remove"><i class="fas fa-times"></i></a>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($unit_filter): ?>
+                                    <span class="filter-badge">🏢 <?= htmlspecialchars($unit_filter) ?>
+                                        <a href="<?= buildReportPageUrl(1, array_merge($_GET, ['unit' => ''])) ?>" class="remove"><i class="fas fa-times"></i></a>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($type_filter): ?>
+                                    <span class="filter-badge">🏷️ <?= htmlspecialchars($type_filter) ?>
+                                        <a href="<?= buildReportPageUrl(1, array_merge($_GET, ['risk_type' => ''])) ?>" class="remove"><i class="fas fa-times"></i></a>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($severity_filter): ?>
+                                    <span class="filter-badge">⚠️ <?= htmlspecialchars($severity_filter) ?>
+                                        <a href="<?= buildReportPageUrl(1, array_merge($_GET, ['severity' => ''])) ?>" class="remove"><i class="fas fa-times"></i></a>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($date_from): ?>
+                                    <span class="filter-badge">📅 ตั้งแต่ <?= htmlspecialchars($date_from) ?>
+                                        <a href="<?= buildReportPageUrl(1, array_merge($_GET, ['date_from' => ''])) ?>" class="remove"><i class="fas fa-times"></i></a>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($date_to): ?>
+                                    <span class="filter-badge">📅 ถึง <?= htmlspecialchars($date_to) ?>
+                                        <a href="<?= buildReportPageUrl(1, array_merge($_GET, ['date_to' => ''])) ?>" class="remove"><i class="fas fa-times"></i></a>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="filter-actions">
-                            <?php if ($search || $unit_filter || $type_filter || $severity_filter || $status_filter || $date_from): ?>
-                                <span class="filter-stats">
-                                    <i class="fas fa-filter text-blue-500 mr-1"></i>
-                                    กำลังกรอง: <?= number_format($totalRows) ?> รายการ
-                                </span>
-                                <a href="report_summary.php" class="btn-filter danger">
-                                    <i class="fas fa-times"></i> ล้างตัวกรองทั้งหมด
-                                </a>
-                            <?php else: ?>
-                                <span class="filter-stats">
-                                    <i class="fas fa-database text-gray-400 mr-1"></i>
-                                    ทั้งหมด <?= number_format($totalRows) ?> รายการ
-                                </span>
-                            <?php endif; ?>
+                            <span style="font-size:0.8rem;color:#94a3b8;">
+                                <?php if ($search || $unit_filter || $type_filter || $severity_filter || $date_from || $date_to): ?>
+                                    <i class="fas fa-check-circle text-green-500 mr-1"></i> พบ <?= number_format($totalRows) ?> รายการ
+                                <?php else: ?>
+                                    <i class="fas fa-database mr-1"></i> แสดงทั้งหมด <?= number_format($totalRows) ?> รายการ
+                                <?php endif; ?>
+                            </span>
+                            <div style="display:flex;gap:0.5rem;">
+                                <?php if ($search || $unit_filter || $type_filter || $severity_filter || $date_from || $date_to): ?>
+                                    <a href="report_summary.php" class="btn-filter danger"><i class="fas fa-times"></i> ล้างทั้งหมด</a>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </form>
                 </div>
 
+                <!-- Table -->
                 <?php if (empty($allRisks)): ?>
                     <div class="empty-state">
-                        <i class="fas fa-file-alt"></i>
-                        <h3 class="text-xl font-semibold text-gray-600 mb-2">ยังไม่มีรายงานที่สรุปผล</h3>
-                        <p class="text-gray-400 mb-4">
-                            <?= ($search || $unit_filter || $type_filter || $severity_filter || $status_filter || $date_from)
-                                ? 'ไม่พบข้อมูลตรงตามเงื่อนไขที่เลือก'
-                                : 'ยังไม่มีการสรุปผลรายงานความเสี่ยง' ?>
-                        </p>
-                        <a href="risks.php" class="btn-filter primary" style="text-decoration:none;">
-                            <i class="fas fa-arrow-left"></i> กลับไปหน้ารายการความเสี่ยง
-                        </a>
+                        <i class="fas fa-check-circle"></i>
+                        <h3 class="text-xl font-semibold text-gray-600 mb-2">ไม่พบรายการที่ดำเนินการแล้ว</h3>
+                        <p class="text-gray-400"><?= ($search || $unit_filter || $type_filter || $severity_filter || $date_from || $date_to) ? 'ไม่มีข้อมูลตรงตามเงื่อนไข' : 'ยังไม่มีรายการที่ดำเนินการเสร็จสิ้น' ?></p>
                     </div>
                 <?php else: ?>
                     <div class="table-card">
                         <div class="table-header-bar">
-                            <span class="font-semibold text-gray-700">
-                                <i class="fas fa-check-circle text-green-600 mr-1"></i> รายการที่สรุปผลแล้ว
-                            </span>
-                            <span class="text-xs text-gray-500">
-                                หน้า <?= $page ?> จาก <?= max(1, $totalPages) ?> |
-                                แสดง <?= count($allRisks) ?> / <?= number_format($totalRows) ?> รายการ
-                            </span>
+                            <span class="font-semibold text-gray-700"><i class="fas fa-list text-blue-600 mr-1"></i> รายการที่ดำเนินการแล้ว</span>
+                            <span class="text-xs text-gray-500"><?= count($allRisks) ?> / <?= number_format($totalRows) ?> รายการ · หน้า <?= $page ?>/<?= max(1, $totalPages) ?></span>
                         </div>
                         <div class="overflow-x-auto">
                             <table>
@@ -1166,49 +1071,57 @@ $csrf_token = generateCsrfToken();
                                         <th>วันที่</th>
                                         <th>ผู้รายงาน</th>
                                         <th>สถานะ</th>
-                                        <th>สรุปผล</th>
-                                        <th style="width:80px;text-align:center;">จัดการ</th>
+                                        <th>รายงาน</th>
+                                        <th style="width:100px;text-align:center;">จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($allRisks as $index => $item):
                                         $rowNum = ($page - 1) * $perPage + $index + 1;
                                         $sevClass = getSeverityBadgeClass($item['severity']);
-                                        $statusClass = getStatusClass($item['status'] ?? '');
                                     ?>
-                                        <tr>
+                                        <tr style="cursor:pointer;" onclick="window.location='?risk_id=<?= $item['id'] ?>'">
                                             <td class="text-gray-400"><?= $rowNum ?></td>
                                             <td>
                                                 <span class="font-medium"><?= htmlspecialchars(mb_substr($item['risk_type'] ?? '-', 0, 25)) ?></span>
                                                 <?php if (!empty($item['risk_type_other'])): ?>
-                                                    <span class="text-xs text-gray-400">(<?= htmlspecialchars($item['risk_type_other']) ?>)</span>
+                                                    <div class="text-xs text-gray-400"><?= htmlspecialchars($item['risk_type_other']) ?></div>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?= htmlspecialchars(mb_substr($item['unit'] ?? '-', 0, 20)) ?></td>
-                                            <td><span class="badge <?= $sevClass ?>"><?= htmlspecialchars($item['severity'] ?? '-') ?></span></td>
+                                            <td class="text-gray-500"><?= htmlspecialchars(mb_substr($item['unit'] ?? '-', 0, 20)) ?></td>
+                                            <td>
+                                                <span class="badge <?= $sevClass ?>">
+                                                    <i class="fas fa-flag text-xs"></i> <?= htmlspecialchars($item['severity'] ?? '-') ?>
+                                                </span>
+                                            </td>
                                             <td class="text-gray-500 text-sm"><?= date('d/m/Y', strtotime($item['event_datetime'])) ?></td>
-                                            <td><?= htmlspecialchars($item['username'] ?? 'ไม่ระบุ') ?></td>
+                                            <td class="text-gray-500"><?= htmlspecialchars($item['username'] ?? 'ไม่ระบุ') ?></td>
                                             <td>
-                                                <?php if (!empty($item['status'])): ?>
-                                                    <span class="badge <?= $statusClass ?>"><?= htmlspecialchars($item['status']) ?></span>
+                                                <span class="badge bg-emerald-50 text-emerald-700 border-emerald-200">
+                                                    <i class="fas fa-check-circle text-xs"></i> ดำเนินการแล้ว
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <?php if ($item['report_id']): ?>
+                                                    <span class="badge bg-emerald-50 text-emerald-700 border-emerald-200">
+                                                        <i class="fas fa-check-circle text-xs"></i> มีรายงาน
+                                                    </span>
                                                 <?php else: ?>
-                                                    <span class="badge bg-gray-100 text-gray-400">-</span>
+                                                    <span class="badge bg-amber-50 text-amber-700 border-amber-200">
+                                                        <i class="fas fa-clock text-xs"></i> รอรายงาน
+                                                    </span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td>
-                                                <div class="report-summary-box">
-                                                    <i class="fas fa-check-circle text-green-600 mr-1"></i>
-                                                    สรุปแล้ว
-                                                </div>
-                                            </td>
-                                            <td>
+                                            <td onclick="event.stopPropagation();">
                                                 <div style="display:flex;gap:3px;justify-content:center;">
-                                                    <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-blue-50 text-blue-600 hover:bg-blue-100" title="แก้ไข">
-                                                        <i class="fas fa-edit text-sm"></i>
+                                                    <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-blue-50 text-blue-600 hover:bg-blue-100" title="<?= $item['report_id'] ? 'แก้ไขรายงาน' : 'เพิ่มรายงาน' ?>">
+                                                        <i class="fas fa-<?= $item['report_id'] ? 'edit' : 'plus' ?> text-sm"></i>
                                                     </a>
-                                                    <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-green-50 text-green-600 hover:bg-green-100" title="ดู">
-                                                        <i class="fas fa-eye text-sm"></i>
-                                                    </a>
+                                                    <?php if ($item['report_id']): ?>
+                                                        <a href="?risk_id=<?= $item['id'] ?>" class="btn-icon bg-green-50 text-green-600 hover:bg-green-100" title="ดูรายงาน">
+                                                            <i class="fas fa-eye text-sm"></i>
+                                                        </a>
+                                                    <?php endif; ?>
                                                 </div>
                                             </td>
                                         </tr>
@@ -1218,6 +1131,7 @@ $csrf_token = generateCsrfToken();
                         </div>
                     </div>
 
+                    <!-- Pagination -->
                     <?php if ($totalPages > 1): ?>
                         <div class="pagination-bar">
                             <?php if ($page > 1): ?>
@@ -1255,66 +1169,68 @@ $csrf_token = generateCsrfToken();
             <?php else: ?>
                 <!-- ========== FORM VIEW ========== -->
                 <div class="page-header">
-                    <div class="flex items-center gap-3 mb-2">
-                        <a href="report_summary.php" class="text-white/80 hover:text-white">
-                            <i class="fas fa-arrow-left mr-1"></i> กลับ
+                    <div style="margin-bottom: 0.5rem;">
+                        <a href="report_summary.php" class="back-link">
+                            <i class="fas fa-arrow-left"></i> กลับไปหน้ารายการ
                         </a>
                     </div>
                     <h2>📝 สรุปผลการรายงาน</h2>
                     <p>บันทึกมาตรการแก้ไขและการติดตามผล</p>
                 </div>
 
-                <div class="info-card">
-                    <h3 class="font-semibold text-gray-700 mb-3">📋 ข้อมูลความเสี่ยง</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                        <div><span class="text-gray-500">ประเภท:</span> <span class="font-medium"><?= htmlspecialchars($risk['risk_type'] ?? '-') ?></span></div>
-                        <div><span class="text-gray-500">กลุ่มงาน:</span> <span class="font-medium"><?= htmlspecialchars($risk['unit'] ?? '-') ?></span></div>
-                        <div><span class="text-gray-500">ระดับ:</span> <span class="font-medium"><?= htmlspecialchars($risk['severity'] ?? '-') ?></span></div>
-                        <div><span class="text-gray-500">วันที่:</span> <span class="font-medium"><?= date('d/m/Y', strtotime($risk['event_datetime'])) ?></span></div>
-                        <div><span class="text-gray-500">ผู้รายงาน:</span> <span class="font-medium"><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></span></div>
-                        <div><span class="text-gray-500">สถานะ:</span> <span class="badge <?= getStatusClass($risk['status'] ?? '') ?>"><?= htmlspecialchars($risk['status'] ?? 'ยังไม่ดำเนินการ') ?></span></div>
+                <!-- Info Detail Card -->
+                <div class="info-detail-card">
+                    <h3><i class="fas fa-info-circle text-blue-600"></i> ข้อมูลความเสี่ยง</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; font-size: 0.85rem;">
+                        <div><span style="color: #94a3b8;">ประเภท:</span> <span style="font-weight: 600;"><?= htmlspecialchars($risk['risk_type'] ?? '-') ?></span></div>
+                        <div><span style="color: #94a3b8;">กลุ่มงาน:</span> <span style="font-weight: 600;"><?= htmlspecialchars($risk['unit'] ?? '-') ?></span></div>
+                        <div><span style="color: #94a3b8;">ระดับ:</span> <span style="font-weight: 600;"><?= htmlspecialchars($risk['severity'] ?? '-') ?></span></div>
+                        <div><span style="color: #94a3b8;">วันที่:</span> <span style="font-weight: 600;"><?= date('d/m/Y', strtotime($risk['event_datetime'])) ?></span></div>
+                        <div><span style="color: #94a3b8;">ผู้รายงาน:</span> <span style="font-weight: 600;"><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></span></div>
+                        <div><span style="color: #94a3b8;">สถานะ:</span> <span class="badge bg-emerald-50 text-emerald-700 border-emerald-200"><i class="fas fa-check-circle text-xs"></i> <?= htmlspecialchars($risk['status'] ?? 'ดำเนินการแล้ว') ?></span></div>
                     </div>
                 </div>
 
+                <!-- Alert Messages -->
                 <?php if ($success): ?>
-                    <div class="bg-green-50/80 backdrop-blur-sm border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+                    <div style="padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534;">
                         <i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?>
                     </div>
                 <?php endif; ?>
 
                 <?php if ($error): ?>
-                    <div class="bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+                    <div style="padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
                         <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($error) ?>
                     </div>
                 <?php endif; ?>
 
+                <!-- Form -->
                 <form method="POST" enctype="multipart/form-data" class="form-card">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="risk_id" value="<?= $risk_id ?>">
 
                     <div class="form-group">
-                        <label class="form-label"><i class="fas fa-tools"></i> มาตรการแก้ไข</label>
+                        <label class="form-label">มาตรการแก้ไข</label>
                         <textarea name="corrective_action" class="form-textarea" placeholder="ระบุมาตรการแก้ไขที่ดำเนินการ..." rows="4"><?= htmlspecialchars($existingReport['corrective_action'] ?? '') ?></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label"><i class="fas fa-user-check"></i> ผู้รับผิดชอบ</label>
+                        <label class="form-label">ผู้รับผิดชอบ</label>
                         <input type="text" name="responsible_person" class="form-input" placeholder="ระบุชื่อผู้รับผิดชอบ..." value="<?= htmlspecialchars($existingReport['responsible_person'] ?? $_SESSION['username'] ?? '') ?>">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label"><i class="fas fa-chart-line"></i> การติดตามผล</label>
+                        <label class="form-label">การติดตามผล</label>
                         <textarea name="follow_up" class="form-textarea" placeholder="ระบุผลการติดตาม..." rows="4"><?= htmlspecialchars($existingReport['follow_up'] ?? '') ?></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label"><i class="fas fa-bullseye"></i> ผลที่คาดว่าจะได้รับ</label>
+                        <label class="form-label">ผลที่คาดว่าจะได้รับ</label>
                         <textarea name="expected_outcome" class="form-textarea" placeholder="ระบุผลที่คาดว่าจะได้รับ..." rows="4"><?= htmlspecialchars($existingReport['expected_outcome'] ?? '') ?></textarea>
                     </div>
 
-                    <!-- File Upload -->
                     <div class="form-group">
-                        <label class="form-label"><i class="fas fa-paperclip"></i> แนบไฟล์สรุปผล</label>
+                        <label class="form-label">แนบไฟล์สรุปผล</label>
 
                         <?php if (!empty($existingReport['report_file']) && file_exists($existingReport['report_file'])): ?>
                             <?php
@@ -1326,24 +1242,23 @@ $csrf_token = generateCsrfToken();
                             ?>
                             <div class="file-card">
                                 <div class="file-card-header">
-                                    <i class="fas fa-paperclip text-blue-500"></i> ไฟล์ปัจจุบัน
+                                    <i class="fas fa-paperclip text-blue-600"></i> ไฟล์ปัจจุบัน
                                 </div>
                                 <?php if ($img): ?>
                                     <div class="file-card-preview">
                                         <a href="<?= htmlspecialchars($fp) ?>" data-fancybox="gallery" data-caption="<?= htmlspecialchars($fn) ?>" class="img-preview-link">
                                             <img src="<?= htmlspecialchars($fp) ?>" alt="<?= htmlspecialchars($fn) ?>" onerror="this.style.display='none';">
-                                            <div class="img-overlay"><i class="fas fa-search-plus"></i><span>คลิกเพื่อดู</span></div>
                                         </a>
                                     </div>
                                 <?php endif; ?>
                                 <div class="file-info-row">
                                     <div class="file-info-left">
-                                        <div class="file-icon-box <?= $img ? 'bg-green-50' : 'bg-blue-50' ?>">
-                                            <i class="fas <?= $img ? 'fa-file-image text-green-600' : getFileIcon($fp) . ' text-blue-600' ?>"></i>
+                                        <div class="file-icon-box" style="<?= $img ? 'background: #f0fdf4;' : 'background: #eff6ff;' ?>">
+                                            <i class="fas <?= $img ? 'fa-file-image' : getFileIcon($fp) ?>" style="<?= $img ? 'color: #16a34a;' : 'color: #3b82f6;' ?>"></i>
                                         </div>
                                         <div>
-                                            <div class="font-semibold text-sm"><?= htmlspecialchars(mb_strlen($fn) > 35 ? mb_substr($fn, 0, 32) . '...' : $fn) ?></div>
-                                            <div class="text-xs text-gray-400"><?= strtoupper($fe) ?> · <?= formatFileSize($fs) ?></div>
+                                            <div style="font-weight: 600; font-size: 0.85rem;"><?= htmlspecialchars(mb_strlen($fn) > 30 ? mb_substr($fn, 0, 27) . '...' : $fn) ?></div>
+                                            <div style="font-size: 0.75rem; color: #94a3b8;"><?= strtoupper($fe) ?> · <?= formatFileSize($fs) ?></div>
                                         </div>
                                     </div>
                                     <div style="display:flex;gap:0.4rem;">
@@ -1352,7 +1267,7 @@ $csrf_token = generateCsrfToken();
                                         </a>
                                         <?php if ($img): ?>
                                             <a href="<?= htmlspecialchars($fp) ?>" data-fancybox="gallery" class="btn-sm view">
-                                                <i class="fas fa-expand"></i> ดูเต็ม
+                                                <i class="fas fa-expand"></i> ดู
                                             </a>
                                         <?php endif; ?>
                                     </div>
@@ -1363,63 +1278,97 @@ $csrf_token = generateCsrfToken();
                         <label class="upload-area" for="report_file">
                             <input type="file" id="report_file" name="report_file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" onchange="handleFileSelect(this)">
                             <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
-                            <p class="font-medium text-gray-700">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง</p>
-                            <p class="text-xs text-gray-400 mt-1">PDF, Word, Excel, รูปภาพ (สูงสุด 10MB)</p>
+                            <p style="font-weight: 600; color: #475569; font-size: 0.9rem;">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง</p>
+                            <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem;">PDF, Word, Excel, รูปภาพ (สูงสุด 10MB)</p>
                             <div id="file-preview-area" class="file-preview-inline" style="display:none;">
-                                <i class="fas fa-file text-blue-500"></i>
+                                <i class="fas fa-file text-blue-600"></i>
                                 <span id="selected-file-name"></span>
-                                <span id="selected-file-size" class="text-gray-400"></span>
+                                <span id="selected-file-size" style="color: #94a3b8;"></span>
                                 <button type="button" class="btn-remove" onclick="removeSelectedFile(event)"><i class="fas fa-times"></i></button>
                             </div>
                         </label>
                     </div>
 
-                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100/50">
-                        <a href="report_summary.php" class="btn-cancel"><i class="fas fa-times"></i> ยกเลิก</a>
-                        <button type="submit" class="btn-submit"><i class="fas fa-save"></i> <?= $existingReport ? 'อัปเดต' : 'บันทึก' ?></button>
+                    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9;">
+                        <a href="report_summary.php" class="btn-action gray"><i class="fas fa-times"></i> ยกเลิก</a>
+                        <button type="submit" class="btn-action blue"><i class="fas fa-save"></i> <?= $existingReport ? 'อัปเดต' : 'บันทึก' ?></button>
                     </div>
                 </form>
             <?php endif; ?>
+
+            <!-- Info -->
+            <div class="info-card">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-info-circle text-blue-500 text-lg mt-0.5"></i>
+                    <div>
+                        <p class="font-semibold mb-1">📌 หมายเหตุ</p>
+                        <ul class="list-disc ml-4 space-y-0.5 text-sm">
+                            <li>แสดงเฉพาะรายการที่มีสถานะ <strong>"ดำเนินการแล้ว"</strong> เท่านั้น</li>
+                            <li>สามารถบันทึกมาตรการแก้ไข ผู้รับผิดชอบ และการติดตามผลได้</li>
+                            <li>รองรับการแนบไฟล์สรุปผล (PDF, Word, Excel, รูปภาพ)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
 <script>
+    // ========== Fancybox ==========
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof Fancybox !== 'undefined') {
-            var els = document.querySelectorAll('[data-fancybox]');
-            if (els.length > 0) {
-                Fancybox.bind("[data-fancybox]", {
-                    Thumbs: {
-                        autoStart: true
-                    },
-                    Toolbar: {
-                        display: ["zoom", "slideshow", "fullscreen", "download", "thumbs", "close"]
-                    },
-                    Image: {
-                        zoom: true,
-                        click: "toggleZoom",
-                        fit: "contain"
-                    }
-                });
-            }
+            Fancybox.bind("[data-fancybox]", {
+                Thumbs: { autoStart: true },
+                Toolbar: { display: ["zoom", "slideshow", "fullscreen", "download", "thumbs", "close"] }
+            });
         }
     });
 
+    // ========== Auto Submit ==========
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    document.querySelectorAll('.auto-submit').forEach(el => {
+        el.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    });
+
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', debounce(function() {
+            document.getElementById('filterForm').submit();
+        }, 500));
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('filterForm').submit();
+            }
+        });
+    }
+
+    // ========== File Upload ==========
     function handleFileSelect(input) {
-        var pa = document.getElementById('file-preview-area'),
-            fn = document.getElementById('selected-file-name'),
-            fs = document.getElementById('selected-file-size');
+        const pa = document.getElementById('file-preview-area');
+        const fn = document.getElementById('selected-file-name');
+        const fs = document.getElementById('selected-file-size');
+        
         if (input.files && input.files[0]) {
-            var f = input.files[0];
+            const f = input.files[0];
             if (pa) pa.style.display = 'inline-flex';
             if (fn) fn.textContent = f.name;
             if (fs) {
-                var s = f.size;
-                if (s < 1024) fs.textContent = s + ' B';
-                else if (s < 1048576) fs.textContent = (s / 1024).toFixed(1) + ' KB';
-                else fs.textContent = (s / 1048576).toFixed(1) + ' MB';
+                let s = f.size;
+                if (s < 1024) fs.textContent = ' (' + s + ' B)';
+                else if (s < 1048576) fs.textContent = ' (' + (s / 1024).toFixed(1) + ' KB)';
+                else fs.textContent = ' (' + (s / 1048576).toFixed(1) + ' MB)';
             }
         }
     }
@@ -1427,38 +1376,55 @@ $csrf_token = generateCsrfToken();
     function removeSelectedFile(e) {
         e.stopPropagation();
         e.preventDefault();
-        var fi = document.getElementById('report_file'),
-            pa = document.getElementById('file-preview-area');
+        const fi = document.getElementById('report_file');
+        const pa = document.getElementById('file-preview-area');
         if (fi) fi.value = '';
         if (pa) pa.style.display = 'none';
     }
 
-    var ua = document.querySelector('.upload-area');
-    if (ua) {
-        ua.addEventListener('dragover', function(e) {
+    // ========== Drag & Drop ==========
+    const uploadArea = document.querySelector('.upload-area');
+    if (uploadArea) {
+        uploadArea.addEventListener('dragover', function(e) {
             e.preventDefault();
             e.stopPropagation();
             this.style.borderColor = '#3b82f6';
-            this.style.background = 'rgba(239, 246, 255, 0.5)';
+            this.style.background = '#eff6ff';
         });
-        ua.addEventListener('dragleave', function(e) {
+        
+        uploadArea.addEventListener('dragleave', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            this.style.borderColor = 'rgba(203, 213, 225, 0.8)';
-            this.style.background = 'rgba(248, 250, 252, 0.5)';
+            this.style.borderColor = '#cbd5e1';
+            this.style.background = '#fafbfc';
         });
-        ua.addEventListener('drop', function(e) {
+        
+        uploadArea.addEventListener('drop', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            this.style.borderColor = 'rgba(203, 213, 225, 0.8)';
-            this.style.background = 'rgba(248, 250, 252, 0.5)';
-            var files = e.dataTransfer.files,
-                fi = document.getElementById('report_file');
+            this.style.borderColor = '#cbd5e1';
+            this.style.background = '#fafbfc';
+            
+            const files = e.dataTransfer.files;
+            const fi = document.getElementById('report_file');
             if (files.length > 0 && fi) {
-                var dt = new DataTransfer();
+                const dt = new DataTransfer();
                 dt.items.add(files[0]);
                 fi.files = dt.files;
                 handleFileSelect(fi);
+            }
+        });
+    }
+
+    // ========== Form Submit ==========
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+                submitBtn.style.pointerEvents = 'none';
+                submitBtn.style.opacity = '0.8';
             }
         });
     }
