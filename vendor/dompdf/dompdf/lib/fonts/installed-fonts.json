@@ -1,6 +1,7 @@
 {
     "sarabun": {
         "normal": "C:\\xampp\\htdocs\\risk_management\\vendor\\dompdf\\dompdf\/lib\/fonts\/sarabun_normal_4d7ed5287f3cc32e3e3f99fb1454e9f1",
-        "bold": "sarabun_bold_ddd76a2d1bb444001f7e5a731aa9fc54"
+        "bold": "sarabun_bold_ddd76a2d1bb444001f7e5a731aa9fc54",
+        "italic": "C:\\xampp\\htdocs\\risk_management\\vendor\\dompdf\\dompdf\/lib\/fonts\/sarabun_italic_b8a370b001c4921d8a1ce2ab5aef1b72"
     }
 }
