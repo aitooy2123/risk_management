@@ -46,10 +46,10 @@ $is_admin = isAdmin();
             <span>เพิ่มความเสี่ยง</span>
         </a>
         
-        <a href="report_summary.php" class="menu-item <?= $current_page == 'report_summary.php' ? 'active' : '' ?>">
+        <!-- <a href="report_summary.php" class="menu-item <?= $current_page == 'report_summary.php' ? 'active' : '' ?>">
             <div class="menu-icon"><i class="fas fa-file-alt"></i></div>
             <span>สรุปผลการรายงาน</span>
-        </a>
+        </a> -->
 
         <?php if ($is_admin): ?>
             <div class="nav-section-label">จัดการระบบ</div>
@@ -69,12 +69,56 @@ $is_admin = isAdmin();
                     onerror="this.src='avatars/default.png'">
                 <span class="text-white text-xs font-medium truncate"><?= htmlspecialchars($_SESSION['username'] ?? 'Guest') ?></span>
             </a>
-            <a href="logout.php" class="logout-btn" title="ออกจากระบบ" onclick="return confirm('ออกจากระบบ?');">
+            <a href="logout.php" class="logout-btn" title="ออกจากระบบ" id="logoutBtn">
                 <i class="fas fa-sign-out-alt"></i>
             </a>
         </div>
     </div>
 </div>
+
+<script>
+    // ========== Logout with SweetAlert2 ==========
+    document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        Swal.fire({
+            title: 'ออกจากระบบ?',
+            text: 'คุณต้องการออกจากระบบใช่หรือไม่',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: '<i class="fas fa-sign-out-alt"></i> ออกจากระบบ',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true,
+            customClass: {
+                popup: 'swal-popup',
+                title: 'swal-title',
+                confirmButton: 'swal-confirm-btn',
+                cancelButton: 'swal-cancel-btn'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // แสดง loading
+                Swal.fire({
+                    title: 'กำลังออกจากระบบ...',
+                    html: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // หน่วงเวลาเล็กน้อยแล้ว redirect
+                setTimeout(() => {
+                    window.location.href = 'logout.php';
+                }, 600);
+            }
+        });
+    });
+</script>
 
 <style>
     .sidebar-gradient {
@@ -144,10 +188,36 @@ $is_admin = isAdmin();
         width: 34px; height: 34px; border-radius: 8px;
         color: rgba(255,255,255,0.3); text-decoration: none;
         transition: all 0.2s; flex-shrink: 0;
+        cursor: pointer;
     }
     .logout-btn:hover { background: rgba(239,68,68,0.15); color: #fca5a5; }
     .logout-btn i { font-size: 0.95rem; transition: transform 0.2s; }
     .logout-btn:hover i { transform: translateX(-2px); }
+
+    /* SweetAlert2 Custom Styles */
+    .swal-popup {
+        border-radius: 1rem !important;
+        padding: 1.5rem !important;
+    }
+    .swal-title {
+        font-family: 'Sarabun', sans-serif !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+    }
+    .swal-confirm-btn {
+        border-radius: 0.5rem !important;
+        font-family: 'Sarabun', sans-serif !important;
+        font-weight: 600 !important;
+        padding: 0.55rem 1.5rem !important;
+        font-size: 0.85rem !important;
+    }
+    .swal-cancel-btn {
+        border-radius: 0.5rem !important;
+        font-family: 'Sarabun', sans-serif !important;
+        font-weight: 500 !important;
+        padding: 0.55rem 1.5rem !important;
+        font-size: 0.85rem !important;
+    }
 
     /* Scrollbar */
     nav::-webkit-scrollbar { width: 2px; }
