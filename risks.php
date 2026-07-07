@@ -311,19 +311,71 @@ $isAdmin = isAdmin();
 
     /* ==================== INFO CARD ==================== */
     .info-card {
-        background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
-        border: 1px solid rgba(191, 219, 254, 0.6); border-radius: 1.25rem;
-        padding: 1.5rem 1.75rem; margin-top: 1.5rem;
-        display: flex; align-items: flex-start; gap: 1.25rem;
-        box-shadow: 0 4px 20px rgba(37, 99, 235, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 1.25rem;
+        padding: 1.5rem 1.75rem;
+        margin-top: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 1.25rem;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
     }
-    .info-icon-circle { width: 48px; height: 48px; border-radius: 14px; background: #eff6ff; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; border: 1px solid #bfdbfe; color: #2563eb; }
-    .info-content h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: #1e293b; }
-    .info-content ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-    .info-content ul li { font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; background: rgba(239, 246, 255, 0.6); padding: 0.5rem 0.75rem; border-radius: 0.6rem; border: 1px solid rgba(191, 219, 254, 0.3); color: #475569; }
-    .info-content ul li .dot { width: 8px; height: 8px; border-radius: 50%; background: #60a5fa; flex-shrink: 0; }
-    .info-content ul li strong { color: #1e293b; }
-    .info-content ul li .highlight { color: #dc2626; font-weight: 600; }
+    .info-icon-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: #dbeafe;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        border: 1px solid #bfdbfe;
+        color: #2563eb;
+    }
+    .info-content h4 {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #1e293b;
+    }
+    .info-content ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    .info-content ul li {
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.6rem;
+        border: 1px solid #dbeafe;
+        color: #475569;
+    }
+    .info-content ul li .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #60a5fa;
+        flex-shrink: 0;
+    }
+    .info-content ul li strong {
+        color: #1e293b;
+    }
+    .info-content ul li .highlight {
+        color: #dc2626;
+        font-weight: 600;
+    }
 
     /* ==================== PAGINATION ==================== */
     .pagination-bar { display: flex; align-items: center; justify-content: center; gap: 0.25rem; margin-top: 1.5rem; flex-wrap: wrap; }
@@ -464,19 +516,54 @@ $isAdmin = isAdmin();
                                         <div class="dropdown-wrapper">
                                             <button class="dropdown-toggle" onclick="toggleDropdown(event, '<?= $dropdownId ?>')" title="เมนู">⋮</button>
                                             <div class="dropdown-menu" id="<?= $dropdownId ?>">
-                                                <a href="view_risk.php?id=<?= $risk['id'] ?>" class="dropdown-item view"><i class="fas fa-eye"></i> ดูรายละเอียด</a>
-                                                <a href="generate_pdf.php?id=<?= $risk['id'] ?>" target="_blank" class="dropdown-item print"><i class="fas fa-print"></i> พิมพ์ PDF</a>
+                                                <!-- ทุกคนเห็น -->
+                                                <a href="view_risk.php?id=<?= $risk['id'] ?>" class="dropdown-item view">
+                                                    <i class="fas fa-eye"></i> ดูรายละเอียด
+                                                </a>
+                                                <a href="generate_pdf.php?id=<?= $risk['id'] ?>" target="_blank" class="dropdown-item print">
+                                                    <i class="fas fa-print"></i> พิมพ์ PDF
+                                                </a>
+                                                
+                                                <!-- สรุปผล (ทุกคนที่มีสิทธิ์) -->
+                                                <?php if ($canAddReport): ?>
+                                                    <a href="report_summary.php?risk_id=<?= $risk['id'] ?>" class="dropdown-item report">
+                                                        <i class="fas fa-<?= $hasReport ? 'file-invoice' : 'plus' ?>"></i> 
+                                                        <?= $hasReport ? 'สรุปผล' : 'เพิ่มสรุปผล' ?>
+                                                    </a>
+                                                <?php endif; ?>
+                                                
                                                 <?php if (isAdmin()): ?>
-                                                    <div class="dropdown-divider"></div><span class="dropdown-item-text">จัดการ (Admin)</span>
-                                                    <?php if (!$isLocked): ?><a href="risk_form.php?id=<?= $risk['id'] ?>" class="dropdown-item edit"><i class="fas fa-edit"></i> แก้ไข</a><?php else: ?><span class="dropdown-item locked"><i class="fas fa-lock"></i> แก้ไข (ล็อก)</span><?php endif; ?>
-                                                    <a href="report_summary.php?risk_id=<?= $risk['id'] ?>" class="dropdown-item report"><i class="fas fa-<?= $hasReport ? 'file-invoice' : 'file-alt' ?>"></i> <?= $hasReport ? 'แก้ไขสรุปผล' : 'เพิ่มสรุปผล' ?></a>
+                                                    <!-- ===== ADMIN MENU ===== -->
                                                     <div class="dropdown-divider"></div>
-                                                    <button class="dropdown-item delete delete-single" data-id="<?= $risk['id'] ?>"><i class="fas fa-trash"></i> ลบ</button>
+                                                    <span class="dropdown-item-text">จัดการ (Admin)</span>
+                                                    <?php if (!$isLocked): ?>
+                                                        <a href="risk_form.php?id=<?= $risk['id'] ?>" class="dropdown-item edit">
+                                                            <i class="fas fa-edit"></i> แก้ไข
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <span class="dropdown-item locked">
+                                                            <i class="fas fa-lock"></i> แก้ไข (ล็อก)
+                                                        </span>
+                                                    <?php endif; ?>
+                                                    <div class="dropdown-divider"></div>
+                                                    <button class="dropdown-item delete delete-single" data-id="<?= $risk['id'] ?>">
+                                                        <i class="fas fa-trash"></i> ลบ
+                                                    </button>
                                                 <?php else: ?>
-                                                    <div class="dropdown-divider"></div><span class="dropdown-item-text">จัดการ</span>
-                                                    <?php if ($canAddReport): ?><a href="report_summary.php?risk_id=<?= $risk['id'] ?>" class="dropdown-item report"><i class="fas fa-<?= $hasReport ? 'file-check' : 'file-plus' ?>"></i> <?= $hasReport ? 'ดูสรุปผล' : 'เพิ่มสรุปผล' ?></a><?php else: ?><span class="dropdown-item locked"><i class="fas fa-file"></i> สรุปผล (ไม่มีสิทธิ์)</span><?php endif; ?>
-                                                    <span class="dropdown-item locked"><i class="fas fa-lock"></i> แก้ไข (แจ้ง Admin)</span>
-                                                    <span class="dropdown-item locked"><i class="fas fa-ban"></i> ลบ (เฉพาะ Admin)</span>
+                                                    <!-- ===== USER MENU ===== -->
+                                                    <?php if (!$canAddReport): ?>
+                                                        <span class="dropdown-item locked">
+                                                            <i class="fas fa-file"></i> สรุปผล (ไม่มีสิทธิ์)
+                                                        </span>
+                                                    <?php endif; ?>
+                                                    <div class="dropdown-divider"></div>
+                                                    <span class="dropdown-item-text">จัดการ</span>
+                                                    <span class="dropdown-item locked">
+                                                        <i class="fas fa-lock"></i> แก้ไข (แจ้ง Admin)
+                                                    </span>
+                                                    <span class="dropdown-item locked">
+                                                        <i class="fas fa-ban"></i> ลบ (เฉพาะ Admin)
+                                                    </span>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
