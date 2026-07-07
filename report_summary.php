@@ -524,11 +524,11 @@ $statusIcon = getStatusIcon($currentStatus);
 
             <!-- Header -->
             <div class="page-header">
-                <div style="margin-bottom: 0.5rem;">
+                <!-- <div style="margin-bottom: 0.5rem;">
                     <a href="risks.php" class="back-link">
                         <i class="fas fa-arrow-left"></i> กลับไปหน้ารายการ
                     </a>
-                </div>
+                </div> -->
                 <h2>📝 สรุปผลการรายงาน</h2>
                 <p>บันทึกมาตรการแก้ไขและการติดตามผล</p>
             </div>

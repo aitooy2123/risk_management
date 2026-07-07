@@ -1,8 +1,8 @@
 <?php
 
 /**
- * รายการความเสี่ยง - UI สวยงาม ค้นหาอัตโนมัติ
- * - ฟิลเตอร์: กลุ่มงาน, ประเภท, ระดับ, สถานะ, วันที่, ค้นหา
+ * รายการความเสี่ยง - UI สวยงาม
+ * - ฟิลเตอร์: กลุ่มงาน, ประเภท, ระดับ, สถานะ, วันที่
  * - แสดงสถานะความเสี่ยง + สถานะการรายงานผล
  * - Admin: เห็นทั้งหมด / User: เห็นเฉพาะของตัวเอง
  * - Admin: แก้ไขได้ทุกหน้า (เนื้อหา, สถานะ, สรุปผล)
@@ -19,7 +19,6 @@
  * - เลือกลบ, พิมพ์ PDF, พิมพ์ทั้งหมด
  * - Pagination 10 รายการ/หน้า
  * - Badge สีแยกตามระดับและสถานะ
- * - ค้นหาอัตโนมัติเมื่อพิมพ์/เปลี่ยนค่า
  * - ใช้ SweetAlert2 สำหรับการแจ้งเตือนและการยืนยัน
  * - เฉพาะ Admin เท่านั้นที่ลบได้
  */
@@ -55,11 +54,9 @@ function thaiDate($date, $showTime = false) {
 }
 
 // ===== ฟังก์ชันตรวจสอบสิทธิ์ =====
-// User สามารถแก้ไขสรุปผลได้ และปรับสถานะได้เอง
 function canModify($risk_user_id) {
     if (!isset($_SESSION['user_id'])) return false;
     if (isAdmin()) return true;
-    // User แก้ไขรายการของตัวเองได้ (สำหรับปรับสถานะ)
     return $_SESSION['user_id'] == $risk_user_id;
 }
 
@@ -79,7 +76,6 @@ $group_filter    = $_GET['unit'] ?? '';
 $status_filter   = $_GET['status'] ?? '';
 $date_from       = $_GET['date_from'] ?? '';
 $date_to         = $_GET['date_to'] ?? '';
-$search          = $_GET['search'] ?? '';
 
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 10;
@@ -89,10 +85,6 @@ $offset  = ($page - 1) * $perPage;
 $where  = "WHERE 1=1";
 $params = [];
 
-if ($search !== '') {
-    $where .= " AND (r.risk_type LIKE ? OR r.unit LIKE ? OR r.risk_detail LIKE ? OR r.risk_type_other LIKE ?)";
-    for ($i = 0; $i < 4; $i++) $params[] = "%{$search}%";
-}
 if ($type_filter !== '') { $where .= " AND r.risk_type = ?"; $params[] = $type_filter; }
 if ($severity_filter !== '') { $where .= " AND r.severity = ?"; $params[] = $severity_filter; }
 if ($group_filter !== '') { $where .= " AND r.unit = ?"; $params[] = $group_filter; }
@@ -150,7 +142,7 @@ try {
 }
 
 $csrf_token = generateCsrfToken();
-$hasActiveFilters = ($search !== '' || $type_filter !== '' || $severity_filter !== '' || $group_filter !== '' || $status_filter !== '' || $date_from !== '' || $date_to !== '');
+$hasActiveFilters = ($type_filter !== '' || $severity_filter !== '' || $group_filter !== '' || $status_filter !== '' || $date_from !== '' || $date_to !== '');
 
 function buildRiskPageUrl($page, $currentParams) {
     $query = $currentParams;
@@ -238,11 +230,6 @@ $isAdmin = isAdmin();
     .filter-body { padding: 1.25rem 1.5rem; }
     .filter-section { margin-bottom: 1rem; }
     .filter-section-title { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.4rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-light); }
-    .search-row { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
-    .search-box { position: relative; }
-    .search-box input { width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border: 1.5px solid var(--border); border-radius: 0.6rem; font-size: 0.85rem; outline: none; font-family: 'Sarabun', sans-serif; background: #fafbfc; color: var(--text); }
-    .search-box input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
-    .search-box .search-icon { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; }
     .filter-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem; }
     .filter-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; }
     .filter-group { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -339,41 +326,147 @@ $isAdmin = isAdmin();
             <!-- FILTER -->
             <div class="filter-card">
                 <div class="filter-header" onclick="toggleFilter()">
-                    <div class="filter-header-left"><div class="filter-icon-circle"><i class="fas fa-sliders-h"></i></div><div><div class="filter-title">ตัวกรองข้อมูล</div><div class="filter-subtitle">คลิกเพื่อ<?= $hasActiveFilters ? 'ปิด' : 'เปิด' ?>ค้นหาและกรอง</div></div></div>
+                    <div class="filter-header-left">
+                        <div class="filter-icon-circle"><i class="fas fa-sliders-h"></i></div>
+                        <div>
+                            <div class="filter-title">ตัวกรองข้อมูล</div>
+                            <div class="filter-subtitle">คลิกเพื่อ<?= $hasActiveFilters ? 'ปิด' : 'เปิด' ?>กรองข้อมูล</div>
+                        </div>
+                    </div>
                     <div class="filter-header-right">
-                        <?php if ($hasActiveFilters): ?><span class="filter-count-badge"><i class="fas fa-check-circle"></i> <?= number_format($totalRows) ?> รายการ</span><?php endif; ?>
-                        <div class="filter-toggle-icon <?= $hasActiveFilters ? 'open' : '' ?>" id="filterToggleIcon"><i class="fas fa-chevron-down"></i></div>
+                        <?php if ($hasActiveFilters): ?>
+                            <span class="filter-count-badge"><i class="fas fa-check-circle"></i> <?= number_format($totalRows) ?> รายการ</span>
+                        <?php endif; ?>
+                        <div class="filter-toggle-icon <?= $hasActiveFilters ? 'open' : '' ?>" id="filterToggleIcon">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
                     </div>
                 </div>
                 <div class="filter-collapse <?= $hasActiveFilters ? 'open' : '' ?>" id="filterCollapse">
                     <form method="GET" id="filterForm" action="risks.php">
                         <div class="filter-body">
-                            <div class="filter-section"><div class="filter-section-title"><i class="fas fa-search"></i> ค้นหาทั่วไป</div><div class="search-row"><div class="search-box"><i class="fas fa-search search-icon"></i><input type="text" name="search" id="searchInput" value="<?= htmlspecialchars($search) ?>" placeholder="พิมพ์ค้นหา..."></div></div></div>
-                            <div class="filter-section"><div class="filter-section-title"><i class="fas fa-tags"></i> หมวดหมู่</div>
+                            <!-- หมวดหมู่ -->
+                            <div class="filter-section">
+                                <div class="filter-section-title"><i class="fas fa-tags"></i> หมวดหมู่</div>
                                 <div class="filter-grid-4">
-                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-building"></i> กลุ่มงาน</label><select name="unit" class="filter-input auto-submit"><option value="">ทั้งหมด</option><?php foreach ($units as $u): ?><option value="<?= htmlspecialchars($u) ?>" <?= $group_filter == $u ? 'selected' : '' ?>><?= htmlspecialchars($u) ?></option><?php endforeach; ?></select></div>
-                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-tag"></i> ประเภท</label><select name="risk_type" class="filter-input auto-submit"><option value="">ทั้งหมด</option><?php foreach ($types as $t): ?><option value="<?= htmlspecialchars($t) ?>" <?= $type_filter == $t ? 'selected' : '' ?>><?= htmlspecialchars($t) ?></option><?php endforeach; ?></select></div>
-                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-exclamation-triangle"></i> ระดับ</label><select name="severity" class="filter-input auto-submit"><option value="">ทั้งหมด</option><?php foreach ($severities as $s): ?><option value="<?= htmlspecialchars($s) ?>" <?= $severity_filter == $s ? 'selected' : '' ?>><?= htmlspecialchars($s) ?> - <?= $severityLabels[$s] ?? $s ?></option><?php endforeach; ?></select></div>
-                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-chart-bar"></i> สถานะ</label><select name="status" class="filter-input auto-submit"><option value="">ทั้งหมด</option><?php foreach ($statuses as $s): ?><option value="<?= htmlspecialchars($s) ?>" <?= $status_filter == $s ? 'selected' : '' ?>><?= htmlspecialchars($s) ?></option><?php endforeach; ?></select></div>
+                                    <div class="filter-group">
+                                        <label class="filter-label"><i class="fas fa-building"></i> กลุ่มงาน</label>
+                                        <select name="unit" class="filter-input auto-submit">
+                                            <option value="">ทั้งหมด</option>
+                                            <?php foreach ($units as $u): ?>
+                                                <option value="<?= htmlspecialchars($u) ?>" <?= $group_filter == $u ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($u) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label class="filter-label"><i class="fas fa-tag"></i> ประเภท</label>
+                                        <select name="risk_type" class="filter-input auto-submit">
+                                            <option value="">ทั้งหมด</option>
+                                            <?php foreach ($types as $t): ?>
+                                                <option value="<?= htmlspecialchars($t) ?>" <?= $type_filter == $t ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($t) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label class="filter-label"><i class="fas fa-exclamation-triangle"></i> ระดับ</label>
+                                        <select name="severity" class="filter-input auto-submit">
+                                            <option value="">ทั้งหมด</option>
+                                            <?php foreach ($severities as $s): ?>
+                                                <option value="<?= htmlspecialchars($s) ?>" <?= $severity_filter == $s ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($s) ?> - <?= $severityLabels[$s] ?? $s ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label class="filter-label"><i class="fas fa-chart-bar"></i> สถานะ</label>
+                                        <select name="status" class="filter-input auto-submit">
+                                            <option value="">ทั้งหมด</option>
+                                            <?php foreach ($statuses as $s): ?>
+                                                <option value="<?= htmlspecialchars($s) ?>" <?= $status_filter == $s ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($s) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="filter-section"><div class="filter-section-title"><i class="fas fa-calendar-alt"></i> ช่วงเวลา</div>
+                            
+                            <!-- ช่วงเวลา -->
+                            <div class="filter-section">
+                                <div class="filter-section-title"><i class="fas fa-calendar-alt"></i> ช่วงเวลา</div>
                                 <div class="filter-grid-2">
-                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> วันที่เริ่มต้น</label><input type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>" class="filter-input auto-submit"></div>
-                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> วันที่สิ้นสุด</label><input type="date" name="date_to" value="<?= htmlspecialchars($date_to) ?>" class="filter-input auto-submit"></div>
+                                    <div class="filter-group">
+                                        <label class="filter-label"><i class="fas fa-calendar"></i> วันที่เริ่มต้น</label>
+                                        <input type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>" class="filter-input auto-submit">
+                                    </div>
+                                    <div class="filter-group">
+                                        <label class="filter-label"><i class="fas fa-calendar"></i> วันที่สิ้นสุด</label>
+                                        <input type="date" name="date_to" value="<?= htmlspecialchars($date_to) ?>" class="filter-input auto-submit">
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Active Filters Bar -->
                         <?php if ($hasActiveFilters): ?>
-                        <div class="active-filters-bar"><span class="active-filters-label">🔍 ตัวกรอง:</span>
-                            <?php if ($search): ?><span class="filter-tag">"<?= htmlspecialchars($search) ?>" <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['search' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
-                            <?php if ($group_filter): ?><span class="filter-tag"><?= htmlspecialchars($group_filter) ?> <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['unit' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
-                            <?php if ($type_filter): ?><span class="filter-tag"><?= htmlspecialchars($type_filter) ?> <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['risk_type' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
-                            <?php if ($severity_filter): ?><span class="filter-tag"><?= htmlspecialchars($severity_filter) ?> <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['severity' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
-                            <?php if ($status_filter): ?><span class="filter-tag"><?= htmlspecialchars($status_filter) ?> <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['status' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
-                            <?php if ($date_from): ?><span class="filter-tag">ตั้งแต่ <?= htmlspecialchars($date_from) ?> <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['date_from' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
-                            <?php if ($date_to): ?><span class="filter-tag">ถึง <?= htmlspecialchars($date_to) ?> <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['date_to' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
-                            <a href="risks.php" class="btn-clear-all"><i class="fas fa-times"></i> ล้างทั้งหมด</a>
+                        <div class="active-filters-bar">
+                            <span class="active-filters-label">🔍 ตัวกรองที่ใช้อยู่:</span>
+                            <?php if ($group_filter): ?>
+                                <span class="filter-tag">
+                                    กลุ่มงาน: <?= htmlspecialchars($group_filter) ?> 
+                                    <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['unit' => ''])) ?>" class="remove-tag">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($type_filter): ?>
+                                <span class="filter-tag">
+                                    ประเภท: <?= htmlspecialchars($type_filter) ?> 
+                                    <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['risk_type' => ''])) ?>" class="remove-tag">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($severity_filter): ?>
+                                <span class="filter-tag">
+                                    ระดับ: <?= htmlspecialchars($severity_filter) ?> 
+                                    <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['severity' => ''])) ?>" class="remove-tag">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($status_filter): ?>
+                                <span class="filter-tag">
+                                    สถานะ: <?= htmlspecialchars($status_filter) ?> 
+                                    <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['status' => ''])) ?>" class="remove-tag">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($date_from): ?>
+                                <span class="filter-tag">
+                                    ตั้งแต่ <?= htmlspecialchars($date_from) ?> 
+                                    <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['date_from' => ''])) ?>" class="remove-tag">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($date_to): ?>
+                                <span class="filter-tag">
+                                    ถึง <?= htmlspecialchars($date_to) ?> 
+                                    <a href="<?= buildRiskPageUrl(1, array_merge($_GET, ['date_to' => ''])) ?>" class="remove-tag">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            <?php endif; ?>
+                            <a href="risks.php" class="btn-clear-all">
+                                <i class="fas fa-times"></i> ล้างทั้งหมด
+                            </a>
                         </div>
                         <?php endif; ?>
                     </form>
@@ -383,40 +476,70 @@ $isAdmin = isAdmin();
             <!-- ACTION BAR -->
             <div class="action-bar">
                 <?php if (isAdmin()): ?>
-                    <button id="deleteSelected" class="btn-action danger"><i class="fas fa-trash-alt"></i> ลบที่เลือก</button>
-                    <button id="printSelected" class="btn-action print"><i class="fas fa-print"></i> พิมพ์ PDF ที่เลือก</button>
-                    <a href="generate_pdf.php?ids=<?= implode(',', $allIds) ?>" target="_blank" class="btn-action pdf"><i class="fas fa-file-pdf"></i> พิมพ์ทั้งหมด</a>
-                    <a href="risk_form.php" class="btn-action add" style="margin-left:auto;"><i class="fas fa-plus-circle"></i> เพิ่มรายการใหม่</a>
+                    <button id="deleteSelected" class="btn-action danger">
+                        <i class="fas fa-trash-alt"></i> ลบที่เลือก
+                    </button>
+                    <button id="printSelected" class="btn-action print">
+                        <i class="fas fa-print"></i> พิมพ์ PDF ที่เลือก
+                    </button>
+                    <a href="generate_pdf.php?ids=<?= implode(',', $allIds) ?>" target="_blank" class="btn-action pdf">
+                        <i class="fas fa-file-pdf"></i> พิมพ์ทั้งหมด
+                    </a>
+                    <a href="risk_form.php" class="btn-action add" style="margin-left:auto;">
+                        <i class="fas fa-plus-circle"></i> เพิ่มรายการใหม่
+                    </a>
                 <?php else: ?>
-                    <button id="printSelected" class="btn-action print"><i class="fas fa-print"></i> พิมพ์ PDF ที่เลือก</button>
-                    <a href="generate_pdf.php?ids=<?= implode(',', $allIds) ?>" target="_blank" class="btn-action pdf"><i class="fas fa-file-pdf"></i> พิมพ์ทั้งหมด</a>
-                    <a href="risk_form.php" class="btn-action add" style="margin-left:auto;"><i class="fas fa-plus-circle"></i> เพิ่มรายการใหม่</a>
+                    <button id="printSelected" class="btn-action print">
+                        <i class="fas fa-print"></i> พิมพ์ PDF ที่เลือก
+                    </button>
+                    <a href="generate_pdf.php?ids=<?= implode(',', $allIds) ?>" target="_blank" class="btn-action pdf">
+                        <i class="fas fa-file-pdf"></i> พิมพ์ทั้งหมด
+                    </a>
+                    <a href="risk_form.php" class="btn-action add" style="margin-left:auto;">
+                        <i class="fas fa-plus-circle"></i> เพิ่มรายการใหม่
+                    </a>
                 <?php endif; ?>
             </div>
 
             <!-- TABLE -->
             <?php if (empty($risks)): ?>
-                <div class="empty-state"><i class="fas fa-inbox"></i><h3>ไม่พบรายการความเสี่ยง</h3><p><?= ($hasActiveFilters) ? 'ไม่มีข้อมูลตรงตามเงื่อนไข' : 'ยังไม่มีรายการความเสี่ยง' ?></p></div>
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <h3>ไม่พบรายการความเสี่ยง</h3>
+                    <p><?= ($hasActiveFilters) ? 'ไม่มีข้อมูลตรงตามเงื่อนไขการกรอง' : 'ยังไม่มีรายการความเสี่ยง' ?></p>
+                </div>
             <?php else: ?>
                 <div class="table-card">
                     <div class="table-header-bar">
-                        <span class="font-semibold text-gray-700"><i class="fas fa-list text-blue-600 mr-1"></i> รายการความเสี่ยง</span>
-                        <span class="text-xs text-gray-500"><?= count($risks) ?> / <?= number_format($totalRows) ?> · หน้า <?= $page ?>/<?= max(1, $totalPages) ?></span>
+                        <span class="font-semibold text-gray-700">
+                            <i class="fas fa-list text-blue-600 mr-1"></i> รายการความเสี่ยง
+                        </span>
+                        <span class="text-xs text-gray-500">
+                            <?= count($risks) ?> / <?= number_format($totalRows) ?> · หน้า <?= $page ?>/<?= max(1, $totalPages) ?>
+                        </span>
                     </div>
                     <div>
                         <table>
-                            <thead><tr>
-                                <?php if (isAdmin()): ?><th style="width:38px;"><input type="checkbox" id="selectAll"></th><?php else: ?><th style="width:38px;"></th><?php endif; ?>
-                                <th style="width:35px;">#</th>
-                                <th>กลุ่มงาน</th>
-                                <th>ประเภท</th>
-                                <th>ระดับ</th>
-                                <th>สถานะ</th>
-                                <th>การรายงานผล</th>
-                                <th>วันที่</th>
-                                <?php if (isAdmin()): ?><th>ผู้รายงาน</th><?php endif; ?>
-                                <th style="width:45px;">จัดการ</th>
-                            </tr></thead>
+                            <thead>
+                                <tr>
+                                    <?php if (isAdmin()): ?>
+                                        <th style="width:38px;"><input type="checkbox" id="selectAll"></th>
+                                    <?php else: ?>
+                                        <th style="width:38px;"></th>
+                                    <?php endif; ?>
+                                    <th style="width:35px;">#</th>
+                                    <th>กลุ่มงาน</th>
+                                    <th>ประเภท</th>
+                                    <th>ระดับ</th>
+                                    <th>สถานะ</th>
+                                    <th>การรายงานผล</th>
+                                    <th>วันที่</th>
+                                    <?php if (isAdmin()): ?>
+                                        <th>ผู้รายงาน</th>
+                                    <?php endif; ?>
+                                    <th style="width:45px;">จัดการ</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 <?php foreach ($risks as $index => $risk): 
                                     $rowNum = ($page - 1) * $perPage + $index + 1;
@@ -432,24 +555,44 @@ $isAdmin = isAdmin();
                                     $dropdownId = 'dm-' . $risk['id'];
                                     $reportStatusKey = $hasReport ? 'has_report' : 'no_report';
                                     $reportStatusInfo = $reportStatusLabels[$reportStatusKey];
-                                    // User ที่เป็นเจ้าของสามารถแก้ไขได้ (ปรับสถานะได้)
                                     $canEdit = canModify($risk['user_id']);
                                 ?>
                                 <tr>
-                                    <td><?php if (isAdmin()): ?><input type="checkbox" class="risk-checkbox" value="<?= $risk['id'] ?>"><?php endif; ?></td>
+                                    <td>
+                                        <?php if (isAdmin()): ?>
+                                            <input type="checkbox" class="risk-checkbox" value="<?= $risk['id'] ?>">
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="text-gray-400 text-sm"><?= $rowNum ?></td>
                                     <td><span class="font-medium"><?= htmlspecialchars($risk['unit'] ?? '-') ?></span></td>
-                                    <td><?= htmlspecialchars($risk['risk_type'] . ($risk['risk_type_other'] ? ' (' . $risk['risk_type_other'] . ')' : '')) ?></td>
-                                    <td><span class="pill <?= $sevBadge ?>"><?= htmlspecialchars($risk['severity']) ?> - <?= $sevLabel ?></span></td>
-                                    <td><span class="pill <?= $staBadge ?>"><i class="fas <?= $statusIcon ?> text-xs"></i> <?= htmlspecialchars($displayStatus) ?></span></td>
-                                    <td><span class="pill <?= $reportStatusInfo['class'] ?>"><i class="fas <?= $reportStatusInfo['icon'] ?> text-xs"></i> <?= $reportStatusInfo['label'] ?></span></td>
+                                    <td>
+                                        <?= htmlspecialchars($risk['risk_type'] . ($risk['risk_type_other'] ? ' (' . $risk['risk_type_other'] . ')' : '')) ?>
+                                    </td>
+                                    <td>
+                                        <span class="pill <?= $sevBadge ?>">
+                                            <?= htmlspecialchars($risk['severity']) ?> - <?= $sevLabel ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="pill <?= $staBadge ?>">
+                                            <i class="fas <?= $statusIcon ?> text-xs"></i> 
+                                            <?= htmlspecialchars($displayStatus) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="pill <?= $reportStatusInfo['class'] ?>">
+                                            <i class="fas <?= $reportStatusInfo['icon'] ?> text-xs"></i> 
+                                            <?= $reportStatusInfo['label'] ?>
+                                        </span>
+                                    </td>
                                     <td class="text-gray-500 text-sm"><?= thaiDate($risk['event_datetime']) ?></td>
-                                    <?php if (isAdmin()): ?><td><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></td><?php endif; ?>
+                                    <?php if (isAdmin()): ?>
+                                        <td><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></td>
+                                    <?php endif; ?>
                                     <td>
                                         <div class="dropdown-wrapper">
                                             <button class="dropdown-toggle" onclick="toggleDropdown(event, '<?= $dropdownId ?>')" title="เมนู">⋮</button>
                                             <div class="dropdown-menu" id="<?= $dropdownId ?>">
-                                                <!-- ทุกคนเห็น -->
                                                 <a href="view_risk.php?id=<?= $risk['id'] ?>" class="dropdown-item view">
                                                     <i class="fas fa-eye"></i> ดูรายละเอียด
                                                 </a>
@@ -457,7 +600,6 @@ $isAdmin = isAdmin();
                                                     <i class="fas fa-print"></i> พิมพ์ PDF
                                                 </a>
                                                 
-                                                <!-- สรุปผล (ทุกคนที่มีสิทธิ์) -->
                                                 <?php if ($canAddReport): ?>
                                                     <a href="report_summary.php?risk_id=<?= $risk['id'] ?>" class="dropdown-item report">
                                                         <i class="fas fa-<?= $hasReport ? 'file-invoice' : 'file-alt' ?>"></i> 
@@ -466,7 +608,6 @@ $isAdmin = isAdmin();
                                                 <?php endif; ?>
                                                 
                                                 <?php if (isAdmin()): ?>
-                                                    <!-- ===== ADMIN MENU ===== -->
                                                     <div class="dropdown-divider"></div>
                                                     <span class="dropdown-item-text">จัดการ (Admin)</span>
                                                     <?php if (!$isLocked): ?>
@@ -474,16 +615,16 @@ $isAdmin = isAdmin();
                                                             <i class="fas fa-edit"></i> แก้ไข
                                                         </a>
                                                     <?php else: ?>
-                                                        <span class="dropdown-item locked"><i class="fas fa-lock"></i> แก้ไข (ล็อก)</span>
+                                                        <span class="dropdown-item locked">
+                                                            <i class="fas fa-lock"></i> แก้ไข (ล็อก)
+                                                        </span>
                                                     <?php endif; ?>
                                                     <div class="dropdown-divider"></div>
                                                     <button class="dropdown-item delete delete-single" data-id="<?= $risk['id'] ?>">
                                                         <i class="fas fa-trash"></i> ลบ
                                                     </button>
                                                 <?php else: ?>
-                                                    <!-- ===== USER MENU ===== -->
                                                     <?php if ($canEdit && !$isLocked): ?>
-                                                        <!-- User แก้ไขได้ (ปรับสถานะได้) -->
                                                         <div class="dropdown-divider"></div>
                                                         <span class="dropdown-item-text">จัดการ</span>
                                                         <a href="risk_form.php?id=<?= $risk['id'] ?>" class="dropdown-item edit">
@@ -491,13 +632,19 @@ $isAdmin = isAdmin();
                                                         </a>
                                                     <?php else: ?>
                                                         <?php if (!$canAddReport): ?>
-                                                            <span class="dropdown-item locked"><i class="fas fa-file"></i> สรุปผล (ไม่มีสิทธิ์)</span>
+                                                            <span class="dropdown-item locked">
+                                                                <i class="fas fa-file"></i> สรุปผล (ไม่มีสิทธิ์)
+                                                            </span>
                                                         <?php endif; ?>
                                                         <div class="dropdown-divider"></div>
                                                         <span class="dropdown-item-text">จัดการ</span>
-                                                        <span class="dropdown-item locked"><i class="fas fa-lock"></i> แก้ไข (<?= $isLocked ? 'ล็อก' : 'แจ้ง Admin' ?>)</span>
+                                                        <span class="dropdown-item locked">
+                                                            <i class="fas fa-lock"></i> แก้ไข (<?= $isLocked ? 'ล็อก' : 'แจ้ง Admin' ?>)
+                                                        </span>
                                                     <?php endif; ?>
-                                                    <span class="dropdown-item locked"><i class="fas fa-ban"></i> ลบ (เฉพาะ Admin)</span>
+                                                    <span class="dropdown-item locked">
+                                                        <i class="fas fa-ban"></i> ลบ (เฉพาะ Admin)
+                                                    </span>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -513,12 +660,45 @@ $isAdmin = isAdmin();
             <!-- PAGINATION -->
             <?php if ($totalPages > 1): ?>
                 <div class="pagination-bar">
-                    <?php if ($page > 1): ?><a href="<?= buildRiskPageUrl($page - 1, $_GET) ?>" class="page-link"><i class="fas fa-chevron-left"></i></a><?php else: ?><span class="page-link disabled"><i class="fas fa-chevron-left"></i></span><?php endif; ?>
+                    <?php if ($page > 1): ?>
+                        <a href="<?= buildRiskPageUrl($page - 1, $_GET) ?>" class="page-link">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    <?php else: ?>
+                        <span class="page-link disabled"><i class="fas fa-chevron-left"></i></span>
+                    <?php endif; ?>
+                    
                     <?php $start = max(1, $page - 2); $end = min($totalPages, $page + 2); ?>
-                    <?php if ($start > 1): ?><a href="<?= buildRiskPageUrl(1, $_GET) ?>" class="page-link">1</a><?php if ($start > 2): ?><span class="px-1 text-gray-400">...</span><?php endif; ?><?php endif; ?>
-                    <?php for ($i = $start; $i <= $end; $i++): ?><a href="<?= buildRiskPageUrl($i, $_GET) ?>" class="page-link <?= $i == $page ? 'active' : '' ?>"><?= $i ?></a><?php endfor; ?>
-                    <?php if ($end < $totalPages): ?><?php if ($end < $totalPages - 1): ?><span class="px-1 text-gray-400">...</span><?php endif; ?><a href="<?= buildRiskPageUrl($totalPages, $_GET) ?>" class="page-link"><?= $totalPages ?></a><?php endif; ?>
-                    <?php if ($page < $totalPages): ?><a href="<?= buildRiskPageUrl($page + 1, $_GET) ?>" class="page-link"><i class="fas fa-chevron-right"></i></a><?php else: ?><span class="page-link disabled"><i class="fas fa-chevron-right"></i></span><?php endif; ?>
+                    
+                    <?php if ($start > 1): ?>
+                        <a href="<?= buildRiskPageUrl(1, $_GET) ?>" class="page-link">1</a>
+                        <?php if ($start > 2): ?>
+                            <span class="px-1 text-gray-400">...</span>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    
+                    <?php for ($i = $start; $i <= $end; $i++): ?>
+                        <a href="<?= buildRiskPageUrl($i, $_GET) ?>" class="page-link <?= $i == $page ? 'active' : '' ?>">
+                            <?= $i ?>
+                        </a>
+                    <?php endfor; ?>
+                    
+                    <?php if ($end < $totalPages): ?>
+                        <?php if ($end < $totalPages - 1): ?>
+                            <span class="px-1 text-gray-400">...</span>
+                        <?php endif; ?>
+                        <a href="<?= buildRiskPageUrl($totalPages, $_GET) ?>" class="page-link">
+                            <?= $totalPages ?>
+                        </a>
+                    <?php endif; ?>
+                    
+                    <?php if ($page < $totalPages): ?>
+                        <a href="<?= buildRiskPageUrl($page + 1, $_GET) ?>" class="page-link">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    <?php else: ?>
+                        <span class="page-link disabled"><i class="fas fa-chevron-right"></i></span>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 
@@ -547,22 +727,144 @@ $isAdmin = isAdmin();
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const isAdmin = <?= json_encode(isAdmin()) ?>;
 
-    function toggleFilter(){const c=document.getElementById('filterCollapse'),i=document.getElementById('filterToggleIcon'),s=document.querySelector('.filter-subtitle');c.classList.toggle('open');i.classList.toggle('open');s.textContent=c.classList.contains('open')?'คลิกเพื่อปิดค้นหาและกรอง':'คลิกเพื่อเปิดค้นหาและกรอง';}
-    function toggleDropdown(e,id){e.stopPropagation();const m=document.getElementById(id),t=m.previousElementSibling;document.querySelectorAll('.dropdown-menu.show').forEach(x=>{if(x.id!==id){x.classList.remove('show');x.previousElementSibling?.classList.remove('active');}});m.classList.toggle('show');t.classList.toggle('active');}
-    document.addEventListener('click',e=>{if(!e.target.closest('.dropdown-wrapper'))document.querySelectorAll('.dropdown-menu.show').forEach(m=>{m.classList.remove('show');m.previousElementSibling?.classList.remove('active');});});
-    function debounce(f,d){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>f.apply(this,a),d);};}
-    document.querySelectorAll('.auto-submit').forEach(e=>e.addEventListener('change',()=>document.getElementById('filterForm').submit()));
-    const si=document.getElementById('searchInput');if(si)si.addEventListener('input',debounce(()=>document.getElementById('filterForm').submit(),500));
+    function toggleFilter() {
+        const c = document.getElementById('filterCollapse');
+        const i = document.getElementById('filterToggleIcon');
+        const s = document.querySelector('.filter-subtitle');
+        c.classList.toggle('open');
+        i.classList.toggle('open');
+        s.textContent = c.classList.contains('open') ? 'คลิกเพื่อปิดกรองข้อมูล' : 'คลิกเพื่อเปิดกรองข้อมูล';
+    }
 
-    function deleteRisks(ids){Swal.fire({title:'กำลังลบ...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});fetch('action.php?action=delete_risks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,csrf_token:csrfToken})}).then(r=>r.json()).then(d=>{if(d.success)Swal.fire({icon:'success',title:'ลบสำเร็จ!',timer:2000,showConfirmButton:false}).then(()=>location.reload());else Swal.fire({icon:'error',title:'ผิดพลาด',text:d.message});}).catch(()=>Swal.fire({icon:'error',title:'เชื่อมต่อล้มเหลว'}));}
+    function toggleDropdown(e, id) {
+        e.stopPropagation();
+        const m = document.getElementById(id);
+        const t = m.previousElementSibling;
+        document.querySelectorAll('.dropdown-menu.show').forEach(x => {
+            if (x.id !== id) {
+                x.classList.remove('show');
+                x.previousElementSibling?.classList.remove('active');
+            }
+        });
+        m.classList.toggle('show');
+        t.classList.toggle('active');
+    }
 
-    <?php if(isAdmin()):?>
-    document.getElementById('selectAll')?.addEventListener('change',function(){document.querySelectorAll('.risk-checkbox').forEach(c=>c.checked=this.checked);});
-    document.getElementById('deleteSelected')?.addEventListener('click',function(){const c=document.querySelectorAll('.risk-checkbox:checked');if(!c.length)return Swal.fire({icon:'warning',title:'กรุณาเลือกรายการ',confirmButtonColor:'#2563eb'});Swal.fire({title:'⚠️ ยืนยันการลบ',html:`<p>ต้องการลบ <strong>${c.length} รายการ</strong>?</p><p style="color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> ข้อมูลจะถูกลบถาวร!</p>`,icon:'warning',showCancelButton:true,confirmButtonColor:'#dc2626',cancelButtonColor:'#6b7280',confirmButtonText:'🗑️ ลบ',cancelButtonText:'ยกเลิก'}).then(r=>{if(r.isConfirmed)deleteRisks(Array.from(c).map(x=>x.value));});});
-    document.querySelectorAll('.delete-single').forEach(b=>b.addEventListener('click',function(e){e.stopPropagation();Swal.fire({title:'⚠️ ยืนยันการลบ',html:'<p>ต้องการลบรายการนี้?</p><p style="color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> ข้อมูลจะถูกลบถาวร!</p>',icon:'warning',showCancelButton:true,confirmButtonColor:'#dc2626',cancelButtonColor:'#6b7280',confirmButtonText:'🗑️ ลบ',cancelButtonText:'ยกเลิก'}).then(r=>{if(r.isConfirmed){deleteRisks([this.dataset.id]);document.querySelectorAll('.dropdown-menu.show').forEach(m=>m.classList.remove('show'));}});}));
-    <?php endif;?>
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.dropdown-wrapper')) {
+            document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+                m.classList.remove('show');
+                m.previousElementSibling?.classList.remove('active');
+            });
+        }
+    });
 
-    document.getElementById('printSelected')?.addEventListener('click',function(){const s=document.querySelectorAll('.risk-checkbox:checked');if(!s.length)return Swal.fire({icon:'warning',title:'กรุณาเลือกรายการ',confirmButtonColor:'#2563eb'});window.open('generate_pdf.php?ids='+Array.from(s).map(c=>c.value).join(','),'_blank');});
+    document.querySelectorAll('.auto-submit').forEach(e => {
+        e.addEventListener('change', () => {
+            document.getElementById('filterForm').submit();
+        });
+    });
+
+    function deleteRisks(ids) {
+        Swal.fire({
+            title: 'กำลังลบ...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        fetch('action.php?action=delete_risks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, csrf_token: csrfToken })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ลบสำเร็จ!',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ผิดพลาด',
+                    text: d.message
+                });
+            }
+        })
+        .catch(() => Swal.fire({
+            icon: 'error',
+            title: 'เชื่อมต่อล้มเหลว'
+        }));
+    }
+
+    <?php if (isAdmin()): ?>
+    document.getElementById('selectAll')?.addEventListener('change', function() {
+        document.querySelectorAll('.risk-checkbox').forEach(c => c.checked = this.checked);
+    });
+
+    document.getElementById('deleteSelected')?.addEventListener('click', function() {
+        const c = document.querySelectorAll('.risk-checkbox:checked');
+        if (!c.length) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาเลือกรายการ',
+                confirmButtonColor: '#2563eb'
+            });
+        }
+        
+        Swal.fire({
+            title: '⚠️ ยืนยันการลบ',
+            html: `<p>ต้องการลบ <strong>${c.length} รายการ</strong>?</p>
+                   <p style="color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> ข้อมูลจะถูกลบถาวร!</p>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '🗑️ ลบ',
+            cancelButtonText: 'ยกเลิก'
+        }).then(r => {
+            if (r.isConfirmed) {
+                deleteRisks(Array.from(c).map(x => x.value));
+            }
+        });
+    });
+
+    document.querySelectorAll('.delete-single').forEach(b => {
+        b.addEventListener('click', function(e) {
+            e.stopPropagation();
+            Swal.fire({
+                title: '⚠️ ยืนยันการลบ',
+                html: '<p>ต้องการลบรายการนี้?</p><p style="color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> ข้อมูลจะถูกลบถาวร!</p>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: '🗑️ ลบ',
+                cancelButtonText: 'ยกเลิก'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    deleteRisks([this.dataset.id]);
+                    document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+                }
+            });
+        });
+    });
+    <?php endif; ?>
+
+    document.getElementById('printSelected')?.addEventListener('click', function() {
+        const s = document.querySelectorAll('.risk-checkbox:checked');
+        if (!s.length) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาเลือกรายการ',
+                confirmButtonColor: '#2563eb'
+            });
+        }
+        window.open('generate_pdf.php?ids=' + Array.from(s).map(c => c.value).join(','), '_blank');
+    });
 </script>
 
 <?php include 'includes/footer.php'; ?>
