@@ -10,6 +10,7 @@
  * - User: แก้ไขสรุปผลการรายงานได้
  * - User: ปรับสถานะได้เอง
  * - User: เพิ่มสรุปผลการรายงานได้ทุกสถานะ (แนบไฟล์ได้)
+ * - เมื่อมีรายงานผลแล้ว จะแก้ไขไม่ได้อีก (ดูได้อย่างเดียว)
  * - แสดงปุ่มตาม Role ชัดเจน
  * - ปุ่มจัดการแบบ Dropdown (⋮) หุบเมนู
  * - โทนสีฟ้า-น้ำเงิน ดูมืออาชีพ
@@ -550,7 +551,8 @@ $isAdmin = isAdmin();
                                     $statusIcon = getStatusIcon($displayStatus);
                                     $isOwner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $risk['user_id'];
                                     $isLocked = in_array($displayStatus, ['ดำเนินการแล้ว', 'ยุติ']);
-                                    $canAddReport = $isOwner || isAdmin();
+                                    $canAddReport = ($isOwner || isAdmin()) && empty($risk['report_id']);
+                                    $canViewReport = ($isOwner || isAdmin()) && !empty($risk['report_id']);
                                     $hasReport = !empty($risk['report_id']);
                                     $dropdownId = 'dm-' . $risk['id'];
                                     $reportStatusKey = $hasReport ? 'has_report' : 'no_report';
@@ -593,21 +595,33 @@ $isAdmin = isAdmin();
                                         <div class="dropdown-wrapper">
                                             <button class="dropdown-toggle" onclick="toggleDropdown(event, '<?= $dropdownId ?>')" title="เมนู">⋮</button>
                                             <div class="dropdown-menu" id="<?= $dropdownId ?>">
+                                                <!-- ดูรายละเอียด -->
                                                 <a href="view_risk.php?id=<?= $risk['id'] ?>" class="dropdown-item view">
                                                     <i class="fas fa-eye"></i> ดูรายละเอียด
                                                 </a>
+                                                
+                                                <!-- พิมพ์ PDF -->
                                                 <a href="generate_pdf.php?id=<?= $risk['id'] ?>" target="_blank" class="dropdown-item print">
                                                     <i class="fas fa-print"></i> พิมพ์ PDF
                                                 </a>
                                                 
+                                                <!-- สรุปผล: ถ้ายังไม่มีรายงาน -> เพิ่มสรุปผล, ถ้ามีแล้ว -> ดูสรุปผล -->
                                                 <?php if ($canAddReport): ?>
                                                     <a href="report_summary.php?risk_id=<?= $risk['id'] ?>" class="dropdown-item report">
-                                                        <i class="fas fa-<?= $hasReport ? 'file-invoice' : 'file-alt' ?>"></i> 
-                                                        <?= $hasReport ? 'แก้ไขสรุปผล' : 'เพิ่มสรุปผล' ?>
+                                                        <i class="fas fa-file-alt"></i> เพิ่มสรุปผล
                                                     </a>
+                                                <?php elseif ($canViewReport): ?>
+                                                    <a href="view_report.php?risk_id=<?= $risk['id'] ?>" class="dropdown-item report">
+                                                        <i class="fas fa-file-invoice"></i> ดูสรุปผล
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="dropdown-item locked">
+                                                        <i class="fas fa-file"></i> สรุปผล (ไม่มีสิทธิ์)
+                                                    </span>
                                                 <?php endif; ?>
                                                 
                                                 <?php if (isAdmin()): ?>
+                                                    <!-- ADMIN MENU -->
                                                     <div class="dropdown-divider"></div>
                                                     <span class="dropdown-item-text">จัดการ (Admin)</span>
                                                     <?php if (!$isLocked): ?>
@@ -624,6 +638,7 @@ $isAdmin = isAdmin();
                                                         <i class="fas fa-trash"></i> ลบ
                                                     </button>
                                                 <?php else: ?>
+                                                    <!-- USER MENU -->
                                                     <?php if ($canEdit && !$isLocked): ?>
                                                         <div class="dropdown-divider"></div>
                                                         <span class="dropdown-item-text">จัดการ</span>
@@ -631,11 +646,6 @@ $isAdmin = isAdmin();
                                                             <i class="fas fa-edit"></i> แก้ไข
                                                         </a>
                                                     <?php else: ?>
-                                                        <?php if (!$canAddReport): ?>
-                                                            <span class="dropdown-item locked">
-                                                                <i class="fas fa-file"></i> สรุปผล (ไม่มีสิทธิ์)
-                                                            </span>
-                                                        <?php endif; ?>
                                                         <div class="dropdown-divider"></div>
                                                         <span class="dropdown-item-text">จัดการ</span>
                                                         <span class="dropdown-item locked">
@@ -711,6 +721,7 @@ $isAdmin = isAdmin();
                         <li><span class="dot"></span> 👑 <strong>Admin</strong>: เห็นทั้งหมด · แก้ไขได้ทุกหน้า · ลบได้ · เพิ่มสรุปผลได้ · พิมพ์ PDF ได้ทั้งหมด</li>
                         <li><span class="dot"></span> 👤 <strong>User</strong>: เห็นเฉพาะของตัวเอง · <strong>แก้ไข+ปรับสถานะได้</strong> · เพิ่มสรุปผลได้ · <strong>ลบไม่ได้</strong></li>
                         <li><span class="dot"></span> 📝 <strong>User</strong>: <strong>เพิ่มสรุปผลได้ทุกสถานะ</strong> (ถ้าเป็นเจ้าของ) · แนบไฟล์ได้ · พิมพ์ PDF ได้</li>
+                        <li><span class="dot"></span> 🔒 <strong>เมื่อมีรายงานผลแล้ว</strong>: แก้ไขสรุปผลไม่ได้อีก ดูได้อย่างเดียว</li>
                         <li><span class="dot"></span> 📊 <strong>การรายงานผล</strong>: แสดงสถานะว่ามีรายงานแล้วหรือยัง</li>
                         <li><span class="dot"></span> 🔒 เมื่อ <strong>"ดำเนินการแล้ว"</strong> หรือ <strong>"ยุติ"</strong> ทุกคนแก้ไขไม่ได้</li>
                         <li><span class="dot"></span> <span class="highlight">การลบรายการจะลบข้อมูลถาวร</span></li>
@@ -755,7 +766,8 @@ $isAdmin = isAdmin();
             document.querySelectorAll('.dropdown-menu.show').forEach(m => {
                 m.classList.remove('show');
                 m.previousElementSibling?.classList.remove('active');
-            });
+            }
+        );
         }
     });
 
