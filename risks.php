@@ -7,8 +7,9 @@
  * - Admin: เห็นทั้งหมด / User: เห็นเฉพาะของตัวเอง
  * - Admin: แก้ไขได้ทุกหน้า (เนื้อหา, สถานะ, สรุปผล)
  * - Admin: พิมพ์ PDF ได้ทั้งหมด
- * - User กดบันทึกแล้วไม่สามารถแก้ไขได้ (ต้องแจ้ง Admin)
- * - User สามารถเพิ่มสรุปผลการรายงานได้ทุกสถานะ
+ * - User: แก้ไขสรุปผลการรายงานได้
+ * - User: ปรับสถานะได้เอง
+ * - User: เพิ่มสรุปผลการรายงานได้ทุกสถานะ (แนบไฟล์ได้)
  * - แสดงปุ่มตาม Role ชัดเจน
  * - ปุ่มจัดการแบบ Dropdown (⋮) หุบเมนู
  * - โทนสีฟ้า-น้ำเงิน ดูมืออาชีพ
@@ -28,7 +29,7 @@ require_once 'includes/functions.php';
 
 if (!isLoggedIn()) redirect('index.php');
 
-// ===== ฟังก์ชันแปลงวันที่เป็น พ.ศ. ไทย (30 มิถุนายน 2569) =====
+// ===== ฟังก์ชันแปลงวันที่เป็น พ.ศ. ไทย =====
 function thaiDate($date, $showTime = false) {
     if (empty($date)) return '-';
     $timestamp = strtotime($date);
@@ -54,12 +55,16 @@ function thaiDate($date, $showTime = false) {
 }
 
 // ===== ฟังก์ชันตรวจสอบสิทธิ์ =====
+// User สามารถแก้ไขสรุปผลได้ และปรับสถานะได้เอง
 function canModify($risk_user_id) {
     if (!isset($_SESSION['user_id'])) return false;
     if (isAdmin()) return true;
-    return false;
+    // User แก้ไขรายการของตัวเองได้ (สำหรับปรับสถานะ)
+    return $_SESSION['user_id'] == $risk_user_id;
 }
+
 function canDelete() { return isAdmin(); }
+
 function getStatusIcon($status) {
     if ($status == 'ดำเนินการแล้ว') return 'fa-check-circle';
     if ($status == 'กำลังดำเนินการ') return 'fa-spinner fa-spin';
@@ -204,7 +209,6 @@ $isAdmin = isAdmin();
 
     .page-container { max-width: 1400px; margin: 0 auto; }
 
-    /* ==================== HEADER ==================== */
     .page-header {
         background: var(--primary-gradient);
         border-radius: 1.25rem; padding: 1.75rem 2.25rem; margin-bottom: 1.5rem;
@@ -218,7 +222,6 @@ $isAdmin = isAdmin();
     .page-header p { color: rgba(255,255,255,0.85); font-size: 0.9rem; margin-top: 0.5rem; position: relative; z-index: 1; }
     .page-header p strong { color: white; font-weight: 600; }
 
-    /* ==================== FILTER ==================== */
     .filter-card { background: var(--surface); border-radius: 1rem; border: 1px solid var(--border); margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; }
     .filter-header { background: var(--surface-secondary); padding: 0.9rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
     .filter-header:hover { background: #f1f5f9; }
@@ -234,7 +237,6 @@ $isAdmin = isAdmin();
     .filter-collapse.open { max-height: 800px; }
     .filter-body { padding: 1.25rem 1.5rem; }
     .filter-section { margin-bottom: 1rem; }
-    .filter-section:last-child { margin-bottom: 0; }
     .filter-section-title { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.4rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-light); }
     .search-row { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
     .search-box { position: relative; }
@@ -245,7 +247,6 @@ $isAdmin = isAdmin();
     .filter-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; }
     .filter-group { display: flex; flex-direction: column; gap: 0.25rem; }
     .filter-label { font-size: 0.68rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 0.3rem; }
-    .filter-label i { color: var(--text-muted); font-size: 0.6rem; width: 14px; text-align: center; }
     .filter-input { padding: 0.55rem 0.75rem; border: 1.5px solid var(--border); border-radius: 0.5rem; font-size: 0.83rem; outline: none; font-family: 'Sarabun', sans-serif; background: #fafbfc; color: var(--text); width: 100%; }
     .filter-input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
     select.filter-input { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.7rem center; background-size: 11px; padding-right: 2rem; }
@@ -255,22 +256,16 @@ $isAdmin = isAdmin();
     .filter-tag .remove-tag { cursor: pointer; color: #ef4444; font-size: 0.6rem; text-decoration: none; }
     .btn-clear-all { padding: 0.25rem 0.7rem; border-radius: 0.45rem; font-size: 0.7rem; font-weight: 600; border: 1px solid #fecaca; background: var(--danger-light); color: var(--danger); text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem; margin-left: auto; white-space: nowrap; }
 
-    /* ==================== ACTIONS ==================== */
     .action-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; align-items: center; }
     .btn-action { padding: 0.5rem 1rem; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; font-family: 'Sarabun', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: all 0.25s; }
     .btn-action:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     .btn-action:disabled { opacity: 0.55; cursor: not-allowed; }
     .btn-action:disabled:hover { transform: none; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     .btn-action.danger { background: var(--danger-light); color: var(--danger); border-color: #fecaca; }
-    .btn-action.danger:hover:not(:disabled) { background: #fee2e2; }
     .btn-action.print { background: var(--info-light); color: var(--info); border-color: #bae6fd; }
-    .btn-action.print:hover { background: #e0f2fe; }
     .btn-action.pdf { background: var(--primary-light); color: var(--primary); border-color: #bfdbfe; }
-    .btn-action.pdf:hover { background: #dbeafe; }
     .btn-action.add { background: var(--purple-light); color: var(--purple); border-color: #ddd6fe; }
-    .btn-action.add:hover { background: #ede9fe; }
 
-    /* ==================== TABLE ==================== */
     .table-card { background: var(--surface); border-radius: 1rem; border: 1px solid var(--border); overflow: visible; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     .table-header-bar { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1.25rem; background: var(--surface-secondary); border-bottom: 1px solid var(--border); }
     table { width: 100%; border-collapse: collapse; }
@@ -279,18 +274,13 @@ $isAdmin = isAdmin();
     td:nth-child(3), td:nth-child(4) { text-align: left; }
     tr:last-child td { border-bottom: none; }
     
-    /* ===== TABLE STRIPED ===== */
     tbody tr:nth-child(odd) { background: #ffffff; }
     tbody tr:nth-child(even) { background: #f8fafc; }
     tbody tr { transition: background 0.2s ease, box-shadow 0.2s ease; }
-    tbody tr:hover { 
-        background: var(--hover) !important; 
-        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
-    }
+    tbody tr:hover { background: var(--hover) !important; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06); }
     
     .pill { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
 
-    /* ==================== DROPDOWN ==================== */
     .dropdown-wrapper { position: relative; display: inline-block; }
     .dropdown-toggle { width: 32px; height: 32px; border-radius: 8px; background: white; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 1rem; font-weight: 700; transition: all 0.2s; }
     .dropdown-toggle:hover { background: var(--primary-light); border-color: #bfdbfe; color: var(--primary); }
@@ -309,75 +299,20 @@ $isAdmin = isAdmin();
     .dropdown-divider { height: 1px; background: var(--border-light); margin: 0.2rem 0.55rem; }
     .dropdown-item-text { font-size: 0.6rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 0.35rem 0.75rem 0.15rem; }
 
-    /* ==================== INFO CARD ==================== */
     .info-card {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 1.25rem;
-        padding: 1.5rem 1.75rem;
-        margin-top: 1.5rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 1.25rem;
+        background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1.25rem;
+        padding: 1.5rem 1.75rem; margin-top: 1.5rem;
+        display: flex; align-items: flex-start; gap: 1.25rem;
         box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
     }
-    .info-icon-circle {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
-        background: #dbeafe;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-        border: 1px solid #bfdbfe;
-        color: #2563eb;
-    }
-    .info-content h4 {
-        font-size: 1rem;
-        font-weight: 700;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #1e293b;
-    }
-    .info-content ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
-    }
-    .info-content ul li {
-        font-size: 0.8rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: white;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.6rem;
-        border: 1px solid #dbeafe;
-        color: #475569;
-    }
-    .info-content ul li .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #60a5fa;
-        flex-shrink: 0;
-    }
-    .info-content ul li strong {
-        color: #1e293b;
-    }
-    .info-content ul li .highlight {
-        color: #dc2626;
-        font-weight: 600;
-    }
+    .info-icon-circle { width: 48px; height: 48px; border-radius: 14px; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; border: 1px solid #bfdbfe; color: #2563eb; }
+    .info-content h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: #1e293b; }
+    .info-content ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .info-content ul li { font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; background: white; padding: 0.5rem 0.75rem; border-radius: 0.6rem; border: 1px solid #dbeafe; color: #475569; }
+    .info-content ul li .dot { width: 8px; height: 8px; border-radius: 50%; background: #60a5fa; flex-shrink: 0; }
+    .info-content ul li strong { color: #1e293b; }
+    .info-content ul li .highlight { color: #dc2626; font-weight: 600; }
 
-    /* ==================== PAGINATION ==================== */
     .pagination-bar { display: flex; align-items: center; justify-content: center; gap: 0.25rem; margin-top: 1.5rem; flex-wrap: wrap; }
     .page-link { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; border-radius: 0.45rem; border: 1px solid var(--border); font-size: 0.83rem; font-weight: 500; color: var(--text-secondary); text-decoration: none; background: white; }
     .page-link:hover { background: var(--primary-light); border-color: #bfdbfe; color: var(--primary); }
@@ -385,9 +320,6 @@ $isAdmin = isAdmin();
     .page-link.disabled { opacity: 0.35; pointer-events: none; }
     .empty-state { text-align: center; padding: 5rem 2rem; background: white; border-radius: 1rem; border: 2px dashed var(--border); }
     .empty-state i { font-size: 4rem; color: #cbd5e1; margin-bottom: 1rem; }
-
-    @media (max-width: 1024px) { .filter-grid-4 { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 768px) { .filter-grid-4, .filter-grid-2 { grid-template-columns: 1fr; } .info-content ul { grid-template-columns: 1fr; } }
 </style>
 
 <div class="flex h-screen">
@@ -395,7 +327,6 @@ $isAdmin = isAdmin();
     <div class="flex-1 p-4 md:p-5 overflow-y-auto">
         <div class="page-container">
 
-            <!-- HEADER -->
             <div class="page-header">
                 <h1><span class="icon-circle">📋</span> รายการความเสี่ยง</h1>
                 <p>
@@ -501,6 +432,8 @@ $isAdmin = isAdmin();
                                     $dropdownId = 'dm-' . $risk['id'];
                                     $reportStatusKey = $hasReport ? 'has_report' : 'no_report';
                                     $reportStatusInfo = $reportStatusLabels[$reportStatusKey];
+                                    // User ที่เป็นเจ้าของสามารถแก้ไขได้ (ปรับสถานะได้)
+                                    $canEdit = canModify($risk['user_id']);
                                 ?>
                                 <tr>
                                     <td><?php if (isAdmin()): ?><input type="checkbox" class="risk-checkbox" value="<?= $risk['id'] ?>"><?php endif; ?></td>
@@ -527,8 +460,8 @@ $isAdmin = isAdmin();
                                                 <!-- สรุปผล (ทุกคนที่มีสิทธิ์) -->
                                                 <?php if ($canAddReport): ?>
                                                     <a href="report_summary.php?risk_id=<?= $risk['id'] ?>" class="dropdown-item report">
-                                                        <i class="fas fa-<?= $hasReport ? 'file-invoice' : 'plus' ?>"></i> 
-                                                        <?= $hasReport ? 'สรุปผล' : 'เพิ่มสรุปผล' ?>
+                                                        <i class="fas fa-<?= $hasReport ? 'file-invoice' : 'file-alt' ?>"></i> 
+                                                        <?= $hasReport ? 'แก้ไขสรุปผล' : 'เพิ่มสรุปผล' ?>
                                                     </a>
                                                 <?php endif; ?>
                                                 
@@ -541,9 +474,7 @@ $isAdmin = isAdmin();
                                                             <i class="fas fa-edit"></i> แก้ไข
                                                         </a>
                                                     <?php else: ?>
-                                                        <span class="dropdown-item locked">
-                                                            <i class="fas fa-lock"></i> แก้ไข (ล็อก)
-                                                        </span>
+                                                        <span class="dropdown-item locked"><i class="fas fa-lock"></i> แก้ไข (ล็อก)</span>
                                                     <?php endif; ?>
                                                     <div class="dropdown-divider"></div>
                                                     <button class="dropdown-item delete delete-single" data-id="<?= $risk['id'] ?>">
@@ -551,19 +482,22 @@ $isAdmin = isAdmin();
                                                     </button>
                                                 <?php else: ?>
                                                     <!-- ===== USER MENU ===== -->
-                                                    <?php if (!$canAddReport): ?>
-                                                        <span class="dropdown-item locked">
-                                                            <i class="fas fa-file"></i> สรุปผล (ไม่มีสิทธิ์)
-                                                        </span>
+                                                    <?php if ($canEdit && !$isLocked): ?>
+                                                        <!-- User แก้ไขได้ (ปรับสถานะได้) -->
+                                                        <div class="dropdown-divider"></div>
+                                                        <span class="dropdown-item-text">จัดการ</span>
+                                                        <a href="risk_form.php?id=<?= $risk['id'] ?>" class="dropdown-item edit">
+                                                            <i class="fas fa-edit"></i> แก้ไข
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <?php if (!$canAddReport): ?>
+                                                            <span class="dropdown-item locked"><i class="fas fa-file"></i> สรุปผล (ไม่มีสิทธิ์)</span>
+                                                        <?php endif; ?>
+                                                        <div class="dropdown-divider"></div>
+                                                        <span class="dropdown-item-text">จัดการ</span>
+                                                        <span class="dropdown-item locked"><i class="fas fa-lock"></i> แก้ไข (<?= $isLocked ? 'ล็อก' : 'แจ้ง Admin' ?>)</span>
                                                     <?php endif; ?>
-                                                    <div class="dropdown-divider"></div>
-                                                    <span class="dropdown-item-text">จัดการ</span>
-                                                    <span class="dropdown-item locked">
-                                                        <i class="fas fa-lock"></i> แก้ไข (แจ้ง Admin)
-                                                    </span>
-                                                    <span class="dropdown-item locked">
-                                                        <i class="fas fa-ban"></i> ลบ (เฉพาะ Admin)
-                                                    </span>
+                                                    <span class="dropdown-item locked"><i class="fas fa-ban"></i> ลบ (เฉพาะ Admin)</span>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -595,8 +529,8 @@ $isAdmin = isAdmin();
                     <h4>📌 สรุปสิทธิ์การใช้งาน</h4>
                     <ul>
                         <li><span class="dot"></span> 👑 <strong>Admin</strong>: เห็นทั้งหมด · แก้ไขได้ทุกหน้า · ลบได้ · เพิ่มสรุปผลได้ · พิมพ์ PDF ได้ทั้งหมด</li>
-                        <li><span class="dot"></span> 👤 <strong>User</strong>: เห็นเฉพาะของตัวเอง · <strong>แก้ไขไม่ได้</strong> (แจ้ง Admin) · <strong>ลบไม่ได้</strong></li>
-                        <li><span class="dot"></span> 📝 <strong>User</strong>: <strong>เพิ่มสรุปผลได้ทุกสถานะ</strong> (ถ้าเป็นเจ้าของ) · พิมพ์ PDF ได้</li>
+                        <li><span class="dot"></span> 👤 <strong>User</strong>: เห็นเฉพาะของตัวเอง · <strong>แก้ไข+ปรับสถานะได้</strong> · เพิ่มสรุปผลได้ · <strong>ลบไม่ได้</strong></li>
+                        <li><span class="dot"></span> 📝 <strong>User</strong>: <strong>เพิ่มสรุปผลได้ทุกสถานะ</strong> (ถ้าเป็นเจ้าของ) · แนบไฟล์ได้ · พิมพ์ PDF ได้</li>
                         <li><span class="dot"></span> 📊 <strong>การรายงานผล</strong>: แสดงสถานะว่ามีรายงานแล้วหรือยัง</li>
                         <li><span class="dot"></span> 🔒 เมื่อ <strong>"ดำเนินการแล้ว"</strong> หรือ <strong>"ยุติ"</strong> ทุกคนแก้ไขไม่ได้</li>
                         <li><span class="dot"></span> <span class="highlight">การลบรายการจะลบข้อมูลถาวร</span></li>

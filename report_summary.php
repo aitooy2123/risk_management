@@ -2,7 +2,8 @@
 
 /**
  * หน้าสรุปผลการรายงาน - ฟอร์มบันทึกข้อมูล
- * - User: เห็นและแก้ไขรายการของตัวเองได้ / Admin: เห็นทั้งหมด และแก้ไขได้
+ * - User: สามารถแก้ไขสรุปผลได้ (เจ้าของรายการ)
+ * - Admin: เห็นทั้งหมด และแก้ไขได้
  * - เข้าถึงได้ทุกรายการ (ไม่จำกัดเฉพาะ "ดำเนินการแล้ว")
  * - บันทึก: มาตรการแก้ไข, ผู้รับผิดชอบ, การติดตามผล, ผลที่คาดว่าจะได้รับ
  * - แนบไฟล์สรุปผลได้ + Lightbox
@@ -32,7 +33,6 @@ $stmt->execute([$risk_id]);
 $risk = $stmt->fetch();
 
 if (!$risk) {
-    // ไม่พบรายการ
     redirect('risks.php');
 }
 
@@ -47,11 +47,12 @@ $stmt = $pdo->prepare("SELECT * FROM risk_reports WHERE risk_id = ? ORDER BY cre
 $stmt->execute([$risk_id]);
 $existingReport = $stmt->fetch();
 
-// ===== จัดการ POST (บันทึก/อัปเดต) =====
-$canEdit = isAdmin(); // เฉพาะ Admin ที่แก้ไขได้ (หรือเปลี่ยนเป็น true ถ้าต้องการให้ User แก้ไขได้)
+// ===== User ที่เป็นเจ้าของสามารถแก้ไขสรุปผลได้ =====
+$canEdit = isAdmin() || (isset($risk['user_id']) && $risk['user_id'] == $_SESSION['user_id']);
 
+// ===== จัดการ POST (บันทึก/อัปเดต) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isAdmin()) {
+    if (!$canEdit) {
         $error = 'คุณไม่มีสิทธิ์ในการบันทึกหรือแก้ไขข้อมูล';
     } elseif (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = 'Invalid request (CSRF token ไม่ถูกต้อง)';
@@ -168,7 +169,6 @@ function formatFileSize($bytes) {
 
     .page-container { max-width: 900px; margin: 0 auto; }
 
-    /* Header */
     .page-header {
         background: var(--primary-gradient);
         border-radius: 1.25rem;
@@ -205,7 +205,6 @@ function formatFileSize($bytes) {
     }
     .back-link:hover { color: white; }
 
-    /* Cards */
     .info-detail-card {
         background: white; border-radius: 1rem; border: 1px solid #e2e8f0;
         padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
@@ -219,8 +218,11 @@ function formatFileSize($bytes) {
         background: #dbeafe; color: #1e40af; font-size: 0.6rem;
         padding: 0.15rem 0.6rem; border-radius: 9999px; font-weight: 600;
     }
+    .user-badge {
+        background: #dbeafe; color: #2563eb; font-size: 0.6rem;
+        padding: 0.15rem 0.6rem; border-radius: 9999px; font-weight: 600;
+    }
 
-    /* Form */
     .form-card {
         background: white; border-radius: 1rem; border: 1px solid #e2e8f0;
         padding: 1.5rem; margin-bottom: 1.5rem;
@@ -255,7 +257,6 @@ function formatFileSize($bytes) {
     }
     .form-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
 
-    /* Buttons */
     .btn-action {
         padding: 0.55rem 1.1rem; border-radius: 0.6rem;
         font-size: 0.82rem; font-weight: 600; cursor: pointer;
@@ -269,7 +270,6 @@ function formatFileSize($bytes) {
     .btn-action.gray { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
     .btn-action.gray:hover { background: #e2e8f0; }
 
-    /* File Upload */
     .file-card {
         background: white; border: 1.5px solid #e2e8f0;
         border-radius: 0.75rem; overflow: hidden; margin-bottom: 0.75rem;
@@ -366,6 +366,8 @@ function formatFileSize($bytes) {
                     ข้อมูลความเสี่ยง
                     <?php if ($isAdmin): ?>
                         <span class="admin-badge"><i class="fas fa-user-shield"></i> Admin</span>
+                    <?php elseif ($canEdit): ?>
+                        <span class="user-badge"><i class="fas fa-user-edit"></i> เจ้าของรายการ</span>
                     <?php endif; ?>
                 </h3>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; font-size: 0.85rem;">
@@ -382,10 +384,10 @@ function formatFileSize($bytes) {
                         </span>
                     </div>
                 </div>
-                <?php if (!$isAdmin): ?>
+                <?php if (!$canEdit): ?>
                     <div style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #fef3c7; border-radius: 0.5rem; font-size: 0.8rem; color: #92400e; display: flex; align-items: center; gap: 0.5rem;">
                         <i class="fas fa-info-circle"></i>
-                        <span>คุณอยู่ในโหมด <strong>อ่านอย่างเดียว</strong> เฉพาะ Admin เท่านั้นที่สามารถแก้ไขข้อมูลได้</span>
+                        <span>คุณอยู่ในโหมด <strong>อ่านอย่างเดียว</strong> คุณไม่ใช่เจ้าของรายการนี้</span>
                     </div>
                 <?php endif; ?>
             </div>
@@ -404,28 +406,28 @@ function formatFileSize($bytes) {
             <?php endif; ?>
 
             <!-- Form -->
-            <form method="POST" enctype="multipart/form-data" class="form-card <?= !$isAdmin ? 'disabled' : '' ?>">
+            <form method="POST" enctype="multipart/form-data" class="form-card <?= !$canEdit ? 'disabled' : '' ?>">
                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                 <input type="hidden" name="risk_id" value="<?= $risk_id ?>">
 
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-tools"></i> มาตรการแก้ไข</label>
-                    <textarea name="corrective_action" class="form-textarea" placeholder="ระบุมาตรการแก้ไขที่ดำเนินการ..." rows="4" <?= !$isAdmin ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['corrective_action'] ?? '') ?></textarea>
+                    <textarea name="corrective_action" class="form-textarea" placeholder="ระบุมาตรการแก้ไขที่ดำเนินการ..." rows="4" <?= !$canEdit ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['corrective_action'] ?? '') ?></textarea>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-user-check"></i> ผู้รับผิดชอบ</label>
-                    <input type="text" name="responsible_person" class="form-input" placeholder="ระบุชื่อผู้รับผิดชอบ..." value="<?= htmlspecialchars($existingReport['responsible_person'] ?? $_SESSION['username'] ?? '') ?>" <?= !$isAdmin ? 'readonly' : '' ?>>
+                    <input type="text" name="responsible_person" class="form-input" placeholder="ระบุชื่อผู้รับผิดชอบ..." value="<?= htmlspecialchars($existingReport['responsible_person'] ?? $_SESSION['username'] ?? '') ?>" <?= !$canEdit ? 'readonly' : '' ?>>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-search"></i> การติดตามผล</label>
-                    <textarea name="follow_up" class="form-textarea" placeholder="ระบุผลการติดตาม..." rows="4" <?= !$isAdmin ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['follow_up'] ?? '') ?></textarea>
+                    <textarea name="follow_up" class="form-textarea" placeholder="ระบุผลการติดตาม..." rows="4" <?= !$canEdit ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['follow_up'] ?? '') ?></textarea>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-chart-line"></i> ผลที่คาดว่าจะได้รับ</label>
-                    <textarea name="expected_outcome" class="form-textarea" placeholder="ระบุผลที่คาดว่าจะได้รับ..." rows="4" <?= !$isAdmin ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['expected_outcome'] ?? '') ?></textarea>
+                    <textarea name="expected_outcome" class="form-textarea" placeholder="ระบุผลที่คาดว่าจะได้รับ..." rows="4" <?= !$canEdit ? 'readonly' : '' ?>><?= htmlspecialchars($existingReport['expected_outcome'] ?? '') ?></textarea>
                 </div>
 
                 <div class="form-group">
@@ -473,11 +475,11 @@ function formatFileSize($bytes) {
                         </div>
                     <?php endif; ?>
 
-                    <label class="upload-area <?= !$isAdmin ? 'disabled' : '' ?>" for="report_file">
-                        <input type="file" id="report_file" name="report_file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" onchange="handleFileSelect(this)" <?= !$isAdmin ? 'disabled' : '' ?>>
+                    <label class="upload-area <?= !$canEdit ? 'disabled' : '' ?>" for="report_file">
+                        <input type="file" id="report_file" name="report_file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" onchange="handleFileSelect(this)" <?= !$canEdit ? 'disabled' : '' ?>>
                         <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
                         <p style="font-weight: 600; color: #475569; font-size: 0.9rem;">
-                            <?= $isAdmin ? 'คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง' : 'เฉพาะ Admin เท่านั้นที่สามารถอัปโหลดไฟล์ได้' ?>
+                            <?= $canEdit ? 'คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง' : 'คุณไม่มีสิทธิ์ในการอัปโหลดไฟล์' ?>
                         </p>
                         <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem;">PDF, Word, Excel, รูปภาพ (สูงสุด 10MB)</p>
                         <div id="file-preview-area" class="file-preview-inline" style="display:none;">
@@ -491,10 +493,10 @@ function formatFileSize($bytes) {
 
                 <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9;">
                     <a href="risks.php" class="btn-action gray"><i class="fas fa-times"></i> กลับ</a>
-                    <?php if ($isAdmin): ?>
+                    <?php if ($canEdit): ?>
                         <button type="submit" class="btn-action blue"><i class="fas fa-save"></i> <?= $existingReport ? 'อัปเดต' : 'บันทึก' ?></button>
                     <?php else: ?>
-                        <button type="button" class="btn-action gray" disabled><i class="fas fa-lock"></i> เฉพาะ Admin</button>
+                        <button type="button" class="btn-action gray" disabled><i class="fas fa-lock"></i> ไม่มีสิทธิ์แก้ไข</button>
                     <?php endif; ?>
                 </div>
             </form>
