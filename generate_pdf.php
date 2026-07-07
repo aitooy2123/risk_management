@@ -139,10 +139,13 @@ $html = '<!DOCTYPE html>
         font-style: normal;
     }
     
-    @page { 
-        margin: 2cm 1.8cm;
-        size: A4 portrait;
-    }
+@page { 
+    margin-top: 3cm;      /* หน้า (บน) */
+    margin-bottom: 2cm;   /* หลัง (ล่าง) */
+    margin-left: 1.5cm;   /* ซ้าย (หรือที่คุณเรียกว่าบน?) */
+    margin-right: 2cm;    /* ขวา (หรือที่คุณเรียกว่าล่าง?) - ปรับตัวเลขนี้ตามต้องการ */
+    size: A4 portrait;
+}
     
     body {
         font-family: "Sarabun", "Garuda", sans-serif;
