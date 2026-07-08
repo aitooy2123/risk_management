@@ -7,6 +7,7 @@
  * - ค้นหาอัตโนมัติเมื่อพิมพ์/เปลี่ยนค่า
  * - ป้องกันลบตัวเองและ Admin คนสุดท้าย
  * - ใช้ SweetAlert2 สำหรับการแจ้งเตือนและการยืนยัน
+ * - Keyboard Shortcuts: Ctrl+A เลือกทั้งหมด, Ctrl+D ลบที่เลือก
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -95,6 +96,9 @@ function buildUserPageUrl($page, $currentParams)
         --purple-light: #f5f3ff;
         --warning: #d97706;
         --warning-light: #fffbeb;
+        --success: #059669;
+        --success-light: #ecfdf5;
+        --hover: #eff6ff;
     }
 
     body {
@@ -574,7 +578,7 @@ function buildUserPageUrl($page, $currentParams)
     }
 
     tbody tr:hover {
-        background: #f8fafc;
+        background: var(--hover);
     }
 
     /* Pills */
@@ -604,6 +608,7 @@ function buildUserPageUrl($page, $currentParams)
         color: white;
         font-size: 0.6rem;
         padding: 0.1rem 0.45rem;
+        margin-left: 0.3rem;
     }
 
     /* Avatar */
@@ -738,6 +743,16 @@ function buildUserPageUrl($page, $currentParams)
         font-weight: 600;
     }
 
+    .info-content ul li .shortcut {
+        font-size: 0.6rem;
+        background: #f1f5f9;
+        padding: 0.05rem 0.4rem;
+        border-radius: 4px;
+        color: #64748b;
+        font-weight: 600;
+        margin-left: 0.3rem;
+    }
+
     /* ==================== PAGINATION ==================== */
     .pagination-bar {
         display: flex;
@@ -795,6 +810,27 @@ function buildUserPageUrl($page, $currentParams)
         margin-bottom: 1rem;
     }
 
+    /* ==================== KEYBOARD SHORTCUTS HINT ==================== */
+    .shortcuts-hint {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .shortcuts-hint kbd {
+        background: #f1f5f9;
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.6rem;
+        font-weight: 600;
+        color: #475569;
+    }
+
     @media (max-width: 1024px) {
         .filter-grid-5 {
             grid-template-columns: 1fr 1fr 1fr;
@@ -806,6 +842,49 @@ function buildUserPageUrl($page, $currentParams)
         .filter-grid-5,
         .filter-grid-2 {
             grid-template-columns: 1fr;
+        }
+
+        .page-header {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.25rem;
+        }
+
+        .info-card {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .info-content ul {
+            flex-direction: column;
+        }
+    }
+
+    @media print {
+        .sidebar,
+        .action-bar,
+        .filter-card,
+        .info-card,
+        .page-header::before,
+        .page-header::after {
+            display: none !important;
+        }
+
+        .page-header {
+            background: #0f172a !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .table-card {
+            border: 1px solid #ddd !important;
+            box-shadow: none !important;
+        }
+
+        body {
+            background: white !important;
         }
     }
 </style>
@@ -842,7 +921,7 @@ function buildUserPageUrl($page, $currentParams)
                             <div class="filter-section">
                                 <div class="filter-section-title"><i class="fas fa-search"></i> ค้นหาทั่วไป</div>
                                 <div class="search-row">
-                                    <div class="search-box"><i class="fas fa-search search-icon"></i><input type="text" name="search" id="searchInput" value="<?= htmlspecialchars($search) ?>" placeholder="ค้นหาชื่อ, อีเมล, แผนก, รหัส..."></div>
+                                    <div class="search-box"><i class="fas fa-search search-icon"></i><input type="text" name="search" id="searchInput" value="<?= htmlspecialchars($search) ?>" placeholder="ค้นหาชื่อ, อีเมล, แผนก, รหัส..." autocomplete="off"></div>
                                 </div>
                             </div>
                             <div class="filter-section">
@@ -856,8 +935,8 @@ function buildUserPageUrl($page, $currentParams)
                                     <div class="filter-group"><label class="filter-label"><i class="fas fa-building"></i> แผนก</label><select name="department" class="filter-input auto-submit">
                                             <option value="">ทั้งหมด</option><?php foreach ($departments as $dept): ?><option value="<?= htmlspecialchars($dept) ?>" <?= $dept_filter === $dept ? 'selected' : '' ?>><?= htmlspecialchars($dept) ?></option><?php endforeach; ?>
                                         </select></div>
-                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> ตั้งแต่</label><input type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>" class="filter-input auto-submit"></div>
-                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> ถึง</label><input type="date" name="date_to" value="<?= htmlspecialchars($date_to) ?>" class="filter-input auto-submit"></div>
+                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> ตั้งแต่</label><input type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>" class="filter-input auto-submit" max="<?= date('Y-m-d') ?>"></div>
+                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> ถึง</label><input type="date" name="date_to" value="<?= htmlspecialchars($date_to) ?>" class="filter-input auto-submit" max="<?= date('Y-m-d') ?>"></div>
                                 </div>
                             </div>
                         </div>
@@ -879,6 +958,11 @@ function buildUserPageUrl($page, $currentParams)
             <div class="action-bar">
                 <button id="deleteSelected" class="btn-action danger"><i class="fas fa-trash-alt"></i> ลบที่เลือก</button>
                 <a href="user_form.php" class="btn-action add" style="margin-left:auto;"><i class="fas fa-user-plus"></i> เพิ่มผู้ใช้</a>
+                <span class="shortcuts-hint">
+                    <span><kbd>Ctrl+A</kbd> เลือกทั้งหมด</span>
+                    <span><kbd>Ctrl+D</kbd> ลบที่เลือก</span>
+                    <span><kbd>Esc</kbd> ปิดเมนู</span>
+                </span>
             </div>
 
             <!-- ==================== TABLE ==================== -->
@@ -936,9 +1020,9 @@ function buildUserPageUrl($page, $currentParams)
                                         <td class="text-gray-500 text-sm"><?= date('d/m/Y', strtotime($user['created_at'])) ?></td>
                                         <td>
                                             <div style="display:flex;gap:3px;justify-content:center;">
-                                                <a href="user_form.php?id=<?= $user['id'] ?>" class="btn-icon edit" title="แก้ไข"><i class="fas fa-edit text-sm"></i></a>
+                                                <a href="user_form.php?id=<?= $user['id'] ?>" class="btn-icon edit" title="แก้ไขผู้ใช้ (Ctrl+E)"><i class="fas fa-edit text-sm"></i></a>
                                                 <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                                    <button class="btn-icon delete delete-single" data-id="<?= $user['id'] ?>" data-username="<?= htmlspecialchars($user['username']) ?>" title="ลบ"><i class="fas fa-trash text-sm"></i></button>
+                                                    <button class="btn-icon delete delete-single" data-id="<?= $user['id'] ?>" data-username="<?= htmlspecialchars($user['username']) ?>" title="ลบผู้ใช้"><i class="fas fa-trash text-sm"></i></button>
                                                 <?php else: ?>
                                                     <span class="btn-icon disabled" title="ไม่สามารถลบตัวเองได้"><i class="fas fa-trash text-sm"></i></span>
                                                 <?php endif; ?>
@@ -969,14 +1053,16 @@ function buildUserPageUrl($page, $currentParams)
             <div class="info-card">
                 <div class="info-icon-circle"><i class="fas fa-info"></i></div>
                 <div class="info-content">
-                    <h4>📌 หมายเหตุ</h4>
+                    <h4>📌 หมายเหตุ <span style="font-size:0.7rem;font-weight:400;color:#64748b;margin-left:0.5rem;">⌨️ ใช้แป้นพิมพ์ลัดเพื่อความรวดเร็ว</span></h4>
                     <ul>
                         <li><span class="dot"></span> <strong>Admin</strong> สามารถเพิ่ม/แก้ไข/ลบผู้ใช้ได้ทั้งหมด</li>
-                        <li><span class="dot"></span> <strong>ไม่สามารถลบตัวเอง</strong> หรือ <strong>Admin คนสุดท้าย</strong> ได้</li>
-                        <li><span class="dot"></span> <span class="highlight">การลบผู้ใช้จะลบข้อมูลความเสี่ยงที่ผู้ใช้คนนั้นสร้างไว้ทั้งหมด</span></li>
+                        <li><span class="dot"></span> <strong>ไม่สามารถลบตัวเอง</strong> หรือ <strong>Admin คนสุดท้าย</strong> ได้ <span class="shortcut">🔒</span></li>
+                        <li><span class="dot"></span> <span class="highlight">การลบผู้ใช้จะลบข้อมูลความเสี่ยงที่ผู้ใช้คนนั้นสร้างไว้ทั้งหมด</span> <span class="shortcut">⚠️</span></li>
+                        <li><span class="dot"></span> <strong>Shortcuts:</strong> <kbd>Ctrl+A</kbd> เลือกทั้งหมด · <kbd>Ctrl+D</kbd> ลบที่เลือก · <kbd>Ctrl+E</kbd> แก้ไข · <kbd>Esc</kbd> ปิดเมนู</li>
                     </ul>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -986,6 +1072,9 @@ function buildUserPageUrl($page, $currentParams)
 <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+    // ============================================================
+    // FILTER TOGGLE
+    // ============================================================
     function toggleFilter() {
         const c = document.getElementById('filterCollapse'),
             i = document.getElementById('filterToggleIcon'),
@@ -995,6 +1084,9 @@ function buildUserPageUrl($page, $currentParams)
         s.textContent = c.classList.contains('open') ? 'คลิกเพื่อปิดค้นหาและกรอง' : 'คลิกเพื่อเปิดค้นหาและกรอง';
     }
 
+    // ============================================================
+    // DEBOUNCE SEARCH
+    // ============================================================
     function debounce(f, d) {
         let t;
         return function(...a) {
@@ -1002,7 +1094,9 @@ function buildUserPageUrl($page, $currentParams)
             t = setTimeout(() => f.apply(this, a), d);
         };
     }
+
     document.querySelectorAll('.auto-submit').forEach(e => e.addEventListener('change', () => document.getElementById('filterForm').submit()));
+
     const si = document.getElementById('searchInput');
     if (si) {
         si.addEventListener('input', debounce(() => document.getElementById('filterForm').submit(), 500));
@@ -1012,14 +1106,29 @@ function buildUserPageUrl($page, $currentParams)
                 document.getElementById('filterForm').submit();
             }
         });
+        // Focus search on Ctrl+F
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                if (!e.target.closest('input, textarea, select')) {
+                    e.preventDefault();
+                    si.focus();
+                    si.select();
+                }
+            }
+        });
     }
 
+    // ============================================================
+    // DELETE USERS API
+    // ============================================================
     function deleteUsers(ids) {
+        if (!ids || !ids.length) return;
         Swal.fire({
             title: 'กำลังลบ...',
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
+
         fetch('action.php?action=delete_users', {
                 method: 'POST',
                 headers: {
@@ -1030,40 +1139,71 @@ function buildUserPageUrl($page, $currentParams)
                     csrf_token: csrfToken
                 })
             })
-            .then(r => r.json()).then(d => {
-                if (d.success) Swal.fire({
-                    icon: 'success',
-                    title: 'ลบสำเร็จ!',
-                    text: d.message || `ลบผู้ใช้ ${ids.length} คนสำเร็จ`,
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => location.reload());
-                else Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: d.message || 'ไม่สามารถลบได้'
-                });
-            }).catch(() => Swal.fire({
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ลบสำเร็จ!',
+                        text: d.message || `ลบผู้ใช้ ${ids.length} คนสำเร็จ`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: d.message || 'ไม่สามารถลบได้'
+                    });
+                }
+            })
+            .catch(() => Swal.fire({
                 icon: 'error',
-                title: 'การเชื่อมต่อล้มเหลว'
+                title: 'การเชื่อมต่อล้มเหลว',
+                text: 'กรุณาตรวจสอบเครือข่ายและลองอีกครั้ง'
             }));
     }
 
+    // ============================================================
+    // SELECT ALL
+    // ============================================================
     document.getElementById('selectAll')?.addEventListener('change', function() {
         document.querySelectorAll('.user-checkbox').forEach(c => c.checked = this.checked);
     });
 
+    // ============================================================
+    // DELETE SELECTED
+    // ============================================================
     document.getElementById('deleteSelected')?.addEventListener('click', function() {
         const checked = document.querySelectorAll('.user-checkbox:checked');
-        if (!checked.length) return Swal.fire({
-            icon: 'warning',
-            title: 'กรุณาเลือกรายการ',
-            text: 'กรุณาเลือกผู้ใช้อย่างน้อย 1 คน',
-            confirmButtonColor: '#2563eb'
-        });
+        if (!checked.length) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาเลือกรายการ',
+                text: 'กรุณาเลือกผู้ใช้อย่างน้อย 1 คน',
+                confirmButtonColor: '#2563eb'
+            });
+        }
+
+        // Check if any selected is self
+        const selfSelected = Array.from(checked).some(c => c.value == <?= $_SESSION['user_id'] ?>);
+        if (selfSelected) {
+            return Swal.fire({
+                icon: 'error',
+                title: 'ไม่สามารถลบตัวเองได้',
+                text: 'กรุณายกเลิกการเลือกชื่อของคุณ',
+                confirmButtonColor: '#2563eb'
+            });
+        }
+
         Swal.fire({
             title: '⚠️ ยืนยันการลบ',
-            html: `<div style="text-align:left;"><p>ต้องการลบผู้ใช้ <strong>${checked.length} คน</strong>?</p><p style="color:#ef4444;font-size:0.9rem;margin-top:0.5rem;"><i class="fas fa-exclamation-triangle"></i> ข้อมูลความเสี่ยงจะถูกลบด้วย!</p></div>`,
+            html: `<div style="text-align:left;">
+                <p>ต้องการลบผู้ใช้ <strong>${checked.length} คน</strong>?</p>
+                <p style="color:#ef4444;font-size:0.9rem;margin-top:0.5rem;">
+                    <i class="fas fa-exclamation-triangle"></i> ข้อมูลความเสี่ยงจะถูกลบด้วย!
+                </p>
+            </div>`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#dc2626',
@@ -1071,15 +1211,28 @@ function buildUserPageUrl($page, $currentParams)
             confirmButtonText: '🗑️ ลบ',
             cancelButtonText: 'ยกเลิก'
         }).then(r => {
-            if (r.isConfirmed) deleteUsers(Array.from(checked).map(c => c.value));
+            if (r.isConfirmed) {
+                const ids = Array.from(checked).map(c => c.value);
+                deleteUsers(ids);
+            }
         });
     });
 
+    // ============================================================
+    // DELETE SINGLE
+    // ============================================================
     document.querySelectorAll('.delete-single').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+
             Swal.fire({
                 title: '⚠️ ยืนยันการลบ',
-                html: `<div style="text-align:left;"><p>ต้องการลบผู้ใช้ <strong>"${this.dataset.username}"</strong>?</p><p style="color:#ef4444;font-size:0.9rem;margin-top:0.5rem;"><i class="fas fa-exclamation-triangle"></i> ข้อมูลความเสี่ยงจะถูกลบด้วย!</p></div>`,
+                html: `<div style="text-align:left;">
+                    <p>ต้องการลบผู้ใช้ <strong>"${this.dataset.username}"</strong>?</p>
+                    <p style="color:#ef4444;font-size:0.9rem;margin-top:0.5rem;">
+                        <i class="fas fa-exclamation-triangle"></i> ข้อมูลความเสี่ยงจะถูกลบด้วย!
+                    </p>
+                </div>`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#dc2626',
@@ -1087,10 +1240,91 @@ function buildUserPageUrl($page, $currentParams)
                 confirmButtonText: '🗑️ ลบ',
                 cancelButtonText: 'ยกเลิก'
             }).then(r => {
-                if (r.isConfirmed) deleteUsers([this.dataset.id]);
+                if (r.isConfirmed) {
+                    deleteUsers([this.dataset.id]);
+                }
             });
         });
     });
+
+    // ============================================================
+    // KEYBOARD SHORTCUTS
+    // ============================================================
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+A = Select All
+        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                const selectAll = document.getElementById('selectAll');
+                if (selectAll) {
+                    selectAll.checked = !selectAll.checked;
+                    selectAll.dispatchEvent(new Event('change'));
+                }
+            }
+        }
+
+        // Ctrl+D = Delete Selected
+        if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                const deleteBtn = document.getElementById('deleteSelected');
+                if (deleteBtn) deleteBtn.click();
+            }
+        }
+
+        // Ctrl+E = Edit first selected (or go to user_form)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                const firstEdit = document.querySelector('.btn-icon.edit');
+                if (firstEdit) {
+                    window.location.href = firstEdit.href;
+                }
+            }
+        }
+
+        // Escape = Close modals and dropdowns
+        if (e.key === 'Escape') {
+            // Close any open SweetAlert
+            const swal = document.querySelector('.swal2-container');
+            if (swal) {
+                // Don't auto-close, let user decide
+            }
+            // Close any open dropdowns
+            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+
+    // ============================================================
+    // TOOLTIP FOR SHORTCUTS
+    // ============================================================
+    document.querySelectorAll('.btn-icon').forEach(el => {
+        el.addEventListener('mouseenter', function() {
+            const title = this.getAttribute('title');
+            if (title) {
+                // Show native tooltip
+            }
+        });
+    });
+
+    // ============================================================
+    // INITIALIZE
+    // ============================================================
+    // If filter has active filters, ensure collapse is open
+    (function() {
+        const collapse = document.getElementById('filterCollapse');
+        if (collapse && collapse.classList.contains('open')) {
+            collapse.style.maxHeight = collapse.scrollHeight + 'px';
+        }
+    })();
+
+    console.log('✅ User management loaded successfully!');
+    console.log('📊 Total users:', <?= $totalUsers ?>);
+    console.log('👑 Admin count:', <?= $adminCount ?>);
+    console.log('📄 Current page:', <?= $page ?>, 'of', <?= $totalPages ?>);
+    console.log('⌨️ Keyboard shortcuts: Ctrl+A (select all), Ctrl+D (delete), Ctrl+E (edit), Ctrl+F (search)');
 </script>
 
 <?php include 'includes/footer.php'; ?>

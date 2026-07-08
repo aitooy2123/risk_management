@@ -9,6 +9,7 @@
  * - แสดงความเสี่ยงล่าสุด
  * - ใช้ SweetAlert2 สำหรับการแจ้งเตือน
  * - โทนสีฟ้า-น้ำเงิน
+ * - Keyboard Shortcuts: Ctrl+E แก้ไข, Ctrl+P เปลี่ยนรหัสผ่าน, Esc ปิด Modal
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -136,16 +137,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 try {
     $stmt = $pdo->prepare("
         SELECT 
-            COUNT(*) as total, 
-            SUM(CASE WHEN status='ดำเนินการแล้ว' THEN 1 ELSE 0 END) as completed, 
-            SUM(CASE WHEN status='กำลังดำเนินการ' THEN 1 ELSE 0 END) as in_progress, 
-            SUM(CASE WHEN status='ยังไม่ดำเนินการ' OR status IS NULL OR status='' THEN 1 ELSE 0 END) as pending 
-        FROM risks WHERE user_id = ?
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'ดำเนินการแล้ว' THEN 1 ELSE 0 END) as completed,
+            SUM(CASE WHEN status = 'กำลังดำเนินการ' THEN 1 ELSE 0 END) as in_progress,
+            SUM(CASE WHEN status = 'ยังไม่ดำเนินการ' THEN 1 ELSE 0 END) as pending_status,
+            SUM(CASE WHEN status = 'ยุติ' THEN 1 ELSE 0 END) as terminated,
+            SUM(CASE WHEN status IS NULL OR status = '' THEN 1 ELSE 0 END) as no_status
+        FROM risks 
+        WHERE user_id = ?
     ");
     $stmt->execute([$_SESSION['user_id']]);
     $stats = $stmt->fetch();
+    
+    $stats['pending'] = ($stats['pending_status'] ?? 0) + ($stats['no_status'] ?? 0);
+    $calculated_total = ($stats['completed'] ?? 0) + ($stats['in_progress'] ?? 0) + ($stats['pending'] ?? 0) + ($stats['terminated'] ?? 0);
+    
 } catch (Exception $e) {
-    $stats = ['total' => 0, 'completed' => 0, 'in_progress' => 0, 'pending' => 0];
+    $stats = [
+        'total' => 0, 
+        'completed' => 0, 
+        'in_progress' => 0, 
+        'pending' => 0,
+        'terminated' => 0,
+        'pending_status' => 0,
+        'no_status' => 0
+    ];
+    $calculated_total = 0;
 }
 
 // ความเสี่ยงล่าสุด
@@ -195,8 +212,8 @@ function getStatusStyle($status)
     }
 
     /* ===== Page Header ===== */
-       .page-header {
-       background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
+    .page-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
         border-radius: 1.5rem;
         padding: 1.75rem 2.25rem;
         margin-bottom: 1.5rem;
@@ -735,6 +752,25 @@ function getStatusStyle($status)
         to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    /* ===== Shortcuts Hint ===== */
+    .shortcuts-hint {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .shortcuts-hint kbd {
+        background: #f1f5f9;
+        padding: 0.05rem 0.35rem;
+        border-radius: 3px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.55rem;
+        font-weight: 600;
+        color: #475569;
+    }
+
     /* ===== Responsive ===== */
     @media (max-width: 1024px) {
         .content-grid {
@@ -752,6 +788,38 @@ function getStatusStyle($status)
         .form-grid {
             grid-template-columns: 1fr;
         }
+        .page-header {
+            padding: 1.25rem 1.5rem;
+        }
+        .page-header h2 {
+            font-size: 1.1rem;
+        }
+        .recent-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.35rem;
+        }
+        .recent-item > div:last-child {
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+    @media print {
+        .sidebar, .btn, .btn-action, .info-note, .page-header::before, .page-header::after {
+            display: none !important;
+        }
+        .page-header {
+            background: #0f172a !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .card {
+            border: 1px solid #ddd !important;
+            box-shadow: none !important;
+        }
+        body {
+            background: white !important;
+        }
     }
 </style>
 
@@ -768,6 +836,11 @@ function getStatusStyle($status)
                 <div>
                     <h2>โปรไฟล์ผู้ใช้</h2>
                     <p>จัดการข้อมูลส่วนตัวของคุณ · @<?= htmlspecialchars($user['username']) ?></p>
+                    <div class="shortcuts-hint" style="margin-top:0.3rem;">
+                        <span><kbd>Ctrl+E</kbd> แก้ไขข้อมูล</span>
+                        <span><kbd>Ctrl+P</kbd> เปลี่ยนรหัสผ่าน</span>
+                        <span><kbd>Esc</kbd> ปิด Modal</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -819,6 +892,26 @@ function getStatusStyle($status)
                     <div class="stat-label-text">ดำเนินการแล้ว</div>
                 </div>
             </div>
+            
+            <!-- Debug Info (แสดงเฉพาะ Admin) -->
+            <?php if (isAdmin() && $calculated_total != $stats['total']): ?>
+            <div style="margin: 0.5rem 1.25rem; padding: 0.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.5rem; font-size: 0.7rem; color: #991b1b;">
+                <details>
+                    <summary style="cursor: pointer; font-weight: 600;">⚠️ ข้อมูลสถิติไม่ตรงกัน (คลิกเพื่อดูรายละเอียด)</summary>
+                    <div style="margin-top: 0.5rem;">
+                        <div>ทั้งหมด: <?= $stats['total'] ?></div>
+                        <div>ดำเนินการแล้ว: <?= $stats['completed'] ?></div>
+                        <div>กำลังดำเนินการ: <?= $stats['in_progress'] ?></div>
+                        <div>ยังไม่ดำเนินการ: <?= $stats['pending_status'] ?? 0 ?></div>
+                        <div>ไม่มีสถานะ: <?= $stats['no_status'] ?? 0 ?></div>
+                        <div>ยุติ: <?= $stats['terminated'] ?? 0 ?></div>
+                        <div style="margin-top: 0.3rem; font-weight: 700;">
+                            ผลรวมที่คำนวณได้: <?= $calculated_total ?> (ควรเท่ากับ <?= $stats['total'] ?>)
+                        </div>
+                    </div>
+                </details>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- Content Grid -->
@@ -885,20 +978,20 @@ function getStatusStyle($status)
                             </div>
                             <div class="form-group">
                                 <label class="form-label">ชื่อ-นามสกุล</label>
-                                <input type="text" name="fullname" value="<?= htmlspecialchars($user['fullname'] ?? '') ?>" class="form-input" placeholder="กรอกชื่อ-นามสกุล">
+                                <input type="text" name="fullname" id="fullnameInput" value="<?= htmlspecialchars($user['fullname'] ?? '') ?>" class="form-input" placeholder="กรอกชื่อ-นามสกุล">
                             </div>
 
                             <?php if ($hasEmail): ?>
                                 <div class="form-group">
                                     <label class="form-label">อีเมล</label>
-                                    <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" class="form-input" placeholder="example@email.com">
+                                    <input type="email" name="email" id="emailInput" value="<?= htmlspecialchars($user['email'] ?? '') ?>" class="form-input" placeholder="example@email.com">
                                 </div>
                             <?php endif; ?>
 
                             <?php if ($hasPhone): ?>
                                 <div class="form-group">
                                     <label class="form-label">เบอร์โทรศัพท์</label>
-                                    <input type="text" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" class="form-input" placeholder="08x-xxx-xxxx">
+                                    <input type="text" name="phone" id="phoneInput" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" class="form-input" placeholder="08x-xxx-xxxx">
                                 </div>
                             <?php endif; ?>
 
@@ -910,8 +1003,11 @@ function getStatusStyle($status)
                             </div>
                         </div>
 
-                        <div style="display:flex;justify-content:flex-end;margin-top:1rem;padding-top:0.85rem;border-top:1px solid #f1f5f9;">
-                            <button type="submit" class="btn btn-primary">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.85rem;border-top:1px solid #f1f5f9;flex-wrap:wrap;gap:0.5rem;">
+                            <span class="shortcuts-hint">
+                                <kbd>Ctrl+E</kbd> บันทึกข้อมูล
+                            </span>
+                            <button type="submit" class="btn btn-primary" id="saveProfileBtn">
                                 <i class="fas fa-save"></i> บันทึกข้อมูล
                             </button>
                         </div>
@@ -1002,7 +1098,7 @@ function getStatusStyle($status)
                 <div class="form-group">
                     <label class="form-label">รหัสผ่านปัจจุบัน</label>
                     <div class="password-field">
-                        <input type="password" name="current_password" id="currentPassword" class="form-input" placeholder="กรอกรหัสผ่านปัจจุบัน" required>
+                        <input type="password" name="current_password" id="currentPassword" class="form-input" placeholder="กรอกรหัสผ่านปัจจุบัน" required autocomplete="current-password">
                         <button type="button" class="password-toggle" onclick="togglePassword('currentPassword', this)">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -1012,17 +1108,18 @@ function getStatusStyle($status)
                 <div class="form-group">
                     <label class="form-label">รหัสผ่านใหม่</label>
                     <div class="password-field">
-                        <input type="password" name="new_password" id="newPassword" class="form-input" placeholder="รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร" required minlength="6">
+                        <input type="password" name="new_password" id="newPassword" class="form-input" placeholder="รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร" required minlength="6" autocomplete="new-password">
                         <button type="button" class="password-toggle" onclick="togglePassword('newPassword', this)">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
+                    <p class="form-hint">รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร</p>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">ยืนยันรหัสผ่านใหม่</label>
                     <div class="password-field">
-                        <input type="password" name="confirm_password" id="confirmPassword" class="form-input" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" required minlength="6">
+                        <input type="password" name="confirm_password" id="confirmPassword" class="form-input" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" required minlength="6" autocomplete="new-password">
                         <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword', this)">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -1034,7 +1131,7 @@ function getStatusStyle($status)
                 <button type="button" class="btn btn-outline" onclick="closePasswordModal()">
                     <i class="fas fa-times"></i> ยกเลิก
                 </button>
-                <button type="submit" class="btn btn-danger">
+                <button type="submit" class="btn btn-danger" id="changePasswordBtn">
                     <i class="fas fa-key"></i> เปลี่ยนรหัสผ่าน
                 </button>
             </div>
@@ -1043,7 +1140,9 @@ function getStatusStyle($status)
 </div>
 
 <script>
-    // Avatar Upload
+    // ============================================================
+    // AVATAR UPLOAD
+    // ============================================================
     document.getElementById('avatar-input')?.addEventListener('change', function() {
         if (this.files?.[0]) {
             if (this.files[0].size > 5242880) {
@@ -1056,57 +1155,166 @@ function getStatusStyle($status)
         }
     });
 
-    // Password Modal
+    // ============================================================
+    // PASSWORD MODAL
+    // ============================================================
     function openPasswordModal() {
         document.getElementById('passwordModal').classList.add('active');
         document.body.style.overflow = 'hidden';
         setTimeout(() => document.getElementById('currentPassword').focus(), 100);
     }
+
     function closePasswordModal() {
         document.getElementById('passwordModal').classList.remove('active');
         document.body.style.overflow = '';
         document.getElementById('passwordForm').reset();
-        document.querySelectorAll('#passwordForm .password-toggle i').forEach(i => { i.classList.remove('fa-eye-slash'); i.classList.add('fa-eye'); });
+        document.querySelectorAll('#passwordForm .password-toggle i').forEach(i => { 
+            i.classList.remove('fa-eye-slash'); 
+            i.classList.add('fa-eye'); 
+        });
         document.querySelectorAll('#passwordForm input[type="text"]').forEach(i => i.type = 'password');
     }
-    document.getElementById('passwordModal').addEventListener('click', e => { if (e.target === e.currentTarget) closePasswordModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('passwordModal').classList.contains('active')) closePasswordModal(); });
+
+    document.getElementById('passwordModal').addEventListener('click', function(e) { 
+        if (e.target === this) closePasswordModal(); 
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('passwordModal').classList.contains('active')) {
+            closePasswordModal();
+        }
+        // Ctrl+P = Open password modal
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                if (!document.getElementById('passwordModal').classList.contains('active')) {
+                    openPasswordModal();
+                }
+            }
+        }
+    });
 
     function togglePassword(inputId, btn) {
         const input = document.getElementById(inputId);
         const icon = btn.querySelector('i');
-        if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye','fa-eye-slash'); }
-        else { input.type = 'password'; icon.classList.replace('fa-eye-slash','fa-eye'); }
+        if (input.type === 'password') { 
+            input.type = 'text'; 
+            icon.classList.replace('fa-eye', 'fa-eye-slash'); 
+        } else { 
+            input.type = 'password'; 
+            icon.classList.replace('fa-eye-slash', 'fa-eye'); 
+        }
         input.focus();
     }
 
-    // Password Form
+    // ============================================================
+    // PASSWORD FORM
+    // ============================================================
     document.getElementById('passwordForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         const cp = document.getElementById('currentPassword').value;
         const np = document.getElementById('newPassword').value;
         const cf = document.getElementById('confirmPassword').value;
-        if (!cp || !np || !cf) { Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบ', confirmButtonColor: '#2563eb' }); return; }
-        if (np.length < 6) { Swal.fire({ icon: 'warning', title: 'รหัสผ่านสั้นเกินไป', text: 'อย่างน้อย 6 ตัวอักษร', confirmButtonColor: '#2563eb' }); return; }
-        if (np !== cf) { Swal.fire({ icon: 'warning', title: 'รหัสผ่านไม่ตรงกัน', confirmButtonColor: '#2563eb' }); return; }
-        if (cp === np) { Swal.fire({ icon: 'warning', title: 'รหัสผ่านซ้ำ', text: 'รหัสผ่านใหม่ต้องไม่เหมือนปัจจุบัน', confirmButtonColor: '#2563eb' }); return; }
+
+        if (!cp || !np || !cf) { 
+            Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบ', confirmButtonColor: '#2563eb' }); 
+            return; 
+        }
+        if (np.length < 6) { 
+            Swal.fire({ icon: 'warning', title: 'รหัสผ่านสั้นเกินไป', text: 'อย่างน้อย 6 ตัวอักษร', confirmButtonColor: '#2563eb' }); 
+            return; 
+        }
+        if (np !== cf) { 
+            Swal.fire({ icon: 'warning', title: 'รหัสผ่านไม่ตรงกัน', confirmButtonColor: '#2563eb' }); 
+            return; 
+        }
+        if (cp === np) { 
+            Swal.fire({ icon: 'warning', title: 'รหัสผ่านซ้ำ', text: 'รหัสผ่านใหม่ต้องไม่เหมือนปัจจุบัน', confirmButtonColor: '#2563eb' }); 
+            return; 
+        }
+
+        const btn = document.getElementById('changePasswordBtn');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังเปลี่ยน...';
+        
         Swal.fire({ title: 'กำลังเปลี่ยนรหัสผ่าน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         this.submit();
     });
 
-    // Profile Form
+    // ============================================================
+    // PROFILE FORM
+    // ============================================================
     document.getElementById('profileForm')?.addEventListener('submit', function() {
+        const btn = document.getElementById('saveProfileBtn');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+        
         Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     });
 
-    // Messages
+    // ============================================================
+    // KEYBOARD SHORTCUTS
+    // ============================================================
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+E = Save profile (focus on submit button)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                const btn = document.getElementById('saveProfileBtn');
+                if (btn && !btn.disabled) {
+                    btn.click();
+                }
+            }
+        }
+        // Ctrl+F = Focus on fullname input
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                const input = document.getElementById('fullnameInput');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }
+        }
+    });
+
+    // ============================================================
+    // MESSAGES
+    // ============================================================
     <?php if ($success): ?>
-        Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: '<?= htmlspecialchars($success) ?>', timer: 2000, showConfirmButton: false });
-    <?php endif; ?>
-    <?php if ($error): ?>
-        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: '<?= htmlspecialchars($error) ?>', confirmButtonColor: '#2563eb' }).then(() => {
-            if ('<?= htmlspecialchars($error) ?>'.includes('รหัสผ่าน')) openPasswordModal();
+        Swal.fire({ 
+            icon: 'success', 
+            title: 'สำเร็จ!', 
+            text: '<?= htmlspecialchars($success) ?>', 
+            timer: 2500, 
+            timerProgressBar: true,
+            showConfirmButton: false 
         });
     <?php endif; ?>
+
+    <?php if ($error): ?>
+        Swal.fire({ 
+            icon: 'error', 
+            title: 'เกิดข้อผิดพลาด', 
+            text: '<?= htmlspecialchars($error) ?>', 
+            confirmButtonColor: '#2563eb' 
+        }).then(() => {
+            if ('<?= htmlspecialchars($error) ?>'.includes('รหัสผ่าน')) {
+                openPasswordModal();
+            }
+        });
+    <?php endif; ?>
+
+    // ============================================================
+    // CONSOLE LOG
+    // ============================================================
+    console.log('✅ Profile page loaded successfully!');
+    console.log('👤 User:', '<?= htmlspecialchars($user['username']) ?>');
+    console.log('📊 Total risks:', <?= $stats['total'] ?>);
+    console.log('⌨️ Shortcuts: Ctrl+E (save), Ctrl+P (change password), Ctrl+F (focus name), Esc (close modal)');
 </script>
+
 <?php include 'includes/footer.php'; ?>

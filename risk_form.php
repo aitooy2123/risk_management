@@ -1,5 +1,4 @@
 <?php
-
 /**
  * ฟอร์มเพิ่ม/แก้ไขข้อมูลความเสี่ยง (Card Layout) - UI สวยงาม
  * - ไล่สีตามระดับความรุนแรง
@@ -8,6 +7,7 @@
  * - สถานะการดำเนินการมีสีแตกต่างกัน
  * - ตัวหนังสือระดับความรุนแรงใหญ่ขึ้น อ่านง่าย
  * - Hover มีสีตามระดับความรุนแรง
+ * - Interactive Features: Live Preview, Auto-save, Progress Bar, Keyboard Shortcuts
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -92,6 +92,7 @@ if ($id) {
 <script>
     const isEditable = <?= json_encode($is_editable) ?>;
     const isAdmin = <?= json_encode($is_admin) ?>;
+    const riskId = <?= json_encode($id) ?>;
 </script>
 
 <style>
@@ -177,6 +178,32 @@ if ($id) {
         position: relative;
         z-index: 1;
         margin-top: 0.5rem;
+    }
+
+    /* Progress Bar */
+    #form-progress {
+        position: relative;
+        z-index: 1;
+        margin-top: 0.75rem;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 9999px;
+        height: 4px;
+        overflow: hidden;
+    }
+    #progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #60a5fa, #ffffff);
+        border-radius: 9999px;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 0%;
+    }
+    #progress-text {
+        position: relative;
+        z-index: 1;
+        font-size: 0.65rem;
+        color: rgba(255,255,255,0.6);
+        margin-top: 0.25rem;
+        text-align: right;
     }
 
     /* Objective Box */
@@ -309,6 +336,11 @@ if ($id) {
         border-style: dashed;
     }
 
+    .form-input.error {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
     textarea.form-input {
         resize: vertical;
         min-height: 100px;
@@ -328,6 +360,21 @@ if ($id) {
     .form-label .required {
         color: #ef4444;
         font-size: 0.7rem;
+    }
+
+    /* Character Counter */
+    .char-counter {
+        font-size: 0.7rem;
+        text-align: right;
+        margin-top: 0.25rem;
+        color: #94a3b8;
+        transition: color 0.3s;
+    }
+    .char-counter.warning {
+        color: #f59e0b;
+    }
+    .char-counter.danger {
+        color: #ef4444;
     }
 
     /* Radio Card */
@@ -394,7 +441,6 @@ if ($id) {
         position: relative;
     }
 
-    /* ✅ HOVER EFFECT - แสดงสีตามระดับความรุนแรง */
     <?php foreach ($severityOptions as $key => $opt): ?>
     .severity-card.severity-<?= strtolower($key) ?>:hover {
         border-color: <?= $opt['color'] ?> !important;
@@ -443,6 +489,37 @@ if ($id) {
 
     .severity-card:hover .sev-desc {
         color: #475569;
+    }
+
+    /* Severity Preview */
+    #severity-preview {
+        margin-top: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.6rem;
+        border: 2px solid #e2e8f0;
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+        animation: slideUp 0.3s ease;
+    }
+    #severity-preview.visible {
+        display: flex;
+    }
+    #severity-preview .preview-icon {
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+    #severity-preview .preview-text {
+        display: flex;
+        flex-direction: column;
+    }
+    #severity-preview .preview-letter {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    #severity-preview .preview-desc {
+        font-size: 0.85rem;
+        color: #64748b;
     }
 
     /* Status Select */
@@ -580,6 +657,26 @@ if ($id) {
         color: #1e40af;
     }
 
+    .btn-print {
+        padding: 0.7rem 1.5rem;
+        border-radius: 0.65rem;
+        font-weight: 500;
+        font-size: 0.85rem;
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1px solid #86efac;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: 'Sarabun', sans-serif;
+        text-decoration: none;
+    }
+    .btn-print:hover {
+        background: #dcfce7;
+    }
+
     /* Locked Overlay */
     .locked-overlay {
         background: #fef3c7;
@@ -604,12 +701,31 @@ if ($id) {
         font-size: 0.9rem;
     }
 
+    /* Auto-save indicator */
+    #auto-save-indicator {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        color: #16a34a;
+        padding: 0.5rem 1rem;
+        border-radius: 0.6rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        box-shadow: 0 4px 15px rgba(22, 163, 74, 0.15);
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+        z-index: 999;
+        animation: slideUp 0.3s ease;
+    }
+
     @keyframes slideUp {
         from {
             opacity: 0;
             transform: translateY(15px);
         }
-
         to {
             opacity: 1;
             transform: translateY(0);
@@ -628,10 +744,54 @@ if ($id) {
     .animate-in:nth-child(6) { animation-delay: 0.2s; }
     .animate-in:nth-child(7) { animation-delay: 0.24s; }
 
+    /* Print Styles */
+    @media print {
+        .sidebar, .form-header, .objective-box, .btn-submit, .btn-cancel, .btn-back, .btn-print, 
+        #auto-save-indicator, #form-progress, .locked-overlay, .card-header-badge {
+            display: none !important;
+        }
+        body {
+            background: white !important;
+        }
+        .form-card {
+            border: 1px solid #ddd !important;
+            box-shadow: none !important;
+            break-inside: avoid;
+        }
+        .form-container {
+            max-width: 100% !important;
+        }
+        .form-input, .status-select {
+            border: 1px solid #ccc !important;
+            background: white !important;
+        }
+        .severity-card:has(input:checked) {
+            border: 2px solid #000 !important;
+        }
+        .severity-card {
+            border: 1px solid #ccc !important;
+        }
+        #severity-preview {
+            border: 1px solid #ccc !important;
+        }
+        .radio-card:has(input:checked) {
+            border: 1px solid #000 !important;
+        }
+    }
+
     @media (max-width: 768px) {
         .radio-grid,
         .severity-grid {
             grid-template-columns: 1fr;
+        }
+        .form-header {
+            padding: 1.25rem 1.25rem;
+        }
+        .form-header h2 {
+            font-size: 1.2rem;
+        }
+        .card-body {
+            padding: 1rem;
         }
     }
 </style>
@@ -648,6 +808,10 @@ if ($id) {
                     <?= $id ? 'แก้ไขรายงานความเสี่ยง' : 'เพิ่มรายงานความเสี่ยง' ?>
                 </h2>
                 <p>ศูนย์อนามัยที่ 8 อุดรธานี | ระบบบริหารจัดการความเสี่ยง</p>
+                <div id="form-progress">
+                    <div id="progress-fill" style="width:0%"></div>
+                </div>
+                <div id="progress-text">0%</div>
             </div>
 
             <!-- Locked Warning -->
@@ -693,7 +857,7 @@ if ($id) {
                         <span class="card-header-badge" style="background:#fef2f2;color:#dc2626;">จำเป็น</span>
                     </div>
                     <div class="card-body">
-                        <div class="radio-grid">
+                        <div class="radio-grid" id="unit-group">
                             <?php foreach ($units as $u): ?>
                                 <label class="radio-card">
                                     <input type="radio" name="unit" value="<?= $u ?>" <?= (($risk['unit'] ?? '') == $u) ? 'checked' : '' ?> required <?= !$is_editable ? 'disabled' : '' ?>>
@@ -718,7 +882,7 @@ if ($id) {
                         <h3 class="card-header-title">ประเภทของความเสี่ยง</h3>
                     </div>
                     <div class="card-body">
-                        <div class="radio-grid">
+                        <div class="radio-grid" id="risk_type-group">
                             <?php foreach ($types as $t): ?>
                                 <label class="radio-card">
                                     <input type="radio" name="risk_type" value="<?= $t ?>" <?= (($risk['risk_type'] ?? '') == $t) ? 'checked' : '' ?> <?= !$is_editable ? 'disabled' : '' ?>>
@@ -743,18 +907,26 @@ if ($id) {
                         <h3 class="card-header-title">ระดับความรุนแรง</h3>
                     </div>
                     <div class="card-body">
-                        <div class="severity-grid">
+                        <div class="severity-grid" id="severity-group">
                             <?php foreach ($severityOptions as $key => $opt):
                                 $isChecked = ($risk['severity'] ?? '') == $key;
                                 $cardStyle = $isChecked ? "border-color:{$opt['color']};background:{$opt['bg']};box-shadow:0 0 0 3px {$opt['color']}30;" : '';
                             ?>
-                                <label class="severity-card severity-<?= strtolower($key) ?>" style="<?= $cardStyle ?>">
+                                <label class="severity-card severity-<?= strtolower($key) ?>" style="<?= $cardStyle ?>" data-severity="<?= $key ?>" data-color="<?= $opt['color'] ?>" data-icon="<?= $opt['icon'] ?>" data-desc="<?= $opt['label'] ?>">
                                     <input type="radio" name="severity" value="<?= $key ?>" <?= $isChecked ? 'checked' : '' ?> <?= !$is_editable ? 'disabled' : '' ?>>
                                     <div class="sev-icon" style="color:<?= $opt['color'] ?>"><i class="fas <?= $opt['icon'] ?>"></i></div>
                                     <div class="sev-letter" style="color:<?= $opt['color'] ?>">ระดับ <?= $key ?></div>
                                     <div class="sev-desc"><?= $opt['label'] ?></div>
                                 </label>
                             <?php endforeach; ?>
+                        </div>
+                        <!-- Severity Preview -->
+                        <div id="severity-preview">
+                            <span class="preview-icon"><i class="fas fa-circle-info"></i></span>
+                            <div class="preview-text">
+                                <span class="preview-letter">ระดับ A</span>
+                                <span class="preview-desc">มีโอกาสเกิดความเสี่ยงแต่ยังไม่เกิดขึ้น</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -794,16 +966,19 @@ if ($id) {
                             <label class="form-label">📝 รายละเอียดเหตุการณ์ <span class="required">*</span></label>
                             <textarea name="detail" id="detail" rows="4" class="form-input" required
                                 placeholder="อธิบายรายละเอียดเหตุการณ์ที่เกิดขึ้น..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['detail'] ?? '') ?></textarea>
+                            <div class="char-counter" id="detail-counter">0 / 500</div>
                         </div>
                         <div>
                             <label class="form-label">🔧 การแก้ไขเบื้องต้น <span class="required">*</span></label>
                             <textarea name="initial_solution" id="initial_solution" rows="3" class="form-input" required
                                 placeholder="ระบุการแก้ไขเบื้องต้นที่ได้ดำเนินการ..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['initial_solution'] ?? '') ?></textarea>
+                            <div class="char-counter" id="solution-counter">0 / 500</div>
                         </div>
                         <div>
                             <label class="form-label">💡 ปัญหาและข้อเสนอแนะ <span class="required">*</span></label>
                             <textarea name="suggestion" id="suggestion" rows="3" class="form-input" required
                                 placeholder="ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['suggestion'] ?? '') ?></textarea>
+                            <div class="char-counter" id="suggestion-counter">0 / 500</div>
                         </div>
                         <?php if ($is_editable): ?>
                             <div class="flex justify-end pt-2">
@@ -887,18 +1062,25 @@ if ($id) {
                 <?php endif; ?>
 
                 <!-- Buttons -->
-                <div class="flex items-center gap-3 pt-2 pb-8">
+                <div class="flex items-center gap-3 pt-2 pb-8 flex-wrap">
                     <?php if ($is_editable): ?>
-                        <button type="submit" class="btn-submit">
+                        <button type="submit" class="btn-submit" id="submitBtn">
                             <i class="fas fa-save"></i> บันทึกรายงาน
+                        </button>
+                        <button type="button" class="btn-print" onclick="window.print()">
+                            <i class="fas fa-print"></i> พิมพ์
                         </button>
                         <a href="risks.php" class="btn-cancel">
                             <i class="fas fa-times"></i> ยกเลิก
                         </a>
+                        <span class="text-xs text-gray-400 ml-auto hidden md:inline">Ctrl+S บันทึก • Esc ยกเลิก</span>
                     <?php else: ?>
                         <a href="risks.php" class="btn-back">
                             <i class="fas fa-arrow-left"></i> กลับไปหน้ารายการ
                         </a>
+                        <button type="button" class="btn-print" onclick="window.print()">
+                            <i class="fas fa-print"></i> พิมพ์
+                        </button>
                     <?php endif; ?>
                 </div>
             </form>
@@ -906,8 +1088,16 @@ if ($id) {
     </div>
 </div>
 
+<!-- Auto-save Indicator -->
+<div id="auto-save-indicator">
+    <i class="fas fa-check-circle"></i> บันทึกอัตโนมัติ
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // ============================================================
+        // 1. LOCKED WARNING
+        // ============================================================
         if (!isEditable) {
             Swal.fire({
                 icon: 'info',
@@ -919,6 +1109,9 @@ if ($id) {
             return;
         }
 
+        // ============================================================
+        // 2. FLATPICKR DATE/TIME PICKER
+        // ============================================================
         const dateConfig = {
             enableTime: true,
             time_24hr: true,
@@ -933,6 +1126,9 @@ if ($id) {
         const eventPicker = flatpickr('#event_datetime', dateConfig);
         const reportPicker = flatpickr('#report_datetime', dateConfig);
 
+        // ============================================================
+        // 3. TOGGLE "อื่นๆ" FIELDS
+        // ============================================================
         function toggleOther(radioName, inputId) {
             const sel = document.querySelector(`input[name="${radioName}"]:checked`);
             const inp = document.getElementById(inputId);
@@ -948,34 +1144,115 @@ if ($id) {
         }
         ['unit', 'risk_type'].forEach(name => {
             const radios = document.querySelectorAll(`input[name="${name}"]`);
-            radios.forEach(r => r.addEventListener('change', () => toggleOther(name, name + '_other')));
+            radios.forEach(r => r.addEventListener('change', function() {
+                toggleOther(name, name + '_other');
+                updateProgress();
+            }));
             toggleOther(name, name + '_other');
+            // เรียกครั้งแรกเพื่ออัปเดต
+            setTimeout(() => toggleOther(name, name + '_other'), 100);
         });
 
-        // ✅ Severity Card Click Handler - เปลี่ยนสีเมื่อเลือก
-        document.querySelectorAll('.severity-card').forEach(card => {
-            card.addEventListener('click', function() {
+        // ============================================================
+        // 4. SEVERITY CARDS - Click & Preview
+        // ============================================================
+        const severityCards = document.querySelectorAll('.severity-card');
+        const previewEl = document.getElementById('severity-preview');
+
+        function updateSeverityPreview(card) {
+            if (!card) {
+                previewEl.classList.remove('visible');
+                return;
+            }
+            const icon = card.querySelector('.sev-icon i')?.className || 'fa-circle-info';
+            const letter = card.querySelector('.sev-letter')?.textContent || 'ระดับ A';
+            const desc = card.querySelector('.sev-desc')?.textContent || '';
+            const color = card.dataset.color || '#2563eb';
+
+            previewEl.querySelector('.preview-icon i').className = 'fas ' + icon;
+            previewEl.querySelector('.preview-icon').style.color = color;
+            previewEl.querySelector('.preview-letter').textContent = letter;
+            previewEl.querySelector('.preview-letter').style.color = color;
+            previewEl.querySelector('.preview-desc').textContent = desc;
+            previewEl.style.borderColor = color;
+            previewEl.style.background = color + '10';
+            previewEl.classList.add('visible');
+        }
+
+        // Click handler
+        severityCards.forEach(card => {
+            card.addEventListener('click', function(e) {
                 const radio = this.querySelector('input[type="radio"]');
                 if (radio && !radio.disabled) {
                     radio.checked = true;
                 }
 
                 // Reset all cards
-                document.querySelectorAll('.severity-card').forEach(c => {
+                severityCards.forEach(c => {
                     c.style.borderColor = '#e2e8f0';
                     c.style.background = 'white';
                     c.style.boxShadow = '';
                 });
 
-                // Set selected card color
-                const iconEl = this.querySelector('.sev-icon');
-                const color = iconEl ? iconEl.style.color : '#2563eb';
+                // Set selected
+                const color = this.dataset.color || '#2563eb';
                 this.style.borderColor = color;
                 this.style.background = color + '18';
                 this.style.boxShadow = '0 0 0 3px ' + color + '30';
+
+                updateSeverityPreview(this);
+                updateProgress();
             });
         });
 
+        // Trigger preview on load
+        const checkedCard = document.querySelector('.severity-card input[type="radio"]:checked');
+        if (checkedCard) {
+            const parent = checkedCard.closest('.severity-card');
+            if (parent) {
+                const color = parent.dataset.color || '#2563eb';
+                parent.style.borderColor = color;
+                parent.style.background = color + '18';
+                parent.style.boxShadow = '0 0 0 3px ' + color + '30';
+                updateSeverityPreview(parent);
+            }
+        }
+
+        // ============================================================
+        // 5. CHARACTER COUNTER
+        // ============================================================
+        function setupCharCounter(textareaId, counterId, maxLength = 500) {
+            const textarea = document.getElementById(textareaId);
+            const counter = document.getElementById(counterId);
+            if (!textarea || !counter) return;
+
+            function updateCounter() {
+                const len = textarea.value.length;
+                counter.textContent = len + ' / ' + maxLength;
+                counter.className = 'char-counter';
+                if (len > maxLength) {
+                    counter.classList.add('danger');
+                    textarea.classList.add('error');
+                } else if (len > maxLength * 0.8) {
+                    counter.classList.add('warning');
+                    textarea.classList.remove('error');
+                } else {
+                    textarea.classList.remove('error');
+                }
+                updateProgress();
+            }
+
+            textarea.addEventListener('input', updateCounter);
+            updateCounter();
+        }
+
+        setupCharCounter('detail', 'detail-counter', 500);
+        setupCharCounter('initial_solution', 'solution-counter', 500);
+        setupCharCounter('suggestion', 'suggestion-counter', 500);
+
+        // ============================================================
+        // 6. FILL DEFAULT BUTTON
+        // ============================================================
         const fillLink = document.getElementById('fillDefaultLink');
         if (fillLink) {
             fillLink.addEventListener('click', function(e) {
@@ -1004,17 +1281,175 @@ if ($id) {
                 if (filled) {
                     this.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
                     this.classList.add('filled');
+                    // Trigger char counter update
+                    ['detail', 'initial_solution', 'suggestion'].forEach(id => {
+                        document.getElementById(id)?.dispatchEvent(new Event('input'));
+                    });
                 }
                 if (detail.value.trim() !== '' && solution.value.trim() !== '' && suggestion.value.trim() !== '') {
                     this.innerHTML = '<i class="fas fa-check-circle"></i> ข้อมูลครบถ้วน';
                     this.classList.add('filled');
                 }
+                updateProgress();
             });
         }
 
+        // ============================================================
+        // 7. PROGRESS BAR
+        // ============================================================
+        function updateProgress() {
+            const fields = [
+                { id: 'reporter_code', type: 'text' },
+                { id: 'unit', type: 'radio' },
+                { id: 'risk_type', type: 'radio' },
+                { id: 'severity', type: 'radio' },
+                { id: 'event_datetime', type: 'text' },
+                { id: 'report_datetime', type: 'text' },
+                { id: 'detail', type: 'textarea' },
+                { id: 'initial_solution', type: 'textarea' },
+                { id: 'suggestion', type: 'textarea' }
+            ];
+            let filled = 0;
+            const total = fields.length;
+
+            fields.forEach(field => {
+                if (field.type === 'radio') {
+                    const checked = document.querySelector(`input[name="${field.id}"]:checked`);
+                    if (checked) filled++;
+                } else {
+                    const el = document.getElementById(field.id);
+                    if (el && el.value.trim()) filled++;
+                }
+            });
+
+            const percent = Math.round((filled / total) * 100);
+            const fillEl = document.getElementById('progress-fill');
+            const textEl = document.getElementById('progress-text');
+            if (fillEl) fillEl.style.width = percent + '%';
+            if (textEl) textEl.textContent = percent + '%';
+        }
+
+        // Update progress on all inputs
+        document.querySelectorAll('input, textarea, select').forEach(el => {
+            el.addEventListener('input', updateProgress);
+            el.addEventListener('change', updateProgress);
+        });
+        // Initial progress
+        setTimeout(updateProgress, 300);
+
+        // ============================================================
+        // 8. AUTO-SAVE DRAFT
+        // ============================================================
+        let autoSaveTimer = null;
+        const form = document.getElementById('riskForm');
+        const autoSaveIndicator = document.getElementById('auto-save-indicator');
+
+        function autoSaveDraft() {
+            if (!isEditable) return;
+            const formData = new FormData(form);
+            formData.append('auto_save', '1');
+
+            fetch('action.php?action=save_risk_draft', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    autoSaveIndicator.style.display = 'flex';
+                    setTimeout(() => {
+                        autoSaveIndicator.style.display = 'none';
+                    }, 3000);
+                }
+            })
+            .catch(() => {});
+        }
+
+        // Trigger auto-save on input change (debounced 30s)
+        form.addEventListener('input', function() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(autoSaveDraft, 30000);
+        });
+        form.addEventListener('change', function() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(autoSaveDraft, 30000);
+        });
+
+        // ============================================================
+        // 9. KEYBOARD SHORTCUTS
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+S / Cmd+S = Save
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (isEditable) {
+                    form.dispatchEvent(new Event('submit'));
+                }
+            }
+            // Escape = Cancel
+            if (e.key === 'Escape') {
+                const cancelBtn = document.querySelector('.btn-cancel');
+                if (cancelBtn) {
+                    e.preventDefault();
+                    cancelBtn.click();
+                }
+            }
+        });
+
+        // ============================================================
+        // 10. SMART VALIDATION - Scroll to error
+        // ============================================================
+        document.querySelectorAll('.form-input, .form-select').forEach(el => {
+            el.addEventListener('invalid', function(e) {
+                e.preventDefault();
+                this.classList.add('error');
+                this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Show error message
+                const label = document.querySelector(`label[for="${this.id}"]`) ||
+                             document.querySelector(`.form-label`);
+                if (label) {
+                    const msg = document.createElement('div');
+                    msg.className = 'text-red-500 text-xs mt-1 animate-in';
+                    msg.textContent = '⚠️ ' + (this.validationMessage || 'กรุณากรอกข้อมูลให้ถูกต้อง');
+                    this.parentNode.appendChild(msg);
+                    setTimeout(() => msg.remove(), 4000);
+                }
+            });
+
+            el.addEventListener('input', function() {
+                this.classList.remove('error');
+            });
+        });
+
+        // ============================================================
+        // 11. LEAVE WARNING
+        // ============================================================
+        let formChanged = false;
+        form.addEventListener('input', () => { formChanged = true; });
+        form.addEventListener('change', () => { formChanged = true; });
+
+        window.addEventListener('beforeunload', function(e) {
+            if (formChanged && isEditable) {
+                e.preventDefault();
+                e.returnValue = 'คุณยังไม่ได้บันทึกข้อมูล ต้องการออกจากหน้านี้ใช่หรือไม่?';
+                return e.returnValue;
+            }
+        });
+
+        // Reset formChanged on submit
+        form.addEventListener('submit', function() {
+            formChanged = false;
+        });
+
+        // ============================================================
+        // 12. FORM SUBMIT
+        // ============================================================
         let submitting = false;
-        document.getElementById('riskForm').addEventListener('submit', function(e) {
+
+        form.addEventListener('submit', function(e) {
             e.preventDefault();
+
             if (submitting) {
                 Swal.fire({
                     icon: 'warning',
@@ -1025,6 +1460,7 @@ if ($id) {
                 return;
             }
 
+            // Check "อื่นๆ" fields
             let otherEmpty = false;
             ['unit', 'risk_type'].forEach(name => {
                 const sel = document.querySelector(`input[name="${name}"]:checked`);
@@ -1032,8 +1468,9 @@ if ($id) {
                     const inp = document.getElementById(name + '_other');
                     if (inp && !inp.value.trim()) {
                         otherEmpty = true;
-                        inp.classList.add('border-red-500');
-                        setTimeout(() => inp.classList.remove('border-red-500'), 2000);
+                        inp.classList.add('error');
+                        inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => inp.classList.remove('error'), 3000);
                     }
                 }
             });
@@ -1047,6 +1484,7 @@ if ($id) {
                 return;
             }
 
+            // Validate datetime
             const evInput = document.getElementById('event_datetime');
             const rpInput = document.getElementById('report_datetime');
 
@@ -1069,6 +1507,7 @@ if ($id) {
                 return;
             }
 
+            // Confirm
             Swal.fire({
                 title: 'ยืนยันการบันทึก?',
                 text: 'คุณต้องการบันทึกรายงานนี้ใช่หรือไม่',
@@ -1080,47 +1519,69 @@ if ($id) {
                 cancelButtonText: '❌ ยกเลิก'
             }).then(result => {
                 if (!result.isConfirmed) return;
+
                 submitting = true;
-                const btn = document.querySelector('#riskForm button[type="submit"]');
+                const btn = document.getElementById('submitBtn');
                 const orig = btn.innerHTML;
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+
                 fetch('action.php?action=save_risk', {
-                        method: 'POST',
-                        body: new FormData(document.getElementById('riskForm'))
-                    })
-                    .then(r => r.json()).then(data => {
-                        if (data.success) {
-                            Swal.fire({
-                                    icon: 'success',
-                                    title: 'บันทึกสำเร็จ',
-                                    text: data.message,
-                                    confirmButtonColor: '#2563eb'
-                                })
-                                .then(() => window.location.href = 'risks.php');
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'ผิดพลาด',
-                                text: data.message,
-                                confirmButtonColor: '#2563eb'
-                            });
-                            submitting = false;
-                            btn.disabled = false;
-                            btn.innerHTML = orig;
-                        }
-                    }).catch(() => {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'บันทึกสำเร็จ',
+                            text: data.message,
+                            confirmButtonColor: '#2563eb'
+                        }).then(() => {
+                            window.location.href = 'risks.php';
+                        });
+                    } else {
                         Swal.fire({
                             icon: 'error',
-                            title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์',
+                            title: 'ผิดพลาด',
+                            text: data.message || 'เกิดข้อผิดพลาดในการบันทึก',
                             confirmButtonColor: '#2563eb'
                         });
                         submitting = false;
                         btn.disabled = false;
                         btn.innerHTML = orig;
+                    }
+                })
+                .catch(() => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์',
+                        text: 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต',
+                        confirmButtonColor: '#2563eb'
                     });
+                    submitting = false;
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                });
             });
         });
+
+        // ============================================================
+        // 13. PRINT (ปรับปรุง)
+        // ============================================================
+        // ปุ่ม Print อยู่แล้วใน HTML
+
+        // ============================================================
+        // 14. TOOLTIP สำหรับ Keyboard Shortcuts
+        // ============================================================
+        // แสดง Tooltip เมื่อ hover ที่ปุ่มบันทึก
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.title = 'Ctrl+S';
+        }
+
+        console.log('✅ Interactive features loaded successfully!');
     });
 </script>
 <?php include 'includes/footer.php'; ?>

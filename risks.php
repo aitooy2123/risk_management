@@ -291,7 +291,6 @@ $isAdmin = isAdmin();
     }
 
     .page-container {
-        /* max-width: 1000px; */
         margin: 0 auto;
     }
 
@@ -1561,6 +1560,46 @@ $isAdmin = isAdmin();
             collapse.style.maxHeight = collapse.scrollHeight + 'px';
         }
     })();
+
+    // ============================================================
+    // KEYBOARD SHORTCUTS
+    // ============================================================
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+A = Select all
+        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                const selectAll = document.getElementById('selectAll');
+                if (selectAll) {
+                    selectAll.checked = !selectAll.checked;
+                    selectAll.dispatchEvent(new Event('change'));
+                }
+            }
+        }
+        // Ctrl+D = Delete selected (Admin only)
+        <?php if (isAdmin()): ?>
+        if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                const deleteBtn = document.getElementById('deleteSelected');
+                if (deleteBtn) deleteBtn.click();
+            }
+        }
+        <?php endif; ?>
+        // Ctrl+P = Print (open print dialog)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            // Allow browser default print
+        }
+    });
+
+    console.log('✅ Risk list page loaded successfully!');
+    console.log('📊 Total risks:', <?= $totalRows ?>);
+    console.log('📄 Current page:', <?= $page ?>, 'of', <?= $totalPages ?>);
+    <?php if (isAdmin()): ?>
+    console.log('👑 Admin mode enabled');
+    <?php else: ?>
+    console.log('👤 User mode: <?= htmlspecialchars($_SESSION['username']) ?>');
+    <?php endif; ?>
 </script>
 
 <?php include 'includes/footer.php'; ?>
