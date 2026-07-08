@@ -1,12 +1,12 @@
 <?php
 /**
- * ฟอร์มเพิ่ม/แก้ไขผู้ใช้ - UI สวยงาม
+ * ฟอร์มเพิ่ม/แก้ไขผู้ใช้ - UI สวยงาม ทันสมัย เต็มหน้า
  * - เฉพาะ Admin
  * - รองรับทุกฟิลด์: reporter_code, username, fullname, email, phone, department, role, avatar
  * - แผนก/หน่วยงาน เป็น select พร้อมกลุ่ม
  * - ป้องกันการแก้ไข username ของ user (แต่แก้ไข reporter_code ได้)
- * - รหัสผ่านอยู่ในแทปแยก
- * - มีพื้นหลังสวยงาม
+ * - รหัสผ่านอยู่ใน Modal แยก
+ * - UI ทันสมัย สวยงาม โทนสีฟ้า-น้ำเงิน แสดงผลเต็มหน้าจอ
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -24,7 +24,8 @@ if ($id) {
 
 $csrf_token = generateCsrfToken();
 $is_edit = $id ? true : false;
-$title = $is_edit ? '✏️ แก้ไขผู้ใช้' : '➕ เพิ่มผู้ใช้';
+$title = $is_edit ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้';
+$icon = $is_edit ? 'fa-user-edit' : 'fa-user-plus';
 
 // รายการแผนก
 $departmentsList = [
@@ -47,726 +48,975 @@ $isCustomDept = !empty($currentDept) && !in_array($currentDept, $departmentsList
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    body { 
-        background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 30%, #ede9fe 60%, #fce7f3 100%);
+    :root {
+        --primary: #2563eb;
+        --primary-dark: #1e40af;
+        --primary-light: #eff6ff;
+        --primary-gradient: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+        --surface: #ffffff;
+        --surface-secondary: #f8fafc;
+        --border: #bfdbfe;
+        --text: #0f172a;
+        --text-secondary: #475569;
+        --text-muted: #94a3b8;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --success: #10b981;
+        --info: #3b82f6;
+        --accent: #3b82f6;
+        --accent-light: #eff6ff;
+        --accent-gradient: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+    }
+
+    body {
+        background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 30%, #f5f3ff 60%, #fdf2f8 100%);
         min-height: 100vh;
+        font-family: 'Sarabun', sans-serif;
+        font-size: 14px;
+    }
+
+    /* ===== Page Header ===== */
+       .page-header {
+       background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
+        border-radius: 1.5rem;
+        padding: 1.75rem 2.25rem;
+        margin-bottom: 1.5rem;
+        color: white;
         position: relative;
-    }
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: 
-            radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
-            radial-gradient(circle at 50% 80%, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
-        pointer-events: none;
-        z-index: 0;
-    }
-    .form-container { 
-        max-width: 800px; 
-        margin: 0 auto;
-        position: relative;
-        z-index: 1;
-    }
-    
-    /* Floating shapes decoration */
-    .floating-shapes {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        pointer-events: none;
-        z-index: 0;
         overflow: hidden;
     }
-    .floating-shapes .shape {
+
+    .page-header::before {
+        content: '';
         position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 350px;
+        height: 350px;
+        background: rgba(255, 255, 255, 0.03);
         border-radius: 50%;
-        opacity: 0.3;
-    }
-    .floating-shapes .shape:nth-child(1) {
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(59,130,246,0.1), transparent);
-        top: -100px;
-        right: -100px;
-        animation: float 20s ease-in-out infinite;
-    }
-    .floating-shapes .shape:nth-child(2) {
-        width: 200px;
-        height: 200px;
-        background: radial-gradient(circle, rgba(139,92,246,0.1), transparent);
-        bottom: 50px;
-        left: -50px;
-        animation: float 25s ease-in-out infinite reverse;
-    }
-    .floating-shapes .shape:nth-child(3) {
-        width: 150px;
-        height: 150px;
-        background: radial-gradient(circle, rgba(236,72,153,0.1), transparent);
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        animation: float 30s ease-in-out infinite;
-    }
-    @keyframes float {
-        0%, 100% { transform: translate(0, 0) scale(1); }
-        25% { transform: translate(30px, -30px) scale(1.1); }
-        50% { transform: translate(-20px, 20px) scale(0.9); }
-        75% { transform: translate(20px, -10px) scale(1.05); }
-    }
-    
-    .page-header {
-        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
-        border-radius: 1.5rem; padding: 1.75rem 2.25rem; margin-bottom: 1.5rem;
-        color: white; position: relative; overflow: hidden;
-        box-shadow: 0 10px 40px rgba(37, 99, 235, 0.3);
-    }
-    .page-header::before { 
-        content: ''; 
-        position: absolute; 
-        top: -50%; 
-        right: -10%; 
-        width: 300px; 
-        height: 300px; 
-        background: rgba(255,255,255,0.05); 
-        border-radius: 50%; 
     }
     .page-header::after {
         content: '';
         position: absolute;
-        bottom: -50%;
-        left: -5%;
-        width: 200px;
-        height: 200px;
-        background: rgba(255,255,255,0.03);
+        bottom: -30%;
+        left: -3%;
+        width: 150px;
+        height: 150px;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
         border-radius: 50%;
     }
-    .page-header h2 { 
-        font-size: 1.5rem; 
-        font-weight: 700; 
-        position: relative; 
-        z-index: 1; 
+    .page-header-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
     }
-    .page-header p { 
-        color: rgba(255,255,255,0.7); 
-        font-size: 0.85rem; 
-        position: relative; 
-        z-index: 1; 
+    .page-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        border: 1px solid rgba(255,255,255,0.3);
+        flex-shrink: 0;
     }
-    
-    .card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
-        border-radius: 1rem; 
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-        margin-bottom: 1.5rem; 
+    .page-header h2 {
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+    .page-header p {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.75rem;
+        margin-top: 0.1rem;
+    }
+
+    /* ===== Form Card ===== */
+    .form-card {
+        background: white;
+        border-radius: 0.85rem;
+        border: 1px solid var(--border);
+        margin-bottom: 0.85rem;
         overflow: hidden;
-        transition: all 0.3s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        transition: all 0.2s ease;
     }
-    .card:hover { 
-        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
-        transform: translateY(-2px);
+    .form-card:hover {
+        box-shadow: 0 4px 16px rgba(37, 99, 235, 0.06);
+        border-color: #93c5fd;
     }
     .card-header {
-        padding: 1rem 1.5rem; 
-        border-bottom: 1px solid rgba(241, 245, 249, 0.8);
-        background: rgba(250, 251, 252, 0.7);
-        display: flex; 
-        align-items: center; 
-        gap: 0.75rem;
+        padding: 0.7rem 1.1rem;
+        background: var(--surface-secondary);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
         cursor: pointer;
+        user-select: none;
         transition: background 0.2s;
     }
     .card-header:hover {
-        background: rgba(241, 245, 249, 0.9);
+        background: #eff6ff;
     }
-    .card-header-icon { 
-        width: 36px; 
-        height: 36px; 
-        border-radius: 10px; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        font-size: 1rem; 
-        flex-shrink: 0; 
+    .card-header-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        flex-shrink: 0;
     }
-    .card-header-title { 
-        font-weight: 700; 
-        color: #1e293b; 
-        font-size: 1rem; 
-        flex: 1; 
+    .card-header-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text);
+        flex: 1;
+    }
+    .card-header-badge {
+        font-size: 0.58rem;
+        font-weight: 600;
+        padding: 0.18rem 0.5rem;
+        border-radius: 9999px;
+        letter-spacing: 0.3px;
     }
     .card-header .toggle-icon {
+        color: var(--text-muted);
         transition: transform 0.3s;
-        color: #94a3b8;
+        font-size: 0.65rem;
     }
     .card-header .toggle-icon.active {
         transform: rotate(180deg);
     }
     .card-body {
-        padding: 1.5rem;
+        padding: 1.1rem;
         transition: all 0.3s ease;
-        background: rgba(255, 255, 255, 0.5);
     }
     .card-body.collapsed {
         display: none;
     }
-    
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-    .form-grid .full { grid-column: 1 / -1; }
-    .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
-    .form-label { 
-        font-size: 0.78rem; 
-        font-weight: 700; 
-        color: #475569; 
-        display: flex; 
-        align-items: center; 
-        gap: 0.35rem; 
+
+    /* ===== Two Column Layout for Cards ===== */
+    .cards-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
     }
-    .form-label .required { color: #ef4444; }
-    .form-label .optional { font-size: 0.7rem; font-weight: 400; color: #94a3b8; }
+    .cards-grid .form-card.full-width {
+        grid-column: 1 / -1;
+    }
+
+    /* ===== Form Elements ===== */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
+    }
+    .form-grid .full {
+        grid-column: 1 / -1;
+    }
+    .form-grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.85rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .form-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .form-label .required {
+        color: var(--danger);
+        font-size: 0.6rem;
+    }
+    .form-label .optional {
+        font-size: 0.6rem;
+        font-weight: 400;
+        color: var(--text-muted);
+        text-transform: none;
+        letter-spacing: 0;
+    }
     .form-input {
-        padding: 0.7rem 0.9rem; 
-        border: 1.5px solid rgba(226, 232, 240, 0.8);
-        border-radius: 0.6rem;
-        font-size: 0.9rem; 
-        outline: none; 
+        padding: 0.5rem 0.7rem;
+        border: 1.5px solid #bfdbfe;
+        border-radius: 0.45rem;
+        font-size: 0.8rem;
+        outline: none;
         font-family: 'Sarabun', sans-serif;
-        background: rgba(250, 251, 252, 0.8);
-        color: #1e293b; 
-        transition: all 0.25s;
-        backdrop-filter: blur(10px);
+        background: #f8faff;
+        color: var(--text);
+        transition: all 0.2s;
+        width: 100%;
     }
-    .form-input:hover { 
-        border-color: #cbd5e1; 
-        background: rgba(255, 255, 255, 0.9);
+    .form-input:hover {
+        border-color: #93c5fd;
+        background: #f0f6ff;
     }
-    .form-input:focus { 
-        border-color: #3b82f6; 
-        background: white; 
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    .form-input:focus {
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
     }
     .form-input:disabled {
-        background: rgba(241, 245, 249, 0.6);
+        background: #f1f5f9;
         color: #94a3b8;
         cursor: not-allowed;
         border-style: dashed;
+        border-color: #e2e8f0;
     }
-    select.form-input { 
+    select.form-input {
         cursor: pointer;
         appearance: none;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
-        background-position: right 0.9rem center;
-        padding-right: 2.5rem;
+        background-position: right 0.7rem center;
+        padding-right: 2rem;
     }
-    select.form-input optgroup { font-weight: 700; color: #1e293b; }
-    select.form-input option { font-weight: 400; }
-    
-    .avatar-section { display: flex; align-items: center; gap: 1.5rem; }
-    .avatar-preview {
-        width: 90px; height: 90px; border-radius: 50%; object-fit: cover;
-        border: 4px solid rgba(255, 255, 255, 0.8);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-        transition: all 0.3s;
-        background: #f1f5f9;
+
+    /* ===== Password Section ===== */
+    .password-section {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
     }
-    .avatar-preview:hover { 
-        border-color: #3b82f6; 
-        transform: scale(1.05);
-        box-shadow: 0 12px 40px rgba(37, 99, 235, 0.2);
-    }
-    .avatar-upload { flex: 1; }
-    .avatar-hint { font-size: 0.75rem; color: #94a3b8; margin-top: 0.35rem; }
-    
-    .btn-row { display: flex; align-items: center; gap: 1rem; padding-top: 0.5rem; }
-    .btn {
-        display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.5rem;
-        border-radius: 0.7rem; font-weight: 600; font-size: 0.9rem; transition: all 0.3s;
-        cursor: pointer; border: none; font-family: 'Sarabun', sans-serif; text-decoration: none;
-    }
-    .btn-primary { 
-        background: linear-gradient(135deg, #1e40af, #3b82f6); 
-        color: white; 
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
-    }
-    .btn-primary:hover { 
-        transform: translateY(-2px); 
-        box-shadow: 0 10px 32px rgba(37, 99, 235, 0.45);
-    }
-    .btn-cancel { 
-        background: rgba(241, 245, 249, 0.8);
-        color: #64748b;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(226, 232, 240, 0.5);
-    }
-    .btn-cancel:hover { 
-        background: #e2e8f0; 
-        transform: translateY(-2px);
-    }
-    
-    .dept-other-input {
-        margin-top: 0.5rem;
-    }
-    .dept-other-input.hidden {
-        display: none;
-    }
-    
-    .field-note {
-        color: #94a3b8;
-        font-size: 0.7rem;
-        margin-top: 0.2rem;
-    }
-    .field-note i {
-        margin-right: 0.2rem;
-    }
-    
-    .tab-indicator {
+    .password-status {
         display: inline-flex;
         align-items: center;
         gap: 0.3rem;
-        padding: 0.2rem 0.6rem;
-        border-radius: 9999px;
-        font-size: 0.6rem;
+        padding: 0.3rem 0.65rem;
+        border-radius: 0.4rem;
+        font-size: 0.7rem;
         font-weight: 600;
-        background: rgba(219, 234, 254, 0.8);
-        color: #1e40af;
-        backdrop-filter: blur(10px);
     }
-    .tab-indicator i {
-        font-size: 0.5rem;
+    .password-status.set {
+        background: #f0fdf4;
+        color: #166534;
+        border: 1px solid #bbf7d0;
     }
-    
-    /* Helper buttons in password card */
-    .helper-btn {
+    .password-status.not-set {
+        background: #fffbeb;
+        color: #92400e;
+        border: 1px solid #fde68a;
+    }
+    .btn-password {
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.3rem;
         padding: 0.4rem 0.8rem;
-        border-radius: 0.5rem;
-        font-size: 0.75rem;
-        font-weight: 500;
+        border-radius: 0.45rem;
+        font-size: 0.73rem;
+        font-weight: 600;
         cursor: pointer;
-        border: 1px solid rgba(226, 232, 240, 0.5);
-        background: rgba(241, 245, 249, 0.7);
-        color: #64748b;
-        transition: all 0.2s;
-        backdrop-filter: blur(10px);
+        border: none;
         font-family: 'Sarabun', sans-serif;
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        transition: all 0.25s;
+        white-space: nowrap;
     }
-    .helper-btn:hover {
-        background: rgba(226, 232, 240, 0.9);
+    .btn-password:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    }
+
+    /* ===== Avatar ===== */
+    .avatar-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .avatar-preview {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #bfdbfe;
+        box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+        transition: all 0.3s;
+        background: #f1f5f9;
+        flex-shrink: 0;
+    }
+    .avatar-preview:hover {
+        border-color: var(--primary);
+        transform: scale(1.05);
+        box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+    }
+    .avatar-upload {
+        flex: 1;
+        min-width: 0;
+    }
+    .avatar-hint {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        margin-top: 0.2rem;
+        line-height: 1.4;
+    }
+
+    /* ===== Buttons ===== */
+    .btn-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding-top: 0.35rem;
+        flex-wrap: wrap;
+    }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.5rem 1.1rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.8rem;
+        transition: all 0.25s;
+        cursor: pointer;
+        border: none;
+        font-family: 'Sarabun', sans-serif;
+        text-decoration: none;
+    }
+    .btn-primary {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 28px rgba(37, 99, 235, 0.4);
+    }
+    .btn-cancel {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+    .btn-cancel:hover {
+        background: #e2e8f0;
+        color: #475569;
         transform: translateY(-1px);
     }
-    .helper-btn.danger {
-        background: rgba(254, 242, 242, 0.7);
+
+    /* ===== Field Note ===== */
+    .field-note {
+        font-size: 0.63rem;
+        color: var(--text-muted);
+        margin-top: 0.15rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .field-note.warning {
         color: #dc2626;
-        border-color: rgba(254, 202, 202, 0.5);
     }
-    .helper-btn.danger:hover {
-        background: rgba(254, 226, 226, 0.9);
+    .field-note.info {
+        color: #2563eb;
     }
-    
-    @media (max-width: 640px) { 
-        .form-grid { grid-template-columns: 1fr; } 
-        .avatar-section { flex-direction: column; align-items: flex-start; } 
+
+    /* ===== Hidden Utility ===== */
+    .hidden {
+        display: none;
+    }
+    .mt-1 {
+        margin-top: 0.25rem;
+    }
+    .mt-2 {
+        margin-top: 0.5rem;
+    }
+
+    /* ===== Modal ===== */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(6px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .modal-overlay.active {
+        display: flex;
+        animation: fadeIn 0.25s ease;
+    }
+    .modal-dialog {
+        background: white;
+        border-radius: 1rem;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 25px 60px rgba(37, 99, 235, 0.2);
+        animation: slideUp 0.3s ease;
+        overflow: hidden;
+    }
+    .modal-header {
+        background: var(--primary-gradient);
+        padding: 1rem 1.15rem;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .modal-header h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+    .modal-close {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+    .modal-close:hover {
+        background: rgba(255,255,255,0.35);
+    }
+    .modal-body {
+        padding: 1.15rem;
+    }
+    .modal-body .form-input {
+        background: #f8faff;
+        border-color: #bfdbfe;
+    }
+    .modal-body .form-input:focus {
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+    }
+    .modal-footer {
+        padding: 0.75rem 1.15rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        background: #f8fafc;
+    }
+    .modal-footer .btn {
+        padding: 0.4rem 0.9rem;
+        font-size: 0.73rem;
+    }
+    .btn-modal-cancel {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+    .btn-modal-cancel:hover {
+        background: #e2e8f0;
+        color: #475569;
+    }
+    .btn-modal-clear {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+    .btn-modal-clear:hover {
+        background: #fee2e2;
+    }
+    .btn-modal-confirm {
+        background: var(--primary-gradient);
+        color: white;
+    }
+    .btn-modal-confirm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+    .password-input-wrapper {
+        position: relative;
+    }
+    .password-toggle-btn {
+        position: absolute;
+        right: 0.35rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #94a3b8;
+        padding: 0.25rem 0.45rem;
+        border-radius: 0.25rem;
+        transition: all 0.2s;
+        font-size: 0.8rem;
+    }
+    .password-toggle-btn:hover {
+        color: #2563eb;
+        background: #eff6ff;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(15px) scale(0.97); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+        .cards-grid {
+            grid-template-columns: 1fr;
+        }
+        .form-grid-3 {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    @media (max-width: 640px) {
+        .form-grid,
+        .form-grid-3 {
+            grid-template-columns: 1fr;
+        }
+        .avatar-section {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .btn-row {
+            flex-direction: column;
+        }
+        .btn-row .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .password-section {
+            flex-direction: column;
+            align-items: flex-start;
+        }
     }
 </style>
 
-<div class="flex h-screen" style="position:relative;z-index:1;">
+<div class="flex h-screen">
     <?php include 'includes/sidebar.php'; ?>
-    <div class="flex-1 p-4 md:p-5 overflow-y-auto">
-        <!-- Floating Shapes Background -->
-        <div class="floating-shapes">
-            <div class="shape"></div>
-            <div class="shape"></div>
-            <div class="shape"></div>
+    <div class="flex-1 p-3 md:p-4 overflow-y-auto">
+
+        <!-- Header -->
+        <div class="page-header">
+            <div class="page-header-content">
+                <div class="page-header-icon">
+                    <i class="fas <?= $icon ?>"></i>
+                </div>
+                <div>
+                    <h2><?= $title ?></h2>
+                    <p><?= $is_edit ? 'แก้ไขข้อมูล: ' . htmlspecialchars($user['username']) : 'สร้างบัญชีผู้ใช้ใหม่' ?></p>
+                </div>
+            </div>
         </div>
-        
-        <div class="form-container">
-            
-            <div class="page-header">
-                <h2><?= $title ?></h2>
-                <p><?= $is_edit ? 'แก้ไขข้อมูลผู้ใช้: ' . htmlspecialchars($user['username']) : 'สร้างบัญชีผู้ใช้ใหม่' ?></p>
+
+        <form id="userForm" method="POST" action="action.php?action=save_user" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+            <input type="hidden" name="id" value="<?= $id ?>">
+            <input type="hidden" name="is_edit" value="<?= $is_edit ? '1' : '0' ?>">
+            <input type="hidden" name="password" id="hiddenPassword">
+            <input type="hidden" name="confirm_password" id="hiddenConfirmPassword">
+
+            <!-- แบ่งเป็น 2 คอลัมน์ -->
+            <div class="cards-grid">
+
+                <!-- ========== คอลัมน์ซ้าย ========== -->
+                <div style="display:flex;flex-direction:column;gap:0.85rem;">
+
+                    <!-- ข้อมูลบัญชี -->
+                    <div class="form-card">
+                        <div class="card-header" onclick="toggleCard(this)">
+                            <div class="card-header-icon" style="background:#eff6ff;color:#2563eb;">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <h3 class="card-header-title">ข้อมูลบัญชี</h3>
+                            <span class="card-header-badge" style="background:#fef2f2;color:#dc2626;">จำเป็น</span>
+                            <i class="fas fa-chevron-down toggle-icon active"></i>
+                        </div>
+                        <div class="card-body" id="cardAccount">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-id-card"></i> รหัสผู้รายงาน <span class="required">*</span>
+                                    </label>
+                                    <input type="text" name="reporter_code" 
+                                           value="<?= htmlspecialchars($user['reporter_code'] ?? '') ?>" 
+                                           class="form-input" 
+                                           required 
+                                           placeholder="เช่น R10001">
+                                    <?php if ($is_edit): ?>
+                                        <div class="field-note info">
+                                            <i class="fas fa-edit"></i> แก้ไขรหัสได้
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-user"></i> ชื่อผู้ใช้ <span class="required">*</span>
+                                    </label>
+                                    <input type="text" name="username" 
+                                           value="<?= htmlspecialchars($user['username'] ?? '') ?>" 
+                                           class="form-input" 
+                                           <?= $is_edit ? 'disabled' : 'required' ?> 
+                                           placeholder="กรอกชื่อผู้ใช้">
+                                    <?php if ($is_edit): ?>
+                                        <input type="hidden" name="username" value="<?= htmlspecialchars($user['username'] ?? '') ?>">
+                                        <div class="field-note warning">
+                                            <i class="fas fa-lock"></i> ไม่สามารถแก้ไขได้
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="form-group full">
+                                    <label class="form-label">
+                                        <i class="fas fa-key"></i> รหัสผ่าน 
+                                        <?php if ($is_edit): ?>
+                                            <span class="optional">(เปลี่ยนได้)</span>
+                                        <?php else: ?>
+                                            <span class="required">*</span>
+                                        <?php endif; ?>
+                                    </label>
+                                    <div class="password-section">
+                                        <?php if ($is_edit): ?>
+                                            <span class="password-status set">
+                                                <i class="fas fa-shield-check"></i> ตั้งค่าแล้ว
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="password-status not-set">
+                                                <i class="fas fa-exclamation-triangle"></i> ยังไม่ได้ตั้งค่า
+                                            </span>
+                                        <?php endif; ?>
+                                        <button type="button" class="btn-password" onclick="openPasswordModal()">
+                                            <i class="fas fa-key"></i> <?= $is_edit ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่าน' ?>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-group full">
+                                    <label class="form-label">
+                                        <i class="fas fa-user-shield"></i> บทบาท
+                                    </label>
+                                    <select name="role" class="form-input">
+                                        <option value="user" <?= ($user['role'] ?? '') == 'user' ? 'selected' : '' ?>>
+                                            👤 ผู้ใช้ทั่วไป (User)
+                                        </option>
+                                        <option value="admin" <?= ($user['role'] ?? '') == 'admin' ? 'selected' : '' ?>>
+                                            👑 ผู้ดูแลระบบ (Admin)
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Avatar -->
+                    <div class="form-card">
+                        <div class="card-header" onclick="toggleCard(this)">
+                            <div class="card-header-icon" style="background:#eff6ff;color:#2563eb;">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <h3 class="card-header-title">รูปโปรไฟล์</h3>
+                            <span class="card-header-badge" style="background:#eff6ff;color:#1e40af;">Avatar</span>
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </div>
+                        <div class="card-body" id="cardAvatar">
+                            <div class="avatar-section">
+                                <img id="avatarPreview" 
+                                     src="<?= ($is_edit && !empty($user['avatar'])) ? 'avatars/' . htmlspecialchars($user['avatar']) : 'avatars/default.png' ?>" 
+                                     class="avatar-preview" 
+                                     alt="Avatar" 
+                                     onerror="this.src='avatars/default.png'">
+                                <div class="avatar-upload">
+                                    <input type="file" name="avatar" id="avatarInput" accept="image/*" class="form-input">
+                                    <p class="avatar-hint">
+                                        <i class="fas fa-info-circle"></i> JPG, PNG, GIF, WebP (สูงสุด 5MB)
+                                        <?php if ($is_edit && !empty($user['avatar'])): ?>
+                                            <br><i class="fas fa-image"></i> ปัจจุบัน: <strong><?= htmlspecialchars($user['avatar']) ?></strong>
+                                        <?php endif; ?>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ========== คอลัมน์ขวา ========== -->
+                <div style="display:flex;flex-direction:column;gap:0.85rem;">
+
+                    <!-- รายละเอียดเพิ่มเติม -->
+                    <div class="form-card">
+                        <div class="card-header" onclick="toggleCard(this)">
+                            <div class="card-header-icon" style="background:#eff6ff;color:#2563eb;">
+                                <i class="fas fa-address-card"></i>
+                            </div>
+                            <h3 class="card-header-title">รายละเอียดเพิ่มเติม</h3>
+                            <span class="card-header-badge" style="background:#eff6ff;color:#1e40af;">เพิ่มเติม</span>
+                            <i class="fas fa-chevron-down toggle-icon active"></i>
+                        </div>
+                        <div class="card-body" id="cardDetails">
+                            <div class="form-grid">
+                                <div class="form-group full">
+                                    <label class="form-label">
+                                        <i class="fas fa-user-tag"></i> ชื่อ-นามสกุล
+                                    </label>
+                                    <input type="text" name="fullname" 
+                                           value="<?= htmlspecialchars($user['fullname'] ?? '') ?>" 
+                                           class="form-input" 
+                                           placeholder="ชื่อ-นามสกุลจริง">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-envelope"></i> อีเมล
+                                    </label>
+                                    <input type="email" name="email" 
+                                           value="<?= htmlspecialchars($user['email'] ?? '') ?>" 
+                                           class="form-input" 
+                                           placeholder="example@email.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-phone"></i> เบอร์โทรศัพท์
+                                    </label>
+                                    <input type="text" name="phone" 
+                                           value="<?= htmlspecialchars($user['phone'] ?? '') ?>" 
+                                           class="form-input" 
+                                           placeholder="08x-xxx-xxxx">
+                                </div>
+                                <div class="form-group full">
+                                    <label class="form-label">
+                                        <i class="fas fa-building"></i> แผนก/หน่วยงาน
+                                    </label>
+                                    <select name="department_select" id="departmentSelect" class="form-input">
+                                        <option value="">-- กรุณาเลือกแผนก --</option>
+                                        <?php foreach ($departmentsList as $dept): 
+                                            $selected = $currentDept == $dept ? 'selected' : '';
+                                        ?>
+                                            <option value="<?= htmlspecialchars($dept) ?>" <?= $selected ?>>
+                                                <?= htmlspecialchars($dept) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                        <option value="อื่นๆ" <?= $isCustomDept ? 'selected' : '' ?>>
+                                            ➕ อื่นๆ (ระบุ)
+                                        </option>
+                                    </select>
+                                    <input type="text" name="department" id="departmentOther" 
+                                           class="form-input mt-1 <?= $isCustomDept ? '' : 'hidden' ?>" 
+                                           placeholder="ระบุแผนก/หน่วยงานอื่น"
+                                           value="<?= $isCustomDept ? htmlspecialchars($currentDept) : '' ?>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
 
-            <form id="userForm" method="POST" action="action.php?action=save_user" enctype="multipart/form-data">
-                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                <input type="hidden" name="id" value="<?= $id ?>">
-                <input type="hidden" name="is_edit" value="<?= $is_edit ? '1' : '0' ?>">
+            <!-- Buttons -->
+            <div class="btn-row" style="margin-top:0.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> บันทึก
+                </button>
+                <a href="users.php" class="btn btn-cancel">
+                    <i class="fas fa-times"></i> ยกเลิก
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
 
-                <!-- ข้อมูลบัญชี (เปิดเสมอ) -->
-                <div class="card">
-                    <div class="card-header" onclick="toggleCard(this)">
-                        <div class="card-header-icon" style="background:rgba(219,234,254,0.8);color:#2563eb;"><i class="fas fa-user-circle"></i></div>
-                        <h3 class="card-header-title">ข้อมูลบัญชี</h3>
-                        <span class="tab-indicator"><i class="fas fa-check-circle"></i> จำเป็น</span>
-                        <i class="fas fa-chevron-down toggle-icon active"></i>
-                    </div>
-                    <div class="card-body" id="cardAccount">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label class="form-label">🆔 รหัสผู้รายงาน <span class="required">*</span></label>
-                                <input type="text" name="reporter_code" 
-                                       value="<?= htmlspecialchars($user['reporter_code'] ?? '') ?>" 
-                                       class="form-input" 
-                                       required 
-                                       placeholder="เช่น R10001">
-                                <?php if ($is_edit): ?>
-                                    <div class="field-note"><i class="fas fa-edit" style="color:#3b82f6;"></i> สามารถแก้ไขรหัสผู้รายงานได้</div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">👤 ชื่อผู้ใช้ <span class="required">*</span></label>
-                                <input type="text" name="username" 
-                                       value="<?= htmlspecialchars($user['username'] ?? '') ?>" 
-                                       class="form-input" 
-                                       <?= $is_edit ? 'disabled' : 'required' ?> 
-                                       placeholder="กรอกชื่อผู้ใช้">
-                                <?php if ($is_edit): ?>
-                                    <input type="hidden" name="username" value="<?= htmlspecialchars($user['username'] ?? '') ?>">
-                                    <div class="field-note"><i class="fas fa-lock" style="color:#ef4444;"></i> ไม่สามารถแก้ไขชื่อผู้ใช้ได้</div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="form-group full">
-                                <label class="form-label">🎯 บทบาท</label>
-                                <select name="role" class="form-input">
-                                    <option value="user" <?= ($user['role'] ?? '') == 'user' ? 'selected' : '' ?>>👤 ผู้ใช้ทั่วไป (User)</option>
-                                    <option value="admin" <?= ($user['role'] ?? '') == 'admin' ? 'selected' : '' ?>>👑 ผู้ดูแลระบบ (Admin)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+<!-- ==================== PASSWORD MODAL ==================== -->
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>
+                <i class="fas fa-key"></i>
+                <?= $is_edit ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่าน' ?>
+            </h3>
+            <button type="button" class="modal-close" onclick="closePasswordModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group" style="margin-bottom:0.85rem;">
+                <label class="form-label">
+                    🔒 รหัสผ่าน 
+                    <?php if ($is_edit): ?>
+                        <span class="optional">(เว้นว่างหากไม่เปลี่ยน)</span>
+                    <?php else: ?>
+                        <span class="required">*</span>
+                    <?php endif; ?>
+                </label>
+                <div class="password-input-wrapper">
+                    <input type="password" id="modalPassword" class="form-input" 
+                           placeholder="<?= $is_edit ? 'รหัสผ่านใหม่ (เว้นว่าง = ไม่เปลี่ยน)' : 'กรอกรหัสผ่าน' ?>"
+                           <?= $is_edit ? '' : 'required' ?>>
+                    <button type="button" class="password-toggle-btn" onclick="toggleModalPassword()" title="แสดง/ซ่อน">
+                        <i class="fas fa-eye" id="togglePassIcon"></i>
+                    </button>
                 </div>
-
-                <!-- รหัสผ่าน (แทปแยก) -->
-                <div class="card" id="passwordCard">
-                    <div class="card-header" onclick="toggleCard(this)">
-                        <div class="card-header-icon" style="background:rgba(254,243,199,0.8);color:#d97706;"><i class="fas fa-key"></i></div>
-                        <h3 class="card-header-title">รหัสผ่าน</h3>
-                        <span class="tab-indicator" style="background:rgba(254,243,199,0.8);color:#92400e;">
-                            <i class="fas fa-<?= $is_edit ? 'edit' : 'plus' ?>"></i> 
-                            <?= $is_edit ? 'เปลี่ยน' : 'ตั้งค่า' ?>
-                        </span>
-                        <i class="fas fa-chevron-down toggle-icon"></i>
-                    </div>
-                    <div class="card-body collapsed" id="cardPassword">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label class="form-label">🔒 รหัสผ่าน <?= $is_edit ? '<span class="optional">(เว้นว่างไว้หากไม่เปลี่ยน)</span>' : '<span class="required">*</span>' ?></label>
-                                <input type="password" name="password" id="passwordInput" class="form-input" <?= $is_edit ? '' : 'required' ?> placeholder="<?= $is_edit ? 'รหัสผ่านใหม่ (ถ้าต้องการเปลี่ยน)' : 'กรอกรหัสผ่าน' ?>">
-                                <div class="field-note">
-                                    <i class="fas fa-info-circle" style="color:#3b82f6;"></i> 
-                                    <?= $is_edit ? 'กรอกรหัสผ่านใหม่หากต้องการเปลี่ยน' : 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร' ?>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">✅ ยืนยันรหัสผ่าน</label>
-                                <input type="password" name="confirm_password" id="confirmPasswordInput" class="form-input" placeholder="ยืนยันรหัสผ่าน">
-                            </div>
-                            <div class="form-group full">
-                                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
-                                    <button type="button" class="helper-btn" onclick="togglePasswordVisibility('passwordInput')">
-                                        <i class="fas fa-eye"></i> แสดงรหัสผ่าน
-                                    </button>
-                                    <button type="button" class="helper-btn" onclick="togglePasswordVisibility('confirmPasswordInput')">
-                                        <i class="fas fa-eye"></i> แสดงยืนยัน
-                                    </button>
-                                    <?php if ($is_edit): ?>
-                                    <button type="button" class="helper-btn danger" onclick="clearPasswordFields()">
-                                        <i class="fas fa-undo"></i> ล้าง
-                                    </button>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">✅ ยืนยันรหัสผ่าน</label>
+                <div class="password-input-wrapper">
+                    <input type="password" id="modalConfirmPassword" class="form-input" placeholder="ยืนยันรหัสผ่าน">
+                    <button type="button" class="password-toggle-btn" onclick="toggleModalConfirmPassword()" title="แสดง/ซ่อน">
+                        <i class="fas fa-eye" id="toggleConfirmIcon"></i>
+                    </button>
                 </div>
-
-                <!-- รายละเอียดเพิ่มเติม (แทปแยก) -->
-                <div class="card">
-                    <div class="card-header" onclick="toggleCard(this)">
-                        <div class="card-header-icon" style="background:rgba(224,231,255,0.8);color:#4338ca;"><i class="fas fa-address-card"></i></div>
-                        <h3 class="card-header-title">รายละเอียดเพิ่มเติม</h3>
-                        <span class="tab-indicator" style="background:rgba(224,231,255,0.8);color:#4338ca;"><i class="fas fa-chevron-down"></i> เพิ่มเติม</span>
-                        <i class="fas fa-chevron-down toggle-icon"></i>
-                    </div>
-                    <div class="card-body collapsed" id="cardDetails">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label class="form-label">📝 ชื่อ-นามสกุล</label>
-                                <input type="text" name="fullname" value="<?= htmlspecialchars($user['fullname'] ?? '') ?>" class="form-input" placeholder="กรอกชื่อ-นามสกุล">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">📧 อีเมล</label>
-                                <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" class="form-input" placeholder="example@email.com">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">📱 เบอร์โทรศัพท์</label>
-                                <input type="text" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" class="form-input" placeholder="08x-xxx-xxxx">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">🏢 แผนก/หน่วยงาน</label>
-                                <select name="department_select" id="departmentSelect" class="form-input">
-                                    <option value="">-- กรุณาเลือกแผนก/หน่วยงาน --</option>
-                                    <?php foreach ($departmentsList as $dept): 
-                                        $selected = $currentDept == $dept ? 'selected' : '';
-                                    ?>
-                                        <option value="<?= htmlspecialchars($dept) ?>" <?= $selected ?>>
-                                            <?= htmlspecialchars($dept) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                    <option value="อื่นๆ" <?= $isCustomDept ? 'selected' : '' ?>>
-                                        ➕ อื่นๆ (ระบุ)
-                                    </option>
-                                </select>
-                                <input type="text" name="department" id="departmentOther" 
-                                       class="form-input dept-other-input <?= $isCustomDept ? '' : 'hidden' ?>" 
-                                       placeholder="ระบุแผนก/หน่วยงานอื่น"
-                                       value="<?= $isCustomDept ? htmlspecialchars($currentDept) : '' ?>">
-                                <small class="field-note">
-                                    💡 หากเลือก "อื่นๆ" กรุณาระบุแผนกในช่องด้านล่าง
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Avatar (แทปแยก) -->
-                <div class="card">
-                    <div class="card-header" onclick="toggleCard(this)">
-                        <div class="card-header-icon" style="background:rgba(237,233,254,0.8);color:#6d28d9;"><i class="fas fa-image"></i></div>
-                        <h3 class="card-header-title">รูปโปรไฟล์ (Avatar)</h3>
-                        <span class="tab-indicator" style="background:rgba(237,233,254,0.8);color:#6d28d9;"><i class="fas fa-image"></i> รูปภาพ</span>
-                        <i class="fas fa-chevron-down toggle-icon"></i>
-                    </div>
-                    <div class="card-body collapsed" id="cardAvatar">
-                        <div class="avatar-section">
-                            <img id="avatarPreview" 
-                                 src="<?= ($is_edit && !empty($user['avatar'])) ? 'avatars/' . htmlspecialchars($user['avatar']) : 'avatars/default.png' ?>" 
-                                 class="avatar-preview" alt="Avatar" onerror="this.src='avatars/default.png'">
-                            <div class="avatar-upload">
-                                <input type="file" name="avatar" id="avatarInput" accept="image/*" class="form-input">
-                                <p class="avatar-hint">
-                                    📁 รองรับ JPG, PNG, GIF, WebP (สูงสุด 5MB)
-                                    <?php if ($is_edit && !empty($user['avatar'])): ?>
-                                        <br>📷 รูปปัจจุบัน: <strong><?= htmlspecialchars($user['avatar']) ?></strong>
-                                    <?php endif; ?>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Buttons -->
-                <div class="btn-row">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> บันทึก</button>
-                    <a href="users.php" class="btn btn-cancel"><i class="fas fa-times"></i> ยกเลิก</a>
-                </div>
-            </form>
+            </div>
+            <div class="field-note info mt-2">
+                <i class="fas fa-shield-alt"></i> 
+                รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร
+            </div>
+        </div>
+        <div class="modal-footer">
+            <?php if ($is_edit): ?>
+                <button type="button" class="btn btn-modal-clear" onclick="clearPasswordModal()">
+                    <i class="fas fa-undo"></i> ล้าง
+                </button>
+            <?php endif; ?>
+            <button type="button" class="btn btn-modal-cancel" onclick="closePasswordModal()">
+                <i class="fas fa-times"></i> ยกเลิก
+            </button>
+            <button type="button" class="btn btn-modal-confirm" onclick="savePasswordFromModal()">
+                <i class="fas fa-check"></i> ยืนยัน
+            </button>
         </div>
     </div>
 </div>
 
 <script>
-    // ========== Toggle Card ==========
     function toggleCard(header) {
         const body = header.nextElementSibling;
         const icon = header.querySelector('.toggle-icon');
-        
         if (body) {
             body.classList.toggle('collapsed');
-            if (icon) {
-                icon.classList.toggle('active');
-            }
+            if (icon) icon.classList.toggle('active');
         }
     }
 
-    // ========== Toggle Password Visibility ==========
-    function togglePasswordVisibility(inputId) {
-        const input = document.getElementById(inputId);
-        if (input) {
-            const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-            input.setAttribute('type', type);
-            
-            const btn = input.closest('.form-group').querySelector('.helper-btn');
-            if (btn) {
-                const icon = btn.querySelector('i');
-                if (icon) {
-                    icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
-                }
-                btn.innerHTML = type === 'password' ? ' แสดงรหัสผ่าน' : ' ซ่อนรหัสผ่าน';
-                btn.prepend(icon);
-            }
-        }
+    function openPasswordModal() {
+        document.getElementById('passwordModal').classList.add('active');
+        setTimeout(() => document.getElementById('modalPassword').focus(), 150);
     }
 
-    // ========== Clear Password Fields ==========
-    function clearPasswordFields() {
-        const password = document.getElementById('passwordInput');
-        const confirm = document.getElementById('confirmPasswordInput');
-        if (password) password.value = '';
-        if (confirm) confirm.value = '';
-        
-        if (password) password.setAttribute('type', 'password');
-        if (confirm) confirm.setAttribute('type', 'password');
-        
-        document.querySelectorAll('#passwordCard .helper-btn').forEach(btn => {
-            const icon = btn.querySelector('i');
-            if (icon) {
-                icon.className = 'fas fa-eye';
-            }
-            btn.innerHTML = ' แสดงรหัสผ่าน';
-            btn.prepend(icon);
+    function closePasswordModal() {
+        document.getElementById('passwordModal').classList.remove('active');
+    }
+
+    function toggleModalPassword() {
+        const input = document.getElementById('modalPassword');
+        const icon = document.getElementById('togglePassIcon');
+        input.type = input.type === 'password' ? 'text' : 'password';
+        icon.className = input.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+    }
+
+    function toggleModalConfirmPassword() {
+        const input = document.getElementById('modalConfirmPassword');
+        const icon = document.getElementById('toggleConfirmIcon');
+        input.type = input.type === 'password' ? 'text' : 'password';
+        icon.className = input.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+    }
+
+    function clearPasswordModal() {
+        ['modalPassword', 'modalConfirmPassword'].forEach(id => {
+            const el = document.getElementById(id);
+            el.value = '';
+            el.type = 'password';
         });
+        document.getElementById('togglePassIcon').className = 'fas fa-eye';
+        document.getElementById('toggleConfirmIcon').className = 'fas fa-eye';
+        document.getElementById('hiddenPassword').value = '';
+        document.getElementById('hiddenConfirmPassword').value = '';
+        Swal.fire({ icon: 'info', title: 'ล้างรหัสผ่านแล้ว', timer: 2000, showConfirmButton: false, confirmButtonColor: '#2563eb' });
+        closePasswordModal();
     }
 
-    // ========== Toggle other department ==========
+    function savePasswordFromModal() {
+        const password = document.getElementById('modalPassword').value;
+        const confirm = document.getElementById('modalConfirmPassword').value;
+        const isEdit = document.querySelector('input[name="is_edit"]').value === '1';
+        if (isEdit && !password && !confirm) {
+            document.getElementById('hiddenPassword').value = '';
+            document.getElementById('hiddenConfirmPassword').value = '';
+            Swal.fire({ icon: 'info', title: 'ไม่มีการเปลี่ยนรหัสผ่าน', timer: 2000, showConfirmButton: false, confirmButtonColor: '#2563eb' });
+            closePasswordModal();
+            return;
+        }
+        if (!password) { Swal.fire({ icon: 'error', title: 'กรุณากรอกรหัสผ่าน', confirmButtonColor: '#2563eb' }); return; }
+        if (password.length < 8) { Swal.fire({ icon: 'error', title: 'รหัสผ่านสั้นเกินไป', text: 'อย่างน้อย 8 ตัวอักษร', confirmButtonColor: '#2563eb' }); return; }
+        if (password !== confirm) { Swal.fire({ icon: 'error', title: 'รหัสผ่านไม่ตรงกัน', confirmButtonColor: '#2563eb' }); return; }
+        document.getElementById('hiddenPassword').value = password;
+        document.getElementById('hiddenConfirmPassword').value = confirm;
+        Swal.fire({ icon: 'success', title: 'ตั้งรหัสผ่านเรียบร้อย', timer: 2000, showConfirmButton: false, confirmButtonColor: '#2563eb' });
+        closePasswordModal();
+        const badge = document.querySelector('.password-status');
+        if (badge) { badge.className = 'password-status set'; badge.innerHTML = '<i class="fas fa-shield-check"></i> ตั้งค่าแล้ว'; }
+    }
+
+    document.getElementById('passwordModal').addEventListener('click', e => { if (e.target === e.currentTarget) closePasswordModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('passwordModal').classList.contains('active')) closePasswordModal(); });
+
     function toggleOtherDept() {
-        const select = document.getElementById('departmentSelect');
-        const other = document.getElementById('departmentOther');
-        if (select && other) {
-            if (select.value === 'อื่นๆ') {
-                other.classList.remove('hidden');
-                other.focus();
-                other.required = true;
-            } else {
-                other.classList.add('hidden');
-                other.value = '';
-                other.required = false;
-            }
+        const s = document.getElementById('departmentSelect'), o = document.getElementById('departmentOther');
+        if (s && o) {
+            if (s.value === 'อื่นๆ') { o.classList.remove('hidden'); o.focus(); o.required = true; }
+            else { o.classList.add('hidden'); o.value = ''; o.required = false; }
         }
     }
-    
-    // ========== Initial check ==========
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.card-body').forEach(body => {
-            if (body.id !== 'cardAccount') {
-                body.classList.add('collapsed');
-            }
-        });
-        
-        const select = document.getElementById('departmentSelect');
-        const other = document.getElementById('departmentOther');
-        if (select && other && select.value === 'อื่นๆ') {
-            other.classList.remove('hidden');
-            other.required = true;
-        }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const s = document.getElementById('departmentSelect'), o = document.getElementById('departmentOther');
+        if (s && o && s.value === 'อื่นๆ') { o.classList.remove('hidden'); o.required = true; }
     });
 
-    // ========== Toggle on change ==========
     document.getElementById('departmentSelect')?.addEventListener('change', toggleOtherDept);
 
-    // ========== Preview avatar ==========
-    document.getElementById('avatarInput').addEventListener('change', function(e) {
+    document.getElementById('avatarInput')?.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                Swal.fire({ icon: 'warning', title: 'ไฟล์ใหญ่เกินไป', text: 'ขนาดไฟล์ต้องไม่เกิน 5MB' });
-                this.value = '';
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function(ev) { document.getElementById('avatarPreview').src = ev.target.result; };
-            reader.readAsDataURL(file);
+            if (file.size > 5242880) { Swal.fire({ icon: 'warning', title: 'ไฟล์ใหญ่เกินไป', confirmButtonColor: '#2563eb' }); this.value = ''; return; }
+            const r = new FileReader();
+            r.onload = ev => document.getElementById('avatarPreview').src = ev.target.result;
+            r.readAsDataURL(file);
         }
     });
 
-    // ========== Submit form ==========
     document.getElementById('userForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        const deptSelect = document.getElementById('departmentSelect');
-        const deptOther = document.getElementById('departmentOther');
-        
-        if (deptSelect && deptSelect.value === 'อื่นๆ') {
-            if (!deptOther.value.trim()) {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'กรุณาระบุแผนก', 
-                    text: 'กรุณากรอกชื่อแผนก/หน่วยงานที่ต้องการเพิ่ม' 
-                });
-                deptOther.focus();
-                return;
-            }
-        } else if (deptSelect && deptSelect.value !== '' && deptSelect.value !== 'อื่นๆ') {
-            deptOther.value = '';
-        }
-        
-        const password = document.getElementById('passwordInput').value;
-        const confirm = document.getElementById('confirmPasswordInput').value;
-
-        if (password || confirm) {
-            if (password !== confirm) {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'รหัสผ่านไม่ตรงกัน', 
-                    text: 'กรุณากรอกรหัสผ่านและยืนยันรหัสผ่านให้ตรงกัน' 
-                });
-                return;
-            }
-            if (password.length < 8) {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'รหัสผ่านสั้นเกินไป', 
-                    text: 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร' 
-                });
-                return;
-            }
-        }
-
+        const ds = document.getElementById('departmentSelect'), dso = document.getElementById('departmentOther');
+        if (ds && ds.value === 'อื่นๆ' && !dso.value.trim()) { Swal.fire({ icon: 'error', title: 'กรุณาระบุแผนก', confirmButtonColor: '#2563eb' }); dso.focus(); return; }
+        if (ds && ds.value !== 'อื่นๆ') dso.value = '';
         const isEdit = document.querySelector('input[name="is_edit"]').value === '1';
-        if (isEdit) {
-            const usernameHidden = document.querySelector('input[name="username"]');
-            if (usernameHidden) {
-                const usernameInput = document.querySelector('input[name="username"]');
-                if (usernameInput) usernameInput.value = usernameHidden.value;
-            }
-        }
-
-        const formData = new FormData(this);
-        const btn = this.querySelector('button[type="submit"]');
-        const origText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
-
-        fetch('action.php?action=save_user', {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: formData
-        })
-        .then(res => res.json())
+        if (!isEdit && !document.getElementById('hiddenPassword').value) { Swal.fire({ icon: 'error', title: 'กรุณาตั้งรหัสผ่าน', confirmButtonColor: '#2563eb' }); return; }
+        const fd = new FormData(this), btn = this.querySelector('button[type="submit"]'), orig = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+        fetch('action.php?action=save_user', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+        .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                Swal.fire({ 
-                    icon: 'success', 
-                    title: 'สำเร็จ', 
-                    text: data.message, 
-                    timer: 2000, 
-                    showConfirmButton: false 
-                }).then(() => window.location.href = 'users.php');
-            } else {
-                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.message });
-                btn.disabled = false;
-                btn.innerHTML = origText;
-            }
+            if (data.success) Swal.fire({ icon: 'success', title: 'สำเร็จ', timer: 2000, showConfirmButton: false, confirmButtonColor: '#2563eb' }).then(() => window.location.href = 'users.php');
+            else { Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: data.message, confirmButtonColor: '#2563eb' }); btn.disabled = false; btn.innerHTML = orig; }
         })
-        .catch(() => {
-            Swal.fire({ 
-                icon: 'error', 
-                title: 'เกิดข้อผิดพลาด', 
-                text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้' 
-            });
-            btn.disabled = false;
-            btn.innerHTML = origText;
-        });
+        .catch(() => { Swal.fire({ icon: 'error', title: 'เชื่อมต่อล้มเหลว', confirmButtonColor: '#2563eb' }); btn.disabled = false; btn.innerHTML = orig; });
     });
 </script>
 <?php include 'includes/footer.php'; ?>
