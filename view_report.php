@@ -52,7 +52,8 @@ if (!$report) {
 }
 
 // ===== ฟังก์ชัน helpers =====
-function getSeverityFullText($severity) {
+function getSeverityFullText($severity)
+{
     $severityFullMap = [
         'A' => 'มีโอกาสเกิดความเสี่ยงแต่ยังไม่เกิดขึ้น',
         'B' => 'เกิดความเสี่ยง ยังไม่ถึงตัวบุคคล ไม่เกิดผลกระทบต่องาน',
@@ -64,82 +65,125 @@ function getSeverityFullText($severity) {
     return $severityFullMap[$severity] ?? 'ไม่ระบุ';
 }
 
-function getSeverityColor($severity) {
+function getSeverityColor($severity)
+{
     $colors = [
-        'A' => '#3b82f6', 'B' => '#22c55e', 'C' => '#84cc16',
-        'D' => '#eab308', 'F' => '#f97316', 'E' => '#ef4444'
+        'A' => '#3b82f6',
+        'B' => '#22c55e',
+        'C' => '#84cc16',
+        'D' => '#eab308',
+        'F' => '#f97316',
+        'E' => '#ef4444'
     ];
     return $colors[$severity] ?? '#6b7280';
 }
 
-function getSeverityBgColor($severity) {
+function getSeverityBgColor($severity)
+{
     $colors = [
-        'A' => '#eff6ff', 'B' => '#f0fdf4', 'C' => '#f7fee7',
-        'D' => '#fefce8', 'F' => '#fff7ed', 'E' => '#fef2f2'
+        'A' => '#eff6ff',
+        'B' => '#f0fdf4',
+        'C' => '#f7fee7',
+        'D' => '#fefce8',
+        'F' => '#fff7ed',
+        'E' => '#fef2f2'
     ];
     return $colors[$severity] ?? '#f9fafb';
 }
 
-function getSeverityLabel($severity) {
+function getSeverityLabel($severity)
+{
     $labels = [
-        'A' => 'ต่ำมาก', 'B' => 'ต่ำ', 'C' => 'ปานกลาง',
-        'D' => 'สูง', 'E' => 'สูงมาก', 'F' => 'สูงสุด'
+        'A' => 'ต่ำมาก',
+        'B' => 'ต่ำ',
+        'C' => 'ปานกลาง',
+        'D' => 'สูง',
+        'E' => 'สูงมาก',
+        'F' => 'สูงสุด'
     ];
     return $labels[$severity] ?? $severity;
 }
 
-function getStatusBadgeClass($status) {
+function getStatusBadgeClass($status)
+{
     switch ($status) {
-        case 'ดำเนินการแล้ว': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-        case 'กำลังดำเนินการ': return 'bg-sky-50 text-sky-700 border-sky-200';
-        case 'ยุติ': return 'bg-gray-100 text-gray-500 border-gray-200';
-        default: return 'bg-slate-100 text-slate-600 border-slate-200';
+        case 'ดำเนินการแล้ว':
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'กำลังดำเนินการ':
+            return 'bg-sky-50 text-sky-700 border-sky-200';
+        case 'ยุติ':
+            return 'bg-gray-100 text-gray-500 border-gray-200';
+        default:
+            return 'bg-slate-100 text-slate-600 border-slate-200';
     }
 }
 
-function getStatusIcon($status) {
+function getStatusIcon($status)
+{
     switch ($status) {
-        case 'ดำเนินการแล้ว': return 'fa-check-circle';
-        case 'กำลังดำเนินการ': return 'fa-spinner fa-spin';
-        case 'ยุติ': return 'fa-stop-circle';
-        default: return 'fa-clock';
+        case 'ดำเนินการแล้ว':
+            return 'fa-check-circle';
+        case 'กำลังดำเนินการ':
+            return 'fa-spinner fa-spin';
+        case 'ยุติ':
+            return 'fa-stop-circle';
+        default:
+            return 'fa-clock';
     }
 }
 
-function thaiDateView($date) {
+function thaiDateView($date)
+{
     if (empty($date)) return '-';
     $timestamp = strtotime($date);
     $year = date('Y', $timestamp) + 543;
     $day = date('d', $timestamp);
     $month = date('n', $timestamp);
     $thaiMonths = [
-        1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม',
-        4 => 'เมษายน', 5 => 'พฤษภาคม', 6 => 'มิถุนายน',
-        7 => 'กรกฎาคม', 8 => 'สิงหาคม', 9 => 'กันยายน',
-        10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+        1 => 'มกราคม',
+        2 => 'กุมภาพันธ์',
+        3 => 'มีนาคม',
+        4 => 'เมษายน',
+        5 => 'พฤษภาคม',
+        6 => 'มิถุนายน',
+        7 => 'กรกฎาคม',
+        8 => 'สิงหาคม',
+        9 => 'กันยายน',
+        10 => 'ตุลาคม',
+        11 => 'พฤศจิกายน',
+        12 => 'ธันวาคม'
     ];
     return $day . ' ' . $thaiMonths[$month] . ' ' . $year;
 }
 
-function isImageFile($filename) {
+function isImageFile($filename)
+{
     if (empty($filename)) return false;
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 }
 
-function getFileIcon($filename) {
+function getFileIcon($filename)
+{
     if (empty($filename)) return 'fa-file';
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     $icons = [
-        'pdf' => 'fa-file-pdf', 'doc' => 'fa-file-word', 'docx' => 'fa-file-word',
-        'xls' => 'fa-file-excel', 'xlsx' => 'fa-file-excel',
-        'jpg' => 'fa-file-image', 'jpeg' => 'fa-file-image', 'png' => 'fa-file-image',
-        'gif' => 'fa-file-image', 'webp' => 'fa-file-image'
+        'pdf' => 'fa-file-pdf',
+        'doc' => 'fa-file-word',
+        'docx' => 'fa-file-word',
+        'xls' => 'fa-file-excel',
+        'xlsx' => 'fa-file-excel',
+        'jpg' => 'fa-file-image',
+        'jpeg' => 'fa-file-image',
+        'png' => 'fa-file-image',
+        'gif' => 'fa-file-image',
+        'webp' => 'fa-file-image'
     ];
     return $icons[$ext] ?? 'fa-file';
 }
 
-function formatFileSize($bytes) {
+function formatFileSize($bytes)
+{
     if ($bytes === false || $bytes === null) return 'ไม่ทราบขนาด';
     if ($bytes < 1024) return $bytes . ' B';
     if ($bytes < 1048576) return number_format($bytes / 1024, 1) . ' KB';
@@ -174,52 +218,80 @@ $isAdmin = isAdmin();
         font-family: 'Sarabun', sans-serif;
     }
 
-    .page-container { max-width: 900px; margin: 0 auto; }
+    .page-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
 
     .page-header {
-        background: var(--primary-gradient);
-        border-radius: 1.25rem;
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
+        border-radius: 1.5rem;
         padding: 1.75rem 2.25rem;
         margin-bottom: 1.5rem;
         color: white;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 10px 25px -5px rgba(37,99,235,0.25);
     }
+
     .page-header::before {
         content: '';
         position: absolute;
-        top: -40%; right: -8%;
-        width: 250px; height: 250px;
-        background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+        top: -50%;
+        right: -10%;
+        width: 350px;
+        height: 350px;
+        background: rgba(255, 255, 255, 0.03);
         border-radius: 50%;
-        pointer-events: none;
     }
+
     .page-header h2 {
-        font-size: 1.5rem; font-weight: 700;
-        display: flex; align-items: center; gap: 0.75rem;
-        position: relative; z-index: 1;
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: relative;
+        z-index: 1;
     }
+
     .page-header p {
-        color: rgba(255,255,255,0.85); font-size: 0.9rem;
-        margin-top: 0.35rem; position: relative; z-index: 1;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.9rem;
+        margin-top: 0.35rem;
+        position: relative;
+        z-index: 1;
     }
 
     .card {
-        background: white; border-radius: 1rem; border: 1px solid #e2e8f0;
-        padding: 1.5rem; margin-bottom: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
+
     .card h3 {
-        font-size: 1rem; font-weight: 700; color: #1e293b;
-        margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         flex-wrap: wrap;
     }
 
     .badge {
-        display: inline-flex; align-items: center; gap: 0.2rem;
-        padding: 0.2rem 0.6rem; border-radius: 9999px;
-        font-size: 0.7rem; font-weight: 600; white-space: nowrap; border: 1px solid;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+        border: 1px solid;
     }
 
     .info-grid {
@@ -228,16 +300,19 @@ $isAdmin = isAdmin();
         gap: 0.75rem;
         font-size: 0.85rem;
     }
+
     .info-item {
         display: flex;
         align-items: flex-start;
         gap: 0.5rem;
     }
+
     .info-item-label {
         color: #94a3b8;
         min-width: 80px;
         flex-shrink: 0;
     }
+
     .info-item-value {
         font-weight: 600;
         color: #1e293b;
@@ -252,6 +327,7 @@ $isAdmin = isAdmin();
         border: 1px solid;
         margin-top: 8px;
     }
+
     .severity-icon-box {
         display: flex;
         align-items: center;
@@ -264,21 +340,32 @@ $isAdmin = isAdmin();
         border-radius: 10px;
         flex-shrink: 0;
     }
-    .severity-text-content { flex: 1; }
+
+    .severity-text-content {
+        flex: 1;
+    }
+
     .severity-label-view {
         font-weight: 700;
         font-size: 0.9rem;
         margin-bottom: 2px;
     }
+
     .severity-description {
         font-size: 0.8rem;
         line-height: 1.5;
     }
 
     .readonly-badge {
-        display: inline-flex; align-items: center; gap: 0.3rem;
-        background: #dbeafe; color: #1e40af; font-size: 0.65rem;
-        padding: 0.2rem 0.7rem; border-radius: 9999px; font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        background: #dbeafe;
+        color: #1e40af;
+        font-size: 0.65rem;
+        padding: 0.2rem 0.7rem;
+        border-radius: 9999px;
+        font-weight: 600;
     }
 
     .report-section {
@@ -286,85 +373,202 @@ $isAdmin = isAdmin();
         padding-bottom: 1.5rem;
         border-bottom: 1px solid #f1f5f9;
     }
+
     .report-section:last-child {
         margin-bottom: 0;
         padding-bottom: 0;
         border-bottom: none;
     }
+
     .report-label {
-        font-size: 0.7rem; font-weight: 700; color: #94a3b8;
-        text-transform: uppercase; letter-spacing: 0.5px;
-        margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.35rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
     }
+
     .report-content {
-        font-size: 0.9rem; color: #334155; line-height: 1.7;
-        background: #f8fafc; padding: 0.75rem 1rem;
-        border-radius: 0.6rem; border: 1px solid #e2e8f0;
+        font-size: 0.9rem;
+        color: #334155;
+        line-height: 1.7;
+        background: #f8fafc;
+        padding: 0.75rem 1rem;
+        border-radius: 0.6rem;
+        border: 1px solid #e2e8f0;
         min-height: 50px;
     }
+
     .report-content.empty {
-        color: #94a3b8; font-style: italic;
-        display: flex; align-items: center;
+        color: #94a3b8;
+        font-style: italic;
+        display: flex;
+        align-items: center;
     }
 
     .file-card {
-        background: white; border: 1.5px solid #e2e8f0;
-        border-radius: 0.75rem; overflow: hidden;
+        background: white;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.75rem;
+        overflow: hidden;
     }
+
     .file-card-header {
-        display: flex; align-items: center; gap: 0.4rem;
-        padding: 0.6rem 1rem; background: #fafbfc;
-        border-bottom: 1px solid #e2e8f0; font-size: 0.8rem;
-        font-weight: 600; color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.6rem 1rem;
+        background: #fafbfc;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
     }
+
     .file-card-preview {
-        background: #f8fafc; padding: 1rem; text-align: center;
+        background: #f8fafc;
+        padding: 1rem;
+        text-align: center;
         border-bottom: 1px solid #e2e8f0;
     }
+
     .img-preview-link {
-        display: inline-block; border-radius: 0.5rem; overflow: hidden;
-        border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s;
+        display: inline-block;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        cursor: pointer;
+        transition: all 0.2s;
     }
-    .img-preview-link:hover { border-color: #2563eb; }
-    .img-preview-link img { display: block; max-width: 100%; max-height: 300px; object-fit: contain; }
+
+    .img-preview-link:hover {
+        border-color: #2563eb;
+    }
+
+    .img-preview-link img {
+        display: block;
+        max-width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+    }
+
     .file-info-row {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 0.75rem 1rem; gap: 1rem; flex-wrap: wrap;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        gap: 1rem;
+        flex-wrap: wrap;
     }
-    .file-info-left { display: flex; align-items: center; gap: 0.75rem; }
+
+    .file-info-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
     .file-icon-box {
-        width: 38px; height: 38px; border-radius: 8px;
-        display: flex; align-items: center; justify-content: center; font-size: 1rem;
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
     }
+
     .btn-sm {
-        padding: 0.4rem 0.7rem; border-radius: 0.4rem;
-        font-size: 0.75rem; font-weight: 600; text-decoration: none;
-        transition: all 0.2s; border: 1px solid;
-        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.4rem 0.7rem;
+        border-radius: 0.4rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
     }
-    .btn-sm.download { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-    .btn-sm.download:hover { background: #dbeafe; }
-    .btn-sm.view { background: #f0fdf4; color: #059669; border-color: #bbf7d0; }
-    .btn-sm.view:hover { background: #dcfce7; }
+
+    .btn-sm.download {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
+    }
+
+    .btn-sm.download:hover {
+        background: #dbeafe;
+    }
+
+    .btn-sm.view {
+        background: #f0fdf4;
+        color: #059669;
+        border-color: #bbf7d0;
+    }
+
+    .btn-sm.view:hover {
+        background: #dcfce7;
+    }
 
     .btn-action {
-        padding: 0.55rem 1.1rem; border-radius: 0.6rem;
-        font-size: 0.82rem; font-weight: 600; cursor: pointer;
-        border: 1px solid; transition: all 0.2s;
-        font-family: 'Sarabun', sans-serif; display: inline-flex;
-        align-items: center; gap: 0.4rem; text-decoration: none;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        padding: 0.55rem 1.1rem;
+        border-radius: 0.6rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid;
+        transition: all 0.2s;
+        font-family: 'Sarabun', sans-serif;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     }
-    .btn-action.blue { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-    .btn-action.blue:hover { background: #dbeafe; }
-    .btn-action.gray { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
-    .btn-action.gray:hover { background: #e2e8f0; }
-    .btn-action.green { background: #f0fdf4; color: #059669; border-color: #bbf7d0; }
-    .btn-action.green:hover { background: #dcfce7; }
+
+    .btn-action.blue {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
+    }
+
+    .btn-action.blue:hover {
+        background: #dbeafe;
+    }
+
+    .btn-action.gray {
+        background: #f1f5f9;
+        color: #64748b;
+        border-color: #e2e8f0;
+    }
+
+    .btn-action.gray:hover {
+        background: #e2e8f0;
+    }
+
+    .btn-action.green {
+        background: #f0fdf4;
+        color: #059669;
+        border-color: #bbf7d0;
+    }
+
+    .btn-action.green:hover {
+        background: #dcfce7;
+    }
 
     @media (max-width: 640px) {
-        .info-grid { grid-template-columns: 1fr; }
-        .severity-full-display { flex-direction: column; text-align: center; }
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .severity-full-display {
+            flex-direction: column;
+            text-align: center;
+        }
     }
 </style>
 
@@ -377,7 +581,7 @@ $isAdmin = isAdmin();
             <div class="page-header">
                 <h2>👁️ ดูสรุปผลการรายงาน</h2>
                 <p>
-                    โหมดอ่านอย่างเดียว · 
+                    โหมดอ่านอย่างเดียว ·
                     <?= $isAdmin ? '👑 Admin (สามารถแก้ไขได้)' : '👤 ' . htmlspecialchars($_SESSION['username']) ?>
                 </p>
             </div>
@@ -385,11 +589,11 @@ $isAdmin = isAdmin();
             <!-- ข้อมูลความเสี่ยง -->
             <div class="card">
                 <h3>
-                    <i class="fas fa-info-circle text-blue-600"></i> 
+                    <i class="fas fa-info-circle text-blue-600"></i>
                     ข้อมูลความเสี่ยง
                     <span class="readonly-badge"><i class="fas fa-lock"></i> อ่านอย่างเดียว</span>
                 </h3>
-                
+
                 <div class="info-grid">
                     <div class="info-item">
                         <span class="info-item-label">ประเภท:</span>
@@ -411,7 +615,7 @@ $isAdmin = isAdmin();
                         <span class="info-item-label">สถานะ:</span>
                         <span>
                             <span class="badge <?= $statusBadgeClass ?>">
-                                <i class="fas <?= $statusIcon ?> text-xs"></i> 
+                                <i class="fas <?= $statusIcon ?> text-xs"></i>
                                 <?= htmlspecialchars($currentStatus) ?>
                             </span>
                         </span>
@@ -429,7 +633,7 @@ $isAdmin = isAdmin();
                         </div>
                         <div class="severity-text-content">
                             <div class="severity-label-view" style="color: <?= $severityColor ?>;">
-                                ระดับ <?= htmlspecialchars($currentSeverity) ?> 
+                                ระดับ <?= htmlspecialchars($currentSeverity) ?>
                                 <span style="font-weight: 400; font-size: 0.8rem;">(<?= htmlspecialchars($severityLabel) ?>)</span>
                             </div>
                             <div class="severity-description" style="color: #475569;">
@@ -443,7 +647,7 @@ $isAdmin = isAdmin();
             <!-- สรุปผลการรายงาน -->
             <div class="card">
                 <h3>
-                    <i class="fas fa-clipboard-check text-green-600"></i> 
+                    <i class="fas fa-clipboard-check text-green-600"></i>
                     สรุปผลการรายงาน
                     <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 400;">
                         บันทึกเมื่อ <?= thaiDateView($report['created_at']) ?>
@@ -484,11 +688,11 @@ $isAdmin = isAdmin();
 
                 <!-- ไฟล์แนบ -->
                 <?php if (!empty($report['report_file']) && file_exists($report['report_file'])): ?>
-                    <?php 
-                        $fp = str_replace('\\', '/', $report['report_file']); 
-                        $fn = basename($fp); 
-                        $img = isImageFile($fp); 
-                        $fs = filesize($report['report_file']); 
+                    <?php
+                    $fp = str_replace('\\', '/', $report['report_file']);
+                    $fn = basename($fp);
+                    $img = isImageFile($fp);
+                    $fs = filesize($report['report_file']);
                     ?>
                     <div class="report-section">
                         <div class="report-label"><i class="fas fa-paperclip"></i> ไฟล์แนบ</div>
@@ -556,9 +760,13 @@ $isAdmin = isAdmin();
     // ===== Fancybox =====
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof Fancybox !== 'undefined') {
-            Fancybox.bind("[data-fancybox]", { 
-                Thumbs: { autoStart: true }, 
-                Toolbar: { display: ["zoom", "slideshow", "fullscreen", "download", "thumbs", "close"] } 
+            Fancybox.bind("[data-fancybox]", {
+                Thumbs: {
+                    autoStart: true
+                },
+                Toolbar: {
+                    display: ["zoom", "slideshow", "fullscreen", "download", "thumbs", "close"]
+                }
             });
         }
     });
@@ -573,10 +781,12 @@ $isAdmin = isAdmin();
                 confirmButtonColor: '#2563eb',
                 confirmButtonText: 'ตกลง',
                 <?php if (($flash['type'] ?? '') === 'success'): ?>
-                timer: 3000,
-                timerProgressBar: true,
+                    timer: 3000,
+                    timerProgressBar: true,
                 <?php endif; ?>
-                customClass: { popup: 'rounded-xl' }
+                customClass: {
+                    popup: 'rounded-xl'
+                }
             });
         <?php endif; ?>
     });
