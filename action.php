@@ -4,6 +4,7 @@
  * ตัวจัดการ API (Backend) – ไม่มี Cookie Consent
  * - รองรับ CSRF token จากทั้ง POST form และ JSON body
  * - แก้ไขปัญหา Forbidden เมื่อใช้ fetch แบบ JSON
+ * - เพิ่ม toggle_user_status สำหรับเปิด/ปิดการใช้งานผู้ใช้
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -208,11 +209,11 @@ if ($action == 'save_user') {
     $email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $department = trim($_POST['department'] ?? '');
+    $enabled = isset($_POST['enabled']) ? (int)$_POST['enabled'] : 1;
     
     // ถ้าไม่มี department และมี department_select ให้ใช้ department_select
     if (empty($department) && isset($_POST['department_select'])) {
         $department = trim($_POST['department_select']);
-        // ถ้าเลือก "อื่นๆ" ให้ใช้ค่าจาก department_other (แต่ตอนนี้ส่งมาเป็น department แล้ว)
         if ($department === 'อื่นๆ' && !empty($_POST['department_other'])) {
             $department = trim($_POST['department_other']);
         }
@@ -277,14 +278,15 @@ if ($action == 'save_user') {
 
     try {
         if ($id && $is_edit) {
-            // โหมดแก้ไข - ไม่แก้ไข username และ reporter_code
+            // โหมดแก้ไข
             $sql = "UPDATE users SET 
                     fullname = ?,
                     email = ?,
                     phone = ?,
                     department = ?,
-                    role = ?";
-            $params = [$fullname, $email, $phone, $department, $role];
+                    role = ?,
+                    enabled = ?";
+            $params = [$fullname, $email, $phone, $department, $role, $enabled];
             
             if (!empty($password)) {
                 $hashed = password_hash($password, PASSWORD_DEFAULT);
@@ -320,11 +322,11 @@ if ($action == 'save_user') {
             $avatar = $avatar ?? 'default.png';
             
             $stmt = $pdo->prepare("INSERT INTO users 
-                (username, password, role, reporter_code, fullname, email, phone, department, avatar) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                (username, password, role, reporter_code, fullname, email, phone, department, avatar, enabled) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $username, $hashed, $role, $reporter_code, 
-                $fullname, $email, $phone, $department, $avatar
+                $fullname, $email, $phone, $department, $avatar, $enabled
             ]);
         }
         
@@ -570,6 +572,64 @@ if ($action == 'change_password') {
         $stmt->execute([$hashed, $user_id]);
 
         echo json_encode(['success' => true, 'message' => 'เปลี่ยนรหัสผ่านสำเร็จ']);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ============================================
+// 10. toggle_user_status (เปิด/ปิดการใช้งานผู้ใช้)
+// ============================================
+if ($action == 'toggle_user_status') {
+    if (!isLoggedIn() || !isAdmin()) {
+        echo json_encode(['success' => false, 'message' => 'คุณไม่มีสิทธิ์']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $csrf_token = $input['csrf_token'] ?? '';
+    if (!validateCsrfToken($csrf_token)) {
+        echo json_encode(['success' => false, 'message' => 'CSRF token ไม่ถูกต้อง']);
+        exit;
+    }
+
+    $user_id = $input['user_id'] ?? null;
+    $enabled = isset($input['enabled']) ? (int)$input['enabled'] : 1;
+
+    if (!$user_id) {
+        echo json_encode(['success' => false, 'message' => 'ไม่พบ ID ผู้ใช้']);
+        exit;
+    }
+
+    // ป้องกันการเปลี่ยนสถานะตัวเอง
+    if ($user_id == $_SESSION['user_id']) {
+        echo json_encode(['success' => false, 'message' => 'ไม่สามารถเปลี่ยนสถานะของตัวเองได้']);
+        exit;
+    }
+
+    // ป้องกันการปิดการใช้งาน Admin คนสุดท้าย
+    if ($enabled == 0) {
+        $stmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $user = $stmt->fetch();
+        
+        if ($user && $user['role'] == 'admin') {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND enabled = 1 AND id != ?");
+            $stmt->execute([$user_id]);
+            if ($stmt->fetchColumn() == 0) {
+                echo json_encode(['success' => false, 'message' => 'ไม่สามารถปิดการใช้งาน Admin คนสุดท้ายได้']);
+                exit;
+            }
+        }
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE users SET enabled = ? WHERE id = ?");
+        $stmt->execute([$enabled, $user_id]);
+        
+        $status_text = $enabled ? 'เปิด' : 'ระงับ';
+        echo json_encode(['success' => true, 'message' => "{$status_text}การใช้งานผู้ใช้สำเร็จ"]);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
     }

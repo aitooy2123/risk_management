@@ -3,6 +3,7 @@
  * หน้า Login (Frontend) – โทนสีฟ้า
  * - ผู้ใช้ทั่วไป → risk_form.php
  * - Admin → dashboard.php
+ * - ตรวจสอบสถานะ enabled ก่อนอนุญาตให้ login
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -24,12 +25,18 @@ if (!isLoggedIn() && isset($_COOKIE['remember_me'])) {
     $user = $stmt->fetch();
 
     if ($user) {
-        session_regenerate_id(true);
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
-        redirect(isAdmin() ? 'dashboard.php' : 'risk_form.php');
+        // ตรวจสอบว่าผู้ใช้ถูกระงับการใช้งานหรือไม่
+        if (isset($user['enabled']) && $user['enabled'] == 0) {
+            setcookie('remember_me', '', time() - 3600, '/');
+            $error = 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ';
+        } else {
+            session_regenerate_id(true);
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
+            redirect(isAdmin() ? 'dashboard.php' : 'risk_form.php');
+        }
     } else {
         setcookie('remember_me', '', time() - 3600, '/');
     }
@@ -52,34 +59,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password'])) {
-                resetBruteForce($username);
-                session_regenerate_id(true);
-                
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
+                // ตรวจสอบว่าผู้ใช้ถูกระงับการใช้งานหรือไม่
+                if (isset($user['enabled']) && $user['enabled'] == 0) {
+                    $error = 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ';
+                } else {
+                    resetBruteForce($username);
+                    session_regenerate_id(true);
+                    
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['role'] = $user['role'];
+                    $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
 
-                if ($remember) {
-                    $token = bin2hex(random_bytes(32));
-                    $expires = date('Y-m-d H:i:s', strtotime('+30 days'));
+                    if ($remember) {
+                        $token = bin2hex(random_bytes(32));
+                        $expires = date('Y-m-d H:i:s', strtotime('+30 days'));
 
-                    $stmtDel = $pdo->prepare("DELETE FROM user_tokens WHERE user_id = ?");
-                    $stmtDel->execute([$user['id']]);
+                        $stmtDel = $pdo->prepare("DELETE FROM user_tokens WHERE user_id = ?");
+                        $stmtDel->execute([$user['id']]);
 
-                    $stmtToken = $pdo->prepare("INSERT INTO user_tokens (user_id, token, expires_at) VALUES (?, ?, ?)");
-                    $stmtToken->execute([$user['id'], $token, $expires]);
+                        $stmtToken = $pdo->prepare("INSERT INTO user_tokens (user_id, token, expires_at) VALUES (?, ?, ?)");
+                        $stmtToken->execute([$user['id'], $token, $expires]);
 
-                    setcookie('remember_me', $token, [
-                        'expires' => time() + (30 * 24 * 60 * 60),
-                        'path' => '/',
-                        'secure' => isset($_SERVER['HTTPS']),
-                        'httponly' => true,
-                        'samesite' => 'Lax'
-                    ]);
+                        setcookie('remember_me', $token, [
+                            'expires' => time() + (30 * 24 * 60 * 60),
+                            'path' => '/',
+                            'secure' => isset($_SERVER['HTTPS']),
+                            'httponly' => true,
+                            'samesite' => 'Lax'
+                        ]);
+                    }
+
+                    redirect(isAdmin() ? 'dashboard.php' : 'risk_form.php');
                 }
-
-                redirect(isAdmin() ? 'dashboard.php' : 'risk_form.php');
             } else {
                 recordFailedAttempt($username);
                 $error = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
@@ -257,6 +269,11 @@ $csrf_token = generateCsrfToken();
         transform: translateY(-2px);
         box-shadow: 0 10px 24px -4px rgba(30, 64, 175, 0.6);
     }
+    .btn-login:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
 
     .login-options {
         display: flex;
@@ -314,6 +331,16 @@ $csrf_token = generateCsrfToken();
         border-top: 1px solid rgba(0,0,0,0.05);
         font-size: 0.7rem;
         color: #94a3b8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .security-note span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
     }
 
     .bg-red-100 {
@@ -324,6 +351,16 @@ $csrf_token = generateCsrfToken();
     }
     .text-red-700 {
         color: #b91c1c;
+    }
+    
+    .bg-amber-100 {
+        background-color: #fef3c7;
+    }
+    .border-amber-200 {
+        border-color: #fde68a;
+    }
+    .text-amber-700 {
+        color: #92400e;
     }
 
     @media (max-width: 480px) {
@@ -369,28 +406,31 @@ $csrf_token = generateCsrfToken();
             </div>
         <?php endif; ?>
 
-        <form method="POST" novalidate>
+        <form method="POST" novalidate id="loginForm">
             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
 
             <div class="input-group">
-                <input type="text" name="username" class="input-field" placeholder="ชื่อผู้ใช้" required autofocus>
+                <input type="text" name="username" id="username" class="input-field" placeholder="ชื่อผู้ใช้" required autofocus autocomplete="username">
                 <i class="fas fa-user input-icon"></i>
             </div>
 
             <div class="input-group">
-                <input type="password" name="password" class="input-field" placeholder="รหัสผ่าน" required>
+                <input type="password" name="password" id="password" class="input-field" placeholder="รหัสผ่าน" required autocomplete="current-password">
                 <i class="fas fa-lock input-icon"></i>
+                <button type="button" class="password-toggle" onclick="togglePassword()" tabindex="-1" aria-label="แสดง/ซ่อนรหัสผ่าน">
+                    <i class="fas fa-eye" id="toggleIcon"></i>
+                </button>
             </div>
 
             <div class="login-options">
                 <label class="remember">
-                    <input type="checkbox" name="remember">
+                    <input type="checkbox" name="remember" id="remember">
                     จำฉันไว้
                 </label>
                 <a href="forgot-password.php" class="forgot-link">ลืมรหัสผ่าน?</a>
             </div>
 
-            <button type="submit" class="btn-login">
+            <button type="submit" class="btn-login" id="loginBtn">
                 <i class="fas fa-sign-in-alt"></i> เข้าสู่ระบบ
             </button>
         </form>
@@ -401,10 +441,127 @@ $csrf_token = generateCsrfToken();
             </a>
         </div>
 
-        <div class="security-note">
-            <i class="fas fa-shield-alt mr-1"></i> ระบบปลอดภัยด้วย CSRF & Brute Force Protection
-        </div>
+        <!-- <div class="security-note">
+            <span><i class="fas fa-shield-alt"></i> CSRF Protection</span>
+            <span class="text-muted">•</span>
+            <span><i class="fas fa-lock"></i> Brute Force Protection</span>
+            <span class="text-muted">•</span>
+            <span><i class="fas fa-user-check"></i> Account Status Check</span>
+        </div> -->
     </div>
 </div>
+
+<style>
+    /* Password Toggle Button */
+    .password-toggle {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 0.25rem;
+        font-size: 1rem;
+        transition: color 0.2s;
+        z-index: 2;
+    }
+    .password-toggle:hover {
+        color: #3b82f6;
+    }
+    .input-group .input-field {
+        padding-right: 3rem;
+    }
+    
+    /* Loading Spinner */
+    .spinner {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+<script>
+    // ========== Toggle Password Visibility ==========
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+        }
+    }
+    
+    // ========== Form Submission with Loading State ==========
+    document.getElementById('loginForm')?.addEventListener('submit', function(e) {
+        const loginBtn = document.getElementById('loginBtn');
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        
+        // ตรวจสอบข้อมูลเบื้องต้น
+        if (!username || !password) {
+            e.preventDefault();
+            return;
+        }
+        
+        // แสดง loading state
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<span class="spinner"></span> กำลังเข้าสู่ระบบ...';
+    });
+    
+    // ========== Keyboard Shortcuts ==========
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+Enter = Submit form
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            const form = document.getElementById('loginForm');
+            if (form) {
+                form.requestSubmit();
+            }
+        }
+    });
+    
+    // ========== Auto-focus on username ==========
+    document.addEventListener('DOMContentLoaded', function() {
+        const usernameInput = document.getElementById('username');
+        if (usernameInput && !usernameInput.value) {
+            usernameInput.focus();
+        }
+    });
+    
+    // ========== Prevent double submission ==========
+    let formSubmitted = false;
+    document.getElementById('loginForm')?.addEventListener('submit', function(e) {
+        if (formSubmitted) {
+            e.preventDefault();
+            return false;
+        }
+        
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        
+        if (username && password) {
+            formSubmitted = true;
+        }
+    });
+    
+    console.log('✅ Login page loaded');
+    console.log('🔒 CSRF Protection: Active');
+    console.log('🛡️ Brute Force Protection: Active');
+    console.log('👤 Account Status Check: Active');
+</script>
 
 <?php include 'includes/footer.php'; ?>

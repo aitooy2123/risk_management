@@ -21,13 +21,45 @@ CREATE TABLE IF NOT EXISTS users (
     department VARCHAR(255) DEFAULT NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('admin','user') DEFAULT 'user',
+    enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '0=ถูกระงับ, 1=ใช้งานได้',
     avatar VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY username (username)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY username (username),
+    UNIQUE KEY email (email),
+    UNIQUE KEY reporter_code (reporter_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 2. ตารางรหัสผ่านลืม (password_resets)
+-- 2. ตาราง Remember Me Tokens (user_tokens)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_user_id (user_id),
+    KEY idx_token (token),
+    KEY idx_expires_at (expires_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 3. ตารางบันทึกการพยายามเข้าสู่ระบบ (login_attempts)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    attempt_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_username (username),
+    KEY idx_ip_address (ip_address),
+    KEY idx_attempt_time (attempt_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 4. ตารางรหัสผ่านลืม (password_resets)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS password_resets (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -35,11 +67,12 @@ CREATE TABLE IF NOT EXISTS password_resets (
     token VARCHAR(64) NOT NULL,
     expires_at DATETIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_user_id (user_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 3. ตารางความเสี่ยง (risks)
+-- 5. ตารางความเสี่ยง (risks)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS risks (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -61,11 +94,15 @@ CREATE TABLE IF NOT EXISTS risks (
     consent_at DATETIME DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_user_id (user_id),
+    KEY idx_status (status),
+    KEY idx_risk_type (risk_type),
+    KEY idx_severity (severity),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 4. ตารางสรุปผลการรายงาน (risk_reports)
+-- 6. ตารางสรุปผลการรายงาน (risk_reports)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS risk_reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -78,13 +115,24 @@ CREATE TABLE IF NOT EXISTS risk_reports (
     created_by INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_risk_id (risk_id),
+    KEY idx_created_by (created_by),
     FOREIGN KEY (risk_id) REFERENCES risks(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 5. ข้อมูลเริ่มต้น: ผู้ดูแลระบบ
+-- 7. ข้อมูลเริ่มต้น: ผู้ดูแลระบบ
 -- ============================================================
 -- รหัสผ่าน: admin123 (เข้ารหัสด้วย bcrypt)
-INSERT INTO users (reporter_code, username, fullname, email, phone, department, password, role, avatar) VALUES
-('ADMIN001', 'admin', 'ผู้ดูแลระบบ', 'admin@example.com', '080-000-0000', 'กลุ่มผู้บริหาร', '$2y$10$MpLkZ29y4ExpVl.b0nswaunwi5e3W/O2xaSacK3DLmXCpyhjehQZi', 'admin', 'default.png');
+INSERT INTO users (reporter_code, username, fullname, email, phone, department, password, role, enabled, avatar) VALUES
+('ADMIN001', 'admin', 'ผู้ดูแลระบบ', 'admin@risk8.go.th', '080-000-0000', 'กลุ่มผู้บริหาร', '$2y$10$MpLkZ29y4ExpVl.b0nswaunwi5e3W/O2xaSacK3DLmXCpyhjehQZi', 'admin', 1, 'default.png')
+ON DUPLICATE KEY UPDATE username=username;
+
+-- ============================================================
+-- ข้อมูลตัวอย่าง: ผู้ใช้ทั่วไป (ถ้าต้องการ)
+-- ============================================================
+-- รหัสผ่าน: user1234
+-- INSERT INTO users (reporter_code, username, fullname, email, phone, department, password, role, enabled, avatar) VALUES
+-- ('USER001', 'user1', 'สมชาย ใจดี', 'user1@risk8.go.th', '081-111-1111', 'กลุ่มงานเวชกรรมสังคม', '$2y$10$YourHashedPasswordHere', 'user', 1, 'default.png')
+-- ON DUPLICATE KEY UPDATE username=username;

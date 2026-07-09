@@ -9,6 +9,8 @@
  * - ใช้ SweetAlert2 สำหรับการแจ้งเตือนและการยืนยัน
  * - Keyboard Shortcuts: Ctrl+A เลือกทั้งหมด, Ctrl+D ลบที่เลือก
  * - วันที่แสดง พ.ศ. ไทย (วัน เดือน ปี)
+ * - Switch Toggle สำหรับเปิด/ปิดการใช้งานผู้ใช้
+ * - ข้อความยาวตัดด้วย ... และแสดง tooltip
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -26,6 +28,7 @@ function thaiDateShort($date) {
 $search       = trim($_GET['search'] ?? '');
 $role_filter  = $_GET['role'] ?? '';
 $dept_filter  = $_GET['department'] ?? '';
+$status_filter = $_GET['status'] ?? '';
 $date_from    = $_GET['date_from'] ?? '';
 $date_to      = $_GET['date_to'] ?? '';
 
@@ -48,6 +51,10 @@ if ($dept_filter !== '') {
     $where .= " AND department = ?";
     $params[] = $dept_filter;
 }
+if ($status_filter !== '') {
+    $where .= " AND enabled = ?";
+    $params[] = ($status_filter === 'enabled') ? 1 : 0;
+}
 if ($date_from !== '') {
     $where .= " AND DATE(created_at) >= ?";
     $params[] = $date_from;
@@ -62,7 +69,7 @@ $countStmt->execute($params);
 $totalUsers = $countStmt->fetchColumn();
 $totalPages = ceil($totalUsers / $perPage);
 
-$dataSql = "SELECT id, username, fullname, email, phone, department, role, avatar, reporter_code, created_at FROM users $where ORDER BY id DESC LIMIT $perPage OFFSET $offset";
+$dataSql = "SELECT id, username, fullname, email, phone, department, role, avatar, reporter_code, enabled, created_at FROM users $where ORDER BY id DESC LIMIT $perPage OFFSET $offset";
 $stmt = $pdo->prepare($dataSql);
 $stmt->execute($params);
 $users = $stmt->fetchAll();
@@ -72,7 +79,7 @@ $departments = $pdo->query("SELECT DISTINCT department FROM users WHERE departme
 $totalFiltered = $totalUsers;
 
 $csrf_token = generateCsrfToken();
-$hasActiveFilters = ($search !== '' || $role_filter !== '' || $dept_filter !== '' || $date_from !== '' || $date_to !== '');
+$hasActiveFilters = ($search !== '' || $role_filter !== '' || $dept_filter !== '' || $status_filter !== '' || $date_from !== '' || $date_to !== '');
 
 function buildUserPageUrl($page, $currentParams)
 {
@@ -590,6 +597,15 @@ function buildUserPageUrl($page, $currentParams)
         background: var(--hover);
     }
 
+    /* Text Truncate */
+    .truncate-cell {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: block;
+    }
+
     /* Pills */
     .pill {
         display: inline-flex;
@@ -633,6 +649,98 @@ function buildUserPageUrl($page, $currentParams)
         border-radius: 50%;
         object-fit: cover;
         border: 2px solid #e2e8f0;
+    }
+
+    /* ==================== SWITCH TOGGLE ==================== */
+    .switch-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 26px;
+        cursor: pointer;
+    }
+
+    .switch-wrapper:hover {
+        opacity: 0.9;
+    }
+
+    .switch-input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .switch-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #e2e8f0;
+        transition: all 0.3s ease;
+        border-radius: 34px;
+        border: 2px solid #e2e8f0;
+    }
+
+    .switch-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        transition: all 0.3s ease;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .switch-input:checked + .switch-slider {
+        background-color: #10b981;
+        border-color: #10b981;
+    }
+
+    .switch-input:checked + .switch-slider:before {
+        transform: translateX(22px);
+    }
+
+    .switch-input:disabled + .switch-slider {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background-color: #cbd5e1;
+        border-color: #cbd5e1;
+    }
+
+    .switch-input:focus + .switch-slider {
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+
+    .switch-input:checked:focus + .switch-slider {
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+    }
+
+    .switch-input:not(:disabled) + .switch-slider:active:before {
+        width: 22px;
+    }
+
+    .switch-slider::after {
+        content: '✕';
+        position: absolute;
+        right: 7px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 10px;
+        color: #94a3b8;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .switch-input:checked + .switch-slider::after {
+        content: '✓';
+        left: 7px;
+        right: auto;
+        color: white;
     }
 
     /* ==================== DROPDOWN ==================== */
@@ -947,6 +1055,10 @@ function buildUserPageUrl($page, $currentParams)
         .table-responsive {
             overflow-x: auto;
         }
+        
+        .truncate-cell {
+            max-width: 120px;
+        }
     }
 
     @media (max-width: 480px) {
@@ -957,6 +1069,10 @@ function buildUserPageUrl($page, $currentParams)
         .btn-action {
             width: 100%;
             justify-content: center;
+        }
+        
+        .truncate-cell {
+            max-width: 100px;
         }
     }
 
@@ -1033,6 +1149,11 @@ function buildUserPageUrl($page, $currentParams)
                                     <div class="filter-group"><label class="filter-label"><i class="fas fa-building"></i> แผนก</label><select name="department" class="filter-input auto-submit">
                                             <option value="">ทั้งหมด</option><?php foreach ($departments as $dept): ?><option value="<?= htmlspecialchars($dept) ?>" <?= $dept_filter === $dept ? 'selected' : '' ?>><?= htmlspecialchars($dept) ?></option><?php endforeach; ?>
                                         </select></div>
+                                    <div class="filter-group"><label class="filter-label"><i class="fas fa-power-off"></i> สถานะ</label><select name="status" class="filter-input auto-submit">
+                                            <option value="">ทั้งหมด</option>
+                                            <option value="enabled" <?= $status_filter === 'enabled' ? 'selected' : '' ?>>✅ ใช้งาน</option>
+                                            <option value="disabled" <?= $status_filter === 'disabled' ? 'selected' : '' ?>>🚫 ไม่ใช้งาน</option>
+                                        </select></div>
                                     <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> ตั้งแต่</label><input type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>" class="filter-input auto-submit" max="<?= date('Y-m-d') ?>"></div>
                                     <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> ถึง</label><input type="date" name="date_to" value="<?= htmlspecialchars($date_to) ?>" class="filter-input auto-submit" max="<?= date('Y-m-d') ?>"></div>
                                 </div>
@@ -1043,6 +1164,7 @@ function buildUserPageUrl($page, $currentParams)
                                 <?php if ($search): ?><span class="filter-tag">"<?= htmlspecialchars($search) ?>" <a href="<?= buildUserPageUrl(1, array_merge($_GET, ['search' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
                                 <?php if ($role_filter): ?><span class="filter-tag"><?= $role_filter === 'admin' ? 'Admin' : 'User' ?> <a href="<?= buildUserPageUrl(1, array_merge($_GET, ['role' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
                                 <?php if ($dept_filter): ?><span class="filter-tag"><?= htmlspecialchars($dept_filter) ?> <a href="<?= buildUserPageUrl(1, array_merge($_GET, ['department' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
+                                <?php if ($status_filter): ?><span class="filter-tag"><?= $status_filter === 'enabled' ? 'ใช้งาน' : 'ไม่ใช้งาน' ?> <a href="<?= buildUserPageUrl(1, array_merge($_GET, ['status' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
                                 <?php if ($date_from): ?><span class="filter-tag">ตั้งแต่ <?= htmlspecialchars($date_from) ?> <a href="<?= buildUserPageUrl(1, array_merge($_GET, ['date_from' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
                                 <?php if ($date_to): ?><span class="filter-tag">ถึง <?= htmlspecialchars($date_to) ?> <a href="<?= buildUserPageUrl(1, array_merge($_GET, ['date_to' => ''])) ?>" class="remove-tag"><i class="fas fa-times"></i></a></span><?php endif; ?>
                                 <a href="users.php" class="btn-clear-all"><i class="fas fa-times"></i> ล้างทั้งหมด</a>
@@ -1082,40 +1204,68 @@ function buildUserPageUrl($page, $currentParams)
                                 <tr>
                                     <th style="width:38px;"><input type="checkbox" id="selectAll"></th>
                                     <th style="width:35px;">#</th>
-                                    <th>ผู้ใช้</th>
-                                    <th>รหัสผู้รายงาน</th>
-                                    <th>อีเมล</th>
-                                    <th>แผนก</th>
-                                    <th>บทบาท</th>
-                                    <th>วันที่สมัคร</th>
+                                    <th style="min-width:150px;">ผู้ใช้</th>
+                                    <th style="min-width:100px;">รหัสผู้รายงาน</th>
+                                    <th style="min-width:180px;">อีเมล</th>
+                                    <th style="min-width:130px;">แผนก</th>
+                                    <th style="min-width:80px;">บทบาท</th>
+                                    <th style="text-align:center;width:70px;">สถานะ</th>
+                                    <th style="min-width:100px;">วันที่สมัคร</th>
                                     <th style="width:45px;text-align:center;">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($users as $index => $user): ?>
+                                <?php foreach ($users as $index => $user): 
+                                    $isEnabled = isset($user['enabled']) ? $user['enabled'] : 1;
+                                ?>
                                     <tr>
                                         <td><input type="checkbox" class="user-checkbox" value="<?= $user['id'] ?>"></td>
                                         <td class="text-gray-400 text-sm"><?= ($page - 1) * $perPage + $index + 1 ?></td>
                                         <td>
                                             <div class="avatar-cell">
                                                 <img src="avatars/<?= htmlspecialchars($user['avatar'] ?: 'default.png') ?>" class="avatar-img-sm" onerror="this.src='avatars/default.png'">
-                                                <div>
-                                                    <div class="font-medium">
+                                                <div style="min-width:0;">
+                                                    <div class="font-medium truncate-cell" style="max-width:120px;" title="<?= htmlspecialchars($user['username']) ?>">
                                                         <?= htmlspecialchars($user['username']) ?>
                                                         <?php if ($user['id'] == $_SESSION['user_id']): ?>
                                                             <span class="pill pill-you">คุณ</span>
                                                         <?php endif; ?>
                                                     </div>
                                                     <?php if (!empty($user['fullname'])): ?>
-                                                        <div class="text-xs text-gray-400"><?= htmlspecialchars($user['fullname']) ?></div>
+                                                        <div class="text-xs text-gray-400 truncate-cell" style="max-width:120px;" title="<?= htmlspecialchars($user['fullname']) ?>">
+                                                            <?= htmlspecialchars($user['fullname']) ?>
+                                                        </div>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="text-gray-500"><?= htmlspecialchars($user['reporter_code'] ?? '-') ?></td>
-                                        <td class="text-gray-500"><?= htmlspecialchars($user['email'] ?: '-') ?></td>
-                                        <td class="text-gray-500"><?= htmlspecialchars($user['department'] ?: '-') ?></td>
+                                        <td>
+                                            <span class="truncate-cell" title="<?= htmlspecialchars($user['reporter_code'] ?? '-') ?>">
+                                                <?= htmlspecialchars($user['reporter_code'] ?? '-') ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="truncate-cell" title="<?= htmlspecialchars($user['email'] ?: '-') ?>">
+                                                <?= htmlspecialchars($user['email'] ?: '-') ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="truncate-cell" title="<?= htmlspecialchars($user['department'] ?: '-') ?>">
+                                                <?= htmlspecialchars($user['department'] ?: '-') ?>
+                                            </span>
+                                        </td>
                                         <td><span class="pill <?= $user['role'] == 'admin' ? 'pill-admin' : 'pill-user' ?>"><i class="fas <?= $user['role'] == 'admin' ? 'fa-crown' : 'fa-user' ?> text-xs"></i> <?= $user['role'] == 'admin' ? 'Admin' : 'User' ?></span></td>
+                                        <td style="text-align:center;">
+                                            <label class="switch-wrapper" title="<?= $isEnabled ? 'คลิกเพื่อระงับการใช้งาน' : 'คลิกเพื่อเปิดการใช้งาน' ?>">
+                                                <input type="checkbox" 
+                                                       class="switch-input toggle-user-switch" 
+                                                       data-id="<?= $user['id'] ?>" 
+                                                       data-username="<?= htmlspecialchars($user['username']) ?>"
+                                                       <?= $isEnabled ? 'checked' : '' ?>
+                                                       <?= ($user['id'] == $_SESSION['user_id']) ? 'disabled' : '' ?>>
+                                                <span class="switch-slider"></span>
+                                            </label>
+                                        </td>
                                         <td class="text-gray-500 text-sm"><?= thaiDateShort($user['created_at']) ?></td>
                                         <td>
                                             <div class="dropdown-wrapper">
@@ -1319,6 +1469,89 @@ function buildUserPageUrl($page, $currentParams)
     }
 
     // ============================================================
+    // TOGGLE USER STATUS (SWITCH)
+    // ============================================================
+    document.querySelectorAll('.toggle-user-switch').forEach(switchEl => {
+        switchEl.addEventListener('change', function(e) {
+            e.stopPropagation();
+            
+            const userId = this.dataset.id;
+            const username = this.dataset.username;
+            const newStatus = this.checked ? 1 : 0;
+            const switchElement = this;
+            
+            // ปิดการใช้งานชั่วคราวระหว่างรอ
+            switchElement.disabled = true;
+            
+            Swal.fire({
+                title: 'ยืนยันการเปลี่ยนสถานะ',
+                html: `<p>ต้องการ<strong>${newStatus ? 'เปิดการใช้งาน' : 'ระงับการใช้งาน'}</strong> ผู้ใช้ <strong>"${username}"</strong> ใช่หรือไม่?</p>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: newStatus ? '#059669' : '#d97706',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: `<i class="fas ${newStatus ? 'fa-check' : 'fa-ban'} mr-1"></i> ${newStatus ? 'เปิดการใช้งาน' : 'ระงับการใช้งาน'}`,
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true
+            }).then(r => {
+                if (r.isConfirmed) {
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    fetch('action.php?action=toggle_user_status', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            enabled: newStatus,
+                            csrf_token: csrfToken
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'สำเร็จ!',
+                                text: d.message || `${newStatus ? 'เปิด' : 'ระงับ'}การใช้งานผู้ใช้สำเร็จ`,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        } else {
+                            switchElement.checked = !switchElement.checked;
+                            switchElement.disabled = false;
+                            
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: d.message || 'ไม่สามารถเปลี่ยนสถานะได้'
+                            });
+                        }
+                    })
+                    .catch(() => {
+                        switchElement.checked = !switchElement.checked;
+                        switchElement.disabled = false;
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'การเชื่อมต่อล้มเหลว',
+                            text: 'กรุณาตรวจสอบเครือข่ายและลองอีกครั้ง'
+                        });
+                    });
+                } else {
+                    switchElement.checked = !switchElement.checked;
+                    switchElement.disabled = false;
+                }
+            });
+        });
+    });
+
+    // ============================================================
     // SELECT ALL
     // ============================================================
     document.getElementById('selectAll')?.addEventListener('change', function() {
@@ -1339,7 +1572,6 @@ function buildUserPageUrl($page, $currentParams)
             });
         }
 
-        // Check if any selected is self
         const selfSelected = Array.from(checked).some(c => c.value == <?= $_SESSION['user_id'] ?>);
         if (selfSelected) {
             return Swal.fire({
@@ -1379,7 +1611,6 @@ function buildUserPageUrl($page, $currentParams)
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
             
-            // Close dropdown
             const dropdownMenu = this.closest('.dropdown-menu');
             if (dropdownMenu) {
                 dropdownMenu.classList.remove('show');
@@ -1414,7 +1645,6 @@ function buildUserPageUrl($page, $currentParams)
     // KEYBOARD SHORTCUTS
     // ============================================================
     document.addEventListener('keydown', function(e) {
-        // Ctrl+A = Select All
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             if (!e.target.closest('input, textarea, select')) {
                 e.preventDefault();
@@ -1426,7 +1656,6 @@ function buildUserPageUrl($page, $currentParams)
             }
         }
 
-        // Ctrl+D = Delete Selected
         if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
             if (!e.target.closest('input, textarea, select')) {
                 e.preventDefault();
@@ -1435,7 +1664,6 @@ function buildUserPageUrl($page, $currentParams)
             }
         }
 
-        // Ctrl+E = Edit first user
         if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
             if (!e.target.closest('input, textarea, select')) {
                 e.preventDefault();
@@ -1446,7 +1674,6 @@ function buildUserPageUrl($page, $currentParams)
             }
         }
 
-        // Escape = Close dropdowns
         if (e.key === 'Escape') {
             document.querySelectorAll('.dropdown-menu.show').forEach(function(menu) {
                 menu.classList.remove('show');

@@ -369,9 +369,9 @@ $csrf_token = generateCsrfToken();
             <a href="index.php">มีบัญชีแล้ว? <strong>เข้าสู่ระบบ</strong> <i class="fas fa-arrow-right ml-1 text-xs"></i></a>
         </div>
 
-        <div class="security-note">
+        <!-- <div class="security-note">
             <i class="fas fa-shield-alt mr-1"></i> ระบบปลอดภัยด้วย CSRF & การเข้ารหัสรหัสผ่าน
-        </div>
+        </div> -->
     </div>
 </div>
 
