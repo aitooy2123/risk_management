@@ -3,17 +3,27 @@
  * ฟอร์มเพิ่ม/แก้ไขข้อมูลความเสี่ยง (Card Layout) - UI สวยงาม
  * - ไล่สีตามระดับความรุนแรง
  * - Animation สวยงาม
- * - สถานะการดำเนินการแก้ไขได้เฉพาะ Admin เท่านั้น
+ * - สถานะการดำเนินการแก้ไขได้เฉพาะ Admin เท่านั้น (แต่เลือกได้ตอนเพิ่มใหม่)
+ * - สถานะเริ่มต้นเป็น "ยังไม่ดำเนินการ" เมื่อเพิ่มรายงานใหม่
  * - สถานะการดำเนินการมีสีแตกต่างกัน
  * - ตัวหนังสือระดับความรุนแรงใหญ่ขึ้น อ่านง่าย
  * - Hover มีสีตามระดับความรุนแรง
- * - Interactive Features: Live Preview, Auto-save, Progress Bar, Keyboard Shortcuts
- * - Date Picker แสดง พ.ศ. ไทย
+ * - Interactive Features: Live Preview, Auto-save, Keyboard Shortcuts
+ * - Date Picker แบบ datetime-local (เสถียร 100%)
+ * - วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์
+ * - ปุ่มเติมข้อมูลอัตโนมัติสำหรับรายละเอียด
  */
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
 require_once 'includes/functions.php';
-if (!isLoggedIn()) redirect('index.php');
+
+if (!isLoggedIn()) {
+    redirect('index.php');
+}
 
 $id = $_GET['id'] ?? null;
 $risk = null;
@@ -24,8 +34,12 @@ if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM risks WHERE id = ?");
     $stmt->execute([$id]);
     $risk = $stmt->fetch();
-    if (!$risk) redirect('risks.php');
-    if (!isAdmin() && $risk['user_id'] != $_SESSION['user_id']) redirect('risks.php');
+    if (!$risk) {
+        redirect('risks.php');
+    }
+    if (!isAdmin() && $risk['user_id'] != $_SESSION['user_id']) {
+        redirect('risks.php');
+    }
 
     $locked_statuses = ['ดำเนินการแล้ว', 'ยุติ'];
     if (isset($risk['status']) && in_array($risk['status'], $locked_statuses)) {
@@ -72,8 +86,8 @@ $statuses = [
 ];
 
 $current_datetime = date('Y-m-d H:i');
-$event_datetime  = $risk ? date('Y-m-d H:i', strtotime($risk['event_datetime'])) : $current_datetime;
-$report_datetime = $risk ? date('Y-m-d H:i', strtotime($risk['report_datetime'])) : $current_datetime;
+$event_datetime  = $risk ? date('Y-m-d\TH:i', strtotime($risk['event_datetime'] ?? 'now')) : date('Y-m-d\TH:i');
+$report_datetime = $risk ? date('Y-m-d\TH:i', strtotime($risk['report_datetime'] ?? 'now')) : date('Y-m-d\TH:i');
 
 if ($id) {
     $reporter_code = $risk['reporter_code'] ?? '';
@@ -85,9 +99,6 @@ if ($id) {
 }
 ?>
 <?php include 'includes/header.php'; ?>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const isEditable = <?= json_encode($is_editable) ?>;
@@ -178,32 +189,6 @@ if ($id) {
         position: relative;
         z-index: 1;
         margin-top: 0.5rem;
-    }
-
-    /* Progress Bar */
-    #form-progress {
-        position: relative;
-        z-index: 1;
-        margin-top: 0.75rem;
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 9999px;
-        height: 4px;
-        overflow: hidden;
-    }
-    #progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #60a5fa, #ffffff);
-        border-radius: 9999px;
-        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        width: 0%;
-    }
-    #progress-text {
-        position: relative;
-        z-index: 1;
-        font-size: 0.65rem;
-        color: rgba(255,255,255,0.6);
-        margin-top: 0.25rem;
-        text-align: right;
     }
 
     /* Objective Box */
@@ -339,6 +324,10 @@ if ($id) {
     .form-input.error {
         border-color: #ef4444;
         box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
+    input[type="datetime-local"].form-input {
+        cursor: pointer;
     }
 
     textarea.form-input {
@@ -553,6 +542,11 @@ if ($id) {
         font-weight: 500;
     }
 
+    .status-select option[value=""] {
+        color: #94a3b8 !important;
+        font-weight: 400 !important;
+    }
+
     .status-badge {
         display: inline-flex;
         align-items: center;
@@ -561,6 +555,7 @@ if ($id) {
         border-radius: 9999px;
         font-size: 0.8rem;
         font-weight: 600;
+        transition: all 0.2s;
     }
 
     /* Buttons */
@@ -589,6 +584,9 @@ if ($id) {
     .btn-submit:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+        background: #94a3b8 !important;
+        box-shadow: none !important;
+        transform: none !important;
     }
 
     .btn-cancel {
@@ -645,36 +643,31 @@ if ($id) {
         align-items: center;
         gap: 0.4rem;
         font-family: 'Sarabun', sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
     }
 
     .btn-default:hover {
         background: #e2e8f0;
+        color: #334155;
+    }
+
+    .btn-default:active {
+        transform: scale(0.97);
+        transition: transform 0.1s;
     }
 
     .btn-default.filled {
         background: #dbeafe;
         border-color: #93c5fd;
         color: #1e40af;
+        cursor: default;
+        pointer-events: none;
     }
 
-    .btn-print {
-        padding: 0.7rem 1.5rem;
-        border-radius: 0.65rem;
-        font-weight: 500;
-        font-size: 0.85rem;
-        background: #f0fdf4;
-        color: #16a34a;
-        border: 1px solid #86efac;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        font-family: 'Sarabun', sans-serif;
-        text-decoration: none;
-    }
-    .btn-print:hover {
-        background: #dcfce7;
+    .btn-default.filled:hover {
+        background: #dbeafe;
+        transform: none;
     }
 
     /* Locked Overlay */
@@ -743,11 +736,27 @@ if ($id) {
     .animate-in:nth-child(5) { animation-delay: 0.16s; }
     .animate-in:nth-child(6) { animation-delay: 0.2s; }
     .animate-in:nth-child(7) { animation-delay: 0.24s; }
+    .animate-in:nth-child(8) { animation-delay: 0.28s; }
 
-    /* Print Styles */
+    /* Status Preview */
+    #status-preview {
+        margin-top: 0.75rem;
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    #status-preview.visible {
+        display: flex;
+    }
+
+    .swal2-toast {
+        font-family: 'Sarabun', sans-serif !important;
+    }
+
     @media print {
-        .sidebar, .form-header, .objective-box, .btn-submit, .btn-cancel, .btn-back, .btn-print, 
-        #auto-save-indicator, #form-progress, .locked-overlay, .card-header-badge {
+        .sidebar, .form-header, .objective-box, .btn-submit, .btn-cancel, .btn-back,
+        #auto-save-indicator, .locked-overlay, .card-header-badge {
             display: none !important;
         }
         body {
@@ -794,17 +803,6 @@ if ($id) {
             padding: 1rem;
         }
     }
-
-    /* Flatpickr Calendar Thai Style */
-    .flatpickr-calendar {
-        font-family: 'Sarabun', sans-serif !important;
-    }
-    .flatpickr-current-month .flatpickr-monthDropdown-months {
-        font-family: 'Sarabun', sans-serif !important;
-    }
-    .flatpickr-weekday {
-        font-family: 'Sarabun', sans-serif !important;
-    }
 </style>
 
 <div class="flex h-screen">
@@ -819,10 +817,6 @@ if ($id) {
                     <?= $id ? 'แก้ไขรายงานความเสี่ยง' : 'เพิ่มรายงานความเสี่ยง' ?>
                 </h2>
                 <p>ศูนย์อนามัยที่ 8 อุดรธานี | ระบบบริหารจัดการความเสี่ยง</p>
-                <div id="form-progress">
-                    <div id="progress-fill" style="width:0%"></div>
-                </div>
-                <div id="progress-text">0%</div>
             </div>
 
             <!-- Locked Warning -->
@@ -931,7 +925,6 @@ if ($id) {
                                 </label>
                             <?php endforeach; ?>
                         </div>
-                        <!-- Severity Preview -->
                         <div id="severity-preview">
                             <span class="preview-icon"><i class="fas fa-circle-info"></i></span>
                             <div class="preview-text">
@@ -953,19 +946,22 @@ if ($id) {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="form-label">📅 วันที่เกิดเหตุการณ์ <span class="required">*</span></label>
-                                <input type="text" id="event_datetime" name="event_datetime" value="<?= $event_datetime ?>"
-                                    class="form-input" required placeholder="เลือกวันที่และเวลา" autocomplete="off" <?= !$is_editable ? 'disabled' : '' ?>>
+                                <input type="datetime-local" id="event_datetime" name="event_datetime" 
+                                    value="<?= $event_datetime ?>"
+                                    class="form-input" required <?= !$is_editable ? 'disabled' : '' ?>>
                             </div>
                             <div>
                                 <label class="form-label">📅 วันที่รายงาน <span class="required">*</span></label>
-                                <input type="text" id="report_datetime" name="report_datetime" value="<?= $report_datetime ?>"
-                                    class="form-input" required placeholder="เลือกวันที่และเวลา" autocomplete="off" <?= !$is_editable ? 'disabled' : '' ?>>
+                                <input type="datetime-local" id="report_datetime" name="report_datetime" 
+                                    value="<?= $report_datetime ?>"
+                                    class="form-input" required <?= !$is_editable ? 'disabled' : '' ?>>
+                                <small class="text-gray-400" style="font-size: 0.7rem;">วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์</small>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- รายละเอียด -->
+                <!-- รายละเอียดและแนวทางแก้ไข -->
                 <div class="form-card animate-in">
                     <div class="card-header">
                         <div class="card-header-icon" style="background:#f5f3ff;color:#6d28d9;"><i class="fas fa-pen-to-square"></i></div>
@@ -993,32 +989,41 @@ if ($id) {
                         </div>
                         <?php if ($is_editable): ?>
                             <div class="flex justify-end pt-2">
-                                <a href="#" id="fillDefaultLink" class="btn-default"
+                                <button type="button" id="fillDefaultBtn" class="btn-default"
                                     data-default-detail="ไม่มีรายละเอียดเพิ่มเติม"
                                     data-default-solution="ไม่มีการแก้ไขเบื้องต้น"
-                                    data-default-suggestion="ไม่มีข้อเสนอแนะเพิ่มเติม">
+                                    data-default-suggestion="ไม่มีข้อเสนอแนะเพิ่มเติม"
+                                    onclick="fillDefaultTexts(); return false;">
                                     <i class="fas fa-pen"></i> ไม่มีข้อมูลในส่วนนี้
-                                </a>
+                                </button>
                             </div>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <!-- สถานะการดำเนินการ - แสดงเฉพาะ Admin -->
-                <?php if ($is_admin): ?>
+                <!-- สถานะการดำเนินการ -->
+                <?php if ($is_admin || !$id): ?>
                     <div class="form-card animate-in">
                         <div class="card-header">
                             <div class="card-header-icon" style="background:#ecfdf5;color:#0d9488;"><i class="fas fa-chart-simple"></i></div>
                             <h3 class="card-header-title">สถานะการดำเนินการ</h3>
-                            <span class="card-header-badge admin-only"><i class="fas fa-crown"></i> Admin เท่านั้น</span>
+                            <?php if ($is_admin): ?>
+                                <span class="card-header-badge admin-only"><i class="fas fa-crown"></i> Admin เท่านั้น</span>
+                            <?php else: ?>
+                                <span class="card-header-badge" style="background:#eff6ff;color:#2563eb;">เลือกสถานะ</span>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body">
-                            <?php if ($is_admin && $is_editable): ?>
+                            <?php if ($is_editable): ?>
                                 <select name="status" id="status" class="status-select">
                                     <option value="">-- กรุณาเลือกสถานะ --</option>
                                     <?php foreach ($statuses as $key => $st): ?>
                                         <?php
-                                        $selected = (($risk['status'] ?? '') == $key) ? 'selected' : '';
+                                        if (!$id && $key == 'ยังไม่ดำเนินการ') {
+                                            $selected = 'selected';
+                                        } else {
+                                            $selected = (($risk['status'] ?? '') == $key) ? 'selected' : '';
+                                        }
                                         $color = $st['color'];
                                         ?>
                                         <option value="<?= $key ?>" <?= $selected ?> style="color:<?= $color ?>; font-weight:600;">
@@ -1026,7 +1031,9 @@ if ($id) {
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
+                                <?php if ($is_admin): ?>
+                                    <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
+                                <?php endif; ?>
 
                                 <?php if (!empty($risk['status'])): ?>
                                     <?php
@@ -1078,9 +1085,6 @@ if ($id) {
                         <button type="submit" class="btn-submit" id="submitBtn">
                             <i class="fas fa-save"></i> บันทึกรายงาน
                         </button>
-                        <button type="button" class="btn-print" onclick="window.print()">
-                            <i class="fas fa-print"></i> พิมพ์
-                        </button>
                         <a href="risks.php" class="btn-cancel">
                             <i class="fas fa-times"></i> ยกเลิก
                         </a>
@@ -1089,9 +1093,6 @@ if ($id) {
                         <a href="risks.php" class="btn-back">
                             <i class="fas fa-arrow-left"></i> กลับไปหน้ารายการ
                         </a>
-                        <button type="button" class="btn-print" onclick="window.print()">
-                            <i class="fas fa-print"></i> พิมพ์
-                        </button>
                     <?php endif; ?>
                 </div>
             </form>
@@ -1105,10 +1106,61 @@ if ($id) {
 </div>
 
 <script>
+function fillDefaultTexts() {
+    var detail = document.getElementById('detail');
+    var solution = document.getElementById('initial_solution');
+    var suggestion = document.getElementById('suggestion');
+    var btn = document.getElementById('fillDefaultBtn');
+    
+    if (!detail || !solution || !suggestion) {
+        alert('ไม่พบช่องกรอกข้อมูล');
+        return;
+    }
+    
+    var hasFilled = false;
+    
+    if (detail.value.trim() === '') {
+        detail.value = 'ไม่มีรายละเอียดเพิ่มเติม';
+        detail.dispatchEvent(new Event('input', { bubbles: true }));
+        detail.dispatchEvent(new Event('change', { bubbles: true }));
+        hasFilled = true;
+    }
+    
+    if (solution.value.trim() === '') {
+        solution.value = 'ไม่มีการแก้ไขเบื้องต้น';
+        solution.dispatchEvent(new Event('input', { bubbles: true }));
+        solution.dispatchEvent(new Event('change', { bubbles: true }));
+        hasFilled = true;
+    }
+    
+    if (suggestion.value.trim() === '') {
+        suggestion.value = 'ไม่มีข้อเสนอแนะเพิ่มเติม';
+        suggestion.dispatchEvent(new Event('input', { bubbles: true }));
+        suggestion.dispatchEvent(new Event('change', { bubbles: true }));
+        hasFilled = true;
+    }
+    
+    if (btn && hasFilled) {
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
+        btn.classList.add('filled');
+        btn.disabled = true;
+    }
+    
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: 'เติมข้อมูลเรียบร้อย',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+        });
+    }
+}
+</script>
+
+<script>
     document.addEventListener('DOMContentLoaded', function() {
-        // ============================================================
-        // 1. LOCKED WARNING
-        // ============================================================
         if (!isEditable) {
             Swal.fire({
                 icon: 'info',
@@ -1121,148 +1173,77 @@ if ($id) {
         }
 
         // ============================================================
-        // 2. FLATPICKR DATE/TIME PICKER พร้อมแสดง พ.ศ. ไทย
+        // DATE VALIDATION - วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์
         // ============================================================
-        
-        // Thai locale แบบกำหนดเอง
-        const thaiLocale = {
-            weekdays: {
-                shorthand: ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'],
-                longhand: ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
-            },
-            months: {
-                shorthand: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
-                longhand: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
-            },
-            firstDayOfWeek: 1,
-            rangeSeparator: ' ถึง ',
-            weekAbbreviation: 'สัปดาห์',
-            scrollTitle: 'เลื่อนเพื่อเพิ่มหรือลด',
-            toggleTitle: 'คลิกเพื่อเปลี่ยน',
-            time_24hr: true,
-            ordinal: function() {
-                return '';
-            }
-        };
+        const eventDatetimeInput = document.getElementById('event_datetime');
+        const reportDatetimeInput = document.getElementById('report_datetime');
 
-        // Plugin สำหรับแสดง พ.ศ. ใน altInput
-        function buddhistPlugin() {
-            return function(fp) {
-                return {
-                    onReady: function() {
-                        updateDisplay(fp);
-                    },
-                    onChange: function() {
-                        updateDisplay(fp);
-                    },
-                    onOpen: function() {
-                        updateDisplay(fp);
-                    },
-                    onClose: function() {
-                        updateDisplay(fp);
-                    },
-                    onMonthChange: function() {
-                        updateDisplay(fp);
-                    },
-                    onYearChange: function() {
-                        updateDisplay(fp);
-                    },
-                    onValueUpdate: function() {
-                        updateDisplay(fp);
+        if (eventDatetimeInput && reportDatetimeInput) {
+            // ตั้งค่าวันที่ปัจจุบันเป็น max
+            const now = new Date();
+            const todayStr = now.getFullYear() + '-' + 
+                             String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                             String(now.getDate()).padStart(2, '0') + 'T' +
+                             String(now.getHours()).padStart(2, '0') + ':' + 
+                             String(now.getMinutes()).padStart(2, '0');
+            
+            eventDatetimeInput.max = todayStr;
+            reportDatetimeInput.max = todayStr;
+            
+            // ตั้งค่า min ของวันที่รายงาน = วันที่เกิดเหตุการณ์
+            if (eventDatetimeInput.value) {
+                reportDatetimeInput.min = eventDatetimeInput.value;
+                if (reportDatetimeInput.value && reportDatetimeInput.value < eventDatetimeInput.value) {
+                    reportDatetimeInput.value = eventDatetimeInput.value;
+                }
+            }
+            
+            // เมื่อเปลี่ยนวันที่เกิดเหตุการณ์ -> ปรับ min ของวันที่รายงาน
+            eventDatetimeInput.addEventListener('change', function() {
+                if (this.value) {
+                    reportDatetimeInput.min = this.value;
+                    
+                    // ถ้าวันที่รายงานน้อยกว่า -> ปรับให้เท่ากัน
+                    if (reportDatetimeInput.value && reportDatetimeInput.value < this.value) {
+                        reportDatetimeInput.value = this.value;
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'ปรับวันที่รายงาน',
+                            text: 'วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
                     }
-                };
-            };
-        }
-
-        // อัพเดท altInput ให้แสดง พ.ศ.
-        function updateDisplay(fp) {
-            if (!fp.altInput || !fp.selectedDates[0]) return;
-            
-            const date = fp.selectedDates[0];
-            const buddhistYear = date.getFullYear() + 543;
-            const day = date.getDate();
-            const month = thaiLocale.months.longhand[date.getMonth()];
-            const hour = String(date.getHours()).padStart(2, '0');
-            const minute = String(date.getMinutes()).padStart(2, '0');
-            
-            // แสดงเป็น "9 กรกฎาคม 2569 02:01"
-            fp.altInput.value = day + ' ' + month + ' ' + buddhistYear + ' ' + hour + ':' + minute;
-        }
-
-        // แปลงวันที่จาก พ.ศ. กลับเป็น ค.ศ.
-        function parseThaiDate(dateStr, format) {
-            // ตรวจสอบรูปแบบ "9 กรกฎาคม 2569 02:01"
-            const regex = /(\d{1,2})\s+(มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s+(\d{4})\s+(\d{1,2}):(\d{2})/;
-            const match = dateStr.match(regex);
-            
-            if (match) {
-                const day = parseInt(match[1]);
-                const monthStr = match[2];
-                const buddhistYear = parseInt(match[3]);
-                const hour = parseInt(match[4]);
-                const minute = parseInt(match[5]);
-                
-                const monthMap = {
-                    'มกราคม': 0, 'กุมภาพันธ์': 1, 'มีนาคม': 2, 'เมษายน': 3,
-                    'พฤษภาคม': 4, 'มิถุนายน': 5, 'กรกฎาคม': 6, 'สิงหาคม': 7,
-                    'กันยายน': 8, 'ตุลาคม': 9, 'พฤศจิกายน': 10, 'ธันวาคม': 11
-                };
-                
-                const month = monthMap[monthStr];
-                const christianYear = buddhistYear - 543;
-                
-                if (month !== undefined && christianYear > 0) {
-                    return new Date(christianYear, month, day, hour, minute);
+                    
+                    // ถ้ายังไม่มีวันที่รายงาน -> ตั้งให้เท่ากัน
+                    if (!reportDatetimeInput.value) {
+                        reportDatetimeInput.value = this.value;
+                    }
                 }
-            }
+            });
             
-            // fallback
-            return flatpickr.parseDate(dateStr, format);
-        }
-
-        // Flatpickr Config
-        const dateConfig = {
-            enableTime: true,
-            time_24hr: true,
-            dateFormat: "Y-m-d H:i",        // เก็บเป็น ค.ศ.
-            altInput: true,
-            altFormat: "j F Y H:i",
-            locale: thaiLocale,
-            allowInput: true,
-            minuteIncrement: 1,
-            plugins: [buddhistPlugin()],
-            parseDate: parseThaiDate,
-            defaultDate: null
-        };
-
-        // สร้าง Flatpickr instances
-        const eventPicker = flatpickr('#event_datetime', dateConfig);
-        const reportPicker = flatpickr('#report_datetime', dateConfig);
-
-        // ตั้งค่าเริ่มต้น
-        function setInitialValue(picker, elementId) {
-            const element = document.getElementById(elementId);
-            if (element && element.value) {
-                const date = new Date(element.value);
-                if (!isNaN(date.getTime())) {
-                    picker.setDate(date, false);
-                    updateDisplay(picker);
+            // ตรวจสอบเมื่อเปลี่ยนวันที่รายงาน
+            reportDatetimeInput.addEventListener('change', function() {
+                const eventDate = eventDatetimeInput.value;
+                const reportDate = this.value;
+                
+                if (eventDate && reportDate && reportDate < eventDate) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'วันที่ไม่ถูกต้อง',
+                        text: '📅 วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์',
+                        confirmButtonColor: '#2563eb'
+                    });
+                    this.value = eventDate;
                 }
-            }
+            });
+            
+            console.log('✅ Date Validation พร้อมใช้งาน');
         }
 
-        setInitialValue(eventPicker, 'event_datetime');
-        setInitialValue(reportPicker, 'report_datetime');
-
-        // บังคับอัพเดทอีกครั้ง
-        setTimeout(() => {
-            updateDisplay(eventPicker);
-            updateDisplay(reportPicker);
-        }, 100);
-
-        // ============================================================
-        // 3. TOGGLE "อื่นๆ" FIELDS
-        // ============================================================
+        // Toggle "อื่นๆ" Fields
         function toggleOther(radioName, inputId) {
             const sel = document.querySelector(`input[name="${radioName}"]:checked`);
             const inp = document.getElementById(inputId);
@@ -1276,19 +1257,17 @@ if ($id) {
                 inp.disabled = true;
             }
         }
+        
         ['unit', 'risk_type'].forEach(name => {
             const radios = document.querySelectorAll(`input[name="${name}"]`);
             radios.forEach(r => r.addEventListener('change', function() {
                 toggleOther(name, name + '_other');
-                updateProgress();
             }));
             toggleOther(name, name + '_other');
             setTimeout(() => toggleOther(name, name + '_other'), 100);
         });
 
-        // ============================================================
-        // 4. SEVERITY CARDS - Click & Preview
-        // ============================================================
+        // Severity Cards
         const severityCards = document.querySelectorAll('.severity-card');
         const previewEl = document.getElementById('severity-preview');
 
@@ -1331,7 +1310,6 @@ if ($id) {
                 this.style.boxShadow = '0 0 0 3px ' + color + '30';
 
                 updateSeverityPreview(this);
-                updateProgress();
             });
         });
 
@@ -1347,9 +1325,7 @@ if ($id) {
             }
         }
 
-        // ============================================================
-        // 5. CHARACTER COUNTER
-        // ============================================================
+        // Character Counter
         function setupCharCounter(textareaId, counterId, maxLength = 500) {
             const textarea = document.getElementById(textareaId);
             const counter = document.getElementById(counterId);
@@ -1368,7 +1344,6 @@ if ($id) {
                 } else {
                     textarea.classList.remove('error');
                 }
-                updateProgress();
             }
 
             textarea.addEventListener('input', updateCounter);
@@ -1379,93 +1354,47 @@ if ($id) {
         setupCharCounter('initial_solution', 'solution-counter', 500);
         setupCharCounter('suggestion', 'suggestion-counter', 500);
 
-        // ============================================================
-        // 6. FILL DEFAULT BUTTON
-        // ============================================================
-        const fillLink = document.getElementById('fillDefaultLink');
-        if (fillLink) {
-            fillLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                const detail = document.getElementById('detail');
-                const solution = document.getElementById('initial_solution');
-                const suggestion = document.getElementById('suggestion');
-                const defDetail = this.dataset.defaultDetail;
-                const defSolution = this.dataset.defaultSolution;
-                const defSuggestion = this.dataset.defaultSuggestion;
-
-                let filled = false;
-                if (detail.value.trim() === '') {
-                    detail.value = defDetail;
-                    filled = true;
-                }
-                if (solution.value.trim() === '') {
-                    solution.value = defSolution;
-                    filled = true;
-                }
-                if (suggestion.value.trim() === '') {
-                    suggestion.value = defSuggestion;
-                    filled = true;
-                }
-
-                if (filled) {
-                    this.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
-                    this.classList.add('filled');
-                    ['detail', 'initial_solution', 'suggestion'].forEach(id => {
-                        document.getElementById(id)?.dispatchEvent(new Event('input'));
-                    });
-                }
-                if (detail.value.trim() !== '' && solution.value.trim() !== '' && suggestion.value.trim() !== '') {
-                    this.innerHTML = '<i class="fas fa-check-circle"></i> ข้อมูลครบถ้วน';
-                    this.classList.add('filled');
-                }
-                updateProgress();
-            });
-        }
-
-        // ============================================================
-        // 7. PROGRESS BAR
-        // ============================================================
-        function updateProgress() {
-            const fields = [
-                { id: 'reporter_code', type: 'text' },
-                { id: 'unit', type: 'radio' },
-                { id: 'risk_type', type: 'radio' },
-                { id: 'severity', type: 'radio' },
-                { id: 'event_datetime', type: 'text' },
-                { id: 'report_datetime', type: 'text' },
-                { id: 'detail', type: 'textarea' },
-                { id: 'initial_solution', type: 'textarea' },
-                { id: 'suggestion', type: 'textarea' }
-            ];
-            let filled = 0;
-            const total = fields.length;
-
-            fields.forEach(field => {
-                if (field.type === 'radio') {
-                    const checked = document.querySelector(`input[name="${field.id}"]:checked`);
-                    if (checked) filled++;
+        // Status Select
+        const statusSelect = document.getElementById('status');
+        if (statusSelect) {
+            let statusPreview = document.getElementById('status-preview');
+            if (!statusPreview) {
+                statusPreview = document.createElement('div');
+                statusPreview.id = 'status-preview';
+                statusSelect.parentNode.appendChild(statusPreview);
+            }
+            
+            const statusColors = {
+                'ยังไม่ดำเนินการ': { color: '#6b7280', bg: '#f3f4f6', icon: 'fa-clock' },
+                'กำลังดำเนินการ': { color: '#3b82f6', bg: '#eff6ff', icon: 'fa-spinner' },
+                'ดำเนินการแล้ว': { color: '#22c55e', bg: '#f0fdf4', icon: 'fa-check-circle' },
+                'ยุติ': { color: '#ef4444', bg: '#fef2f2', icon: 'fa-ban' }
+            };
+            
+            statusSelect.addEventListener('change', function() {
+                const selectedValue = this.value;
+                
+                if (selectedValue && statusColors[selectedValue]) {
+                    const status = statusColors[selectedValue];
+                    statusPreview.innerHTML = `
+                        <span class="text-sm text-gray-500">ตัวอย่าง:</span>
+                        <span class="status-badge" style="background:${status.bg}; color:${status.color}; border:1px solid ${status.color}40;">
+                            <i class="fas ${status.icon}"></i>
+                            ${selectedValue}
+                        </span>
+                    `;
+                    statusPreview.classList.add('visible');
                 } else {
-                    const el = document.getElementById(field.id);
-                    if (el && el.value.trim()) filled++;
+                    statusPreview.classList.remove('visible');
                 }
             });
-
-            const percent = Math.round((filled / total) * 100);
-            const fillEl = document.getElementById('progress-fill');
-            const textEl = document.getElementById('progress-text');
-            if (fillEl) fillEl.style.width = percent + '%';
-            if (textEl) textEl.textContent = percent + '%';
+            
+            if (statusSelect.value) {
+                statusSelect.dispatchEvent(new Event('change'));
+            }
         }
 
-        document.querySelectorAll('input, textarea, select').forEach(el => {
-            el.addEventListener('input', updateProgress);
-            el.addEventListener('change', updateProgress);
-        });
-        setTimeout(updateProgress, 300);
-
-        // ============================================================
-        // 8. AUTO-SAVE DRAFT
-        // ============================================================
+        // Auto-save
         let autoSaveTimer = null;
         const form = document.getElementById('riskForm');
         const autoSaveIndicator = document.getElementById('auto-save-indicator');
@@ -1500,9 +1429,7 @@ if ($id) {
             autoSaveTimer = setTimeout(autoSaveDraft, 30000);
         });
 
-        // ============================================================
-        // 9. KEYBOARD SHORTCUTS
-        // ============================================================
+        // Keyboard Shortcuts
         document.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
@@ -1519,9 +1446,7 @@ if ($id) {
             }
         });
 
-        // ============================================================
-        // 10. SMART VALIDATION
-        // ============================================================
+        // Validation
         document.querySelectorAll('.form-input, .form-select').forEach(el => {
             el.addEventListener('invalid', function(e) {
                 e.preventDefault();
@@ -1540,9 +1465,7 @@ if ($id) {
             });
         });
 
-        // ============================================================
-        // 11. LEAVE WARNING
-        // ============================================================
+        // Leave Warning
         let formChanged = false;
         form.addEventListener('input', () => { formChanged = true; });
         form.addEventListener('change', () => { formChanged = true; });
@@ -1559,13 +1482,25 @@ if ($id) {
             formChanged = false;
         });
 
-        // ============================================================
-        // 12. FORM SUBMIT
-        // ============================================================
+        // Form Submit
         let submitting = false;
 
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+
+            // ตรวจสอบวันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์
+            const eventDate = document.getElementById('event_datetime').value;
+            const reportDate = document.getElementById('report_datetime').value;
+            
+            if (eventDate && reportDate && reportDate < eventDate) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'วันที่ไม่ถูกต้อง',
+                    text: '📅 วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์',
+                    confirmButtonColor: '#2563eb'
+                });
+                return;
+            }
 
             if (submitting) {
                 Swal.fire({
@@ -1595,28 +1530,6 @@ if ($id) {
                     icon: 'warning',
                     title: 'กรุณาระบุข้อมูล',
                     text: 'เลือก "อื่นๆ" แต่ไม่ได้กรอก',
-                    confirmButtonColor: '#2563eb'
-                });
-                return;
-            }
-
-            const evInput = document.getElementById('event_datetime');
-            const rpInput = document.getElementById('report_datetime');
-
-            if (!evInput.value.trim()) evInput.value = '<?= date('Y-m-d H:i') ?>';
-            if (!rpInput.value.trim()) rpInput.value = '<?= date('Y-m-d H:i') ?>';
-
-            const ev = eventPicker.selectedDates[0];
-            const rp = reportPicker.selectedDates[0];
-
-            const evDate = ev || new Date(evInput.value);
-            const rpDate = rp || new Date(rpInput.value);
-
-            if (rpDate && evDate && rpDate < evDate) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'วันที่ไม่ถูกต้อง',
-                    text: 'วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุ',
                     confirmButtonColor: '#2563eb'
                 });
                 return;
@@ -1681,15 +1594,7 @@ if ($id) {
             });
         });
 
-        // ============================================================
-        // 13. TOOLTIP
-        // ============================================================
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) {
-            submitBtn.title = 'Ctrl+S';
-        }
-
-        console.log('✅ ระบบพร้อมใช้งาน! Date Picker แสดง พ.ศ. ไทยเรียบร้อย');
+        console.log('✅ ระบบพร้อมใช้งาน! (Date Validation Active)');
     });
 </script>
 <?php include 'includes/footer.php'; ?>
