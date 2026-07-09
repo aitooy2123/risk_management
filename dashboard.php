@@ -153,27 +153,27 @@ foreach ($groupSummary as $group) {
     
     // เพิ่มเงื่อนไขวันที่ถ้ามี
     if ($date_from && $date_to) {
-        $unitWhere .= " AND created_at BETWEEN :date_from AND :date_to";
-        $unitParams[':date_from'] = $date_from . ' 00:00:00';
-        $unitParams[':date_to'] = $date_to . ' 23:59:59';
+        $unitWhere .= " AND created_at BETWEEN :unit_date_from AND :unit_date_to";
+        $unitParams[':unit_date_from'] = $date_from . ' 00:00:00';
+        $unitParams[':unit_date_to'] = $date_to . ' 23:59:59';
     } elseif ($date_from) {
-        $unitWhere .= " AND created_at >= :date_from";
-        $unitParams[':date_from'] = $date_from . ' 00:00:00';
+        $unitWhere .= " AND created_at >= :unit_date_from";
+        $unitParams[':unit_date_from'] = $date_from . ' 00:00:00';
     } elseif ($date_to) {
-        $unitWhere .= " AND created_at <= :date_to";
-        $unitParams[':date_to'] = $date_to . ' 23:59:59';
+        $unitWhere .= " AND created_at <= :unit_date_to";
+        $unitParams[':unit_date_to'] = $date_to . ' 23:59:59';
     }
     
     // เพิ่มตัวกรองสถานะ
     if ($status_filter) {
-        $unitWhere .= " AND status = :status";
-        $unitParams[':status'] = $status_filter;
+        $unitWhere .= " AND status = :unit_status";
+        $unitParams[':unit_status'] = $status_filter;
     }
     
     // เพิ่มตัวกรองประเภท
     if ($type_filter) {
-        $unitWhere .= " AND risk_type = :risk_type";
-        $unitParams[':risk_type'] = $type_filter;
+        $unitWhere .= " AND risk_type = :unit_risk_type";
+        $unitParams[':unit_risk_type'] = $type_filter;
     }
     
     $topTypeSql = "SELECT risk_type FROM risks " . $unitWhere . 
@@ -216,17 +216,23 @@ $topReporters = fetchAll($pdo,
 $todayRisks = fetchColumn($pdo, "SELECT COUNT(*) FROM risks WHERE DATE(created_at) = CURDATE()");
 
 // ===== จำนวนความเสี่ยงที่ดำเนินการแล้ว =====
-$completedSql = "SELECT COUNT(*) FROM risks r WHERE status = 'ดำเนินการแล้ว'";
-if (!empty($where_params)) {
-    if ($date_from && $date_to) {
-        $completedSql .= " AND r.created_at BETWEEN :date_from AND :date_to";
-    } elseif ($date_from) {
-        $completedSql .= " AND r.created_at >= :date_from";
-    } elseif ($date_to) {
-        $completedSql .= " AND r.created_at <= :date_to";
-    }
+$completedSql = "SELECT COUNT(*) FROM risks r WHERE r.status = 'ดำเนินการแล้ว'";
+$completedParams = [];
+
+// เพิ่มเงื่อนไขวันที่ถ้ามี
+if ($date_from && $date_to) {
+    $completedSql .= " AND r.created_at BETWEEN :comp_date_from AND :comp_date_to";
+    $completedParams[':comp_date_from'] = $date_from . ' 00:00:00';
+    $completedParams[':comp_date_to'] = $date_to . ' 23:59:59';
+} elseif ($date_from) {
+    $completedSql .= " AND r.created_at >= :comp_date_from";
+    $completedParams[':comp_date_from'] = $date_from . ' 00:00:00';
+} elseif ($date_to) {
+    $completedSql .= " AND r.created_at <= :comp_date_to";
+    $completedParams[':comp_date_to'] = $date_to . ' 23:59:59';
 }
-$completedRisks = fetchColumn($pdo, $completedSql, $where_params);
+
+$completedRisks = fetchColumn($pdo, $completedSql, $completedParams);
 
 // ===== สถานะแยกตามประเภท =====
 $statusCounts = [
@@ -238,24 +244,30 @@ $statusCounts = [
 
 // นับจำนวนแต่ละสถานะ
 $statusConditions = [
-    'ยังไม่ดำเนินการ' => "(status = 'ยังไม่ดำเนินการ' OR status IS NULL OR status = '')",
-    'กำลังดำเนินการ' => "status = 'กำลังดำเนินการ'",
-    'ดำเนินการแล้ว' => "status = 'ดำเนินการแล้ว'",
-    'ยุติ' => "status = 'ยุติ'"
+    'ยังไม่ดำเนินการ' => "(r.status = 'ยังไม่ดำเนินการ' OR r.status IS NULL OR r.status = '')",
+    'กำลังดำเนินการ' => "r.status = 'กำลังดำเนินการ'",
+    'ดำเนินการแล้ว' => "r.status = 'ดำเนินการแล้ว'",
+    'ยุติ' => "r.status = 'ยุติ'"
 ];
 
 foreach ($statusConditions as $statusName => $statusCondition) {
     $countSql = "SELECT COUNT(*) FROM risks r WHERE " . $statusCondition;
-    if (!empty($where_params)) {
-        if ($date_from && $date_to) {
-            $countSql .= " AND r.created_at BETWEEN :date_from AND :date_to";
-        } elseif ($date_from) {
-            $countSql .= " AND r.created_at >= :date_from";
-        } elseif ($date_to) {
-            $countSql .= " AND r.created_at <= :date_to";
-        }
+    $countParams = [];
+    
+    // เพิ่มเงื่อนไขวันที่ถ้ามี
+    if ($date_from && $date_to) {
+        $countSql .= " AND r.created_at BETWEEN :count_date_from AND :count_date_to";
+        $countParams[':count_date_from'] = $date_from . ' 00:00:00';
+        $countParams[':count_date_to'] = $date_to . ' 23:59:59';
+    } elseif ($date_from) {
+        $countSql .= " AND r.created_at >= :count_date_from";
+        $countParams[':count_date_from'] = $date_from . ' 00:00:00';
+    } elseif ($date_to) {
+        $countSql .= " AND r.created_at <= :count_date_to";
+        $countParams[':count_date_to'] = $date_to . ' 23:59:59';
     }
-    $statusCounts[$statusName] = fetchColumn($pdo, $countSql, $where_params);
+    
+    $statusCounts[$statusName] = fetchColumn($pdo, $countSql, $countParams);
 }
 
 // ===== เตรียมข้อมูลกราฟ =====
@@ -1254,7 +1266,7 @@ $types = [
         const typeFilter = document.querySelector('[name="type_filter"]')?.value || '';
         
         fetch('action.php?action=dashboard_data' + 
-            '?date_from=' + encodeURIComponent(dateFrom) + 
+            '&date_from=' + encodeURIComponent(dateFrom) + 
             '&date_to=' + encodeURIComponent(dateTo) +
             '&status_filter=' + encodeURIComponent(statusFilter) +
             '&type_filter=' + encodeURIComponent(typeFilter) +
@@ -1408,7 +1420,7 @@ $types = [
         const typeFilter = document.querySelector('[name="type_filter"]')?.value || '';
         
         fetch('action.php?action=check_new_risks' +
-            '?last_check=' + encodeURIComponent(lastCheck) + 
+            '&last_check=' + encodeURIComponent(lastCheck) + 
             '&date_from=' + encodeURIComponent(dateFrom) + 
             '&date_to=' + encodeURIComponent(dateTo) +
             '&status_filter=' + encodeURIComponent(statusFilter) +
