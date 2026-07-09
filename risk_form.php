@@ -8,6 +8,7 @@
  * - ตัวหนังสือระดับความรุนแรงใหญ่ขึ้น อ่านง่าย
  * - Hover มีสีตามระดับความรุนแรง
  * - Interactive Features: Live Preview, Auto-save, Progress Bar, Keyboard Shortcuts
+ * - Date Picker แสดง พ.ศ. ไทย
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -87,7 +88,6 @@ if ($id) {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const isEditable = <?= json_encode($is_editable) ?>;
@@ -794,6 +794,17 @@ if ($id) {
             padding: 1rem;
         }
     }
+
+    /* Flatpickr Calendar Thai Style */
+    .flatpickr-calendar {
+        font-family: 'Sarabun', sans-serif !important;
+    }
+    .flatpickr-current-month .flatpickr-monthDropdown-months {
+        font-family: 'Sarabun', sans-serif !important;
+    }
+    .flatpickr-weekday {
+        font-family: 'Sarabun', sans-serif !important;
+    }
 </style>
 
 <div class="flex h-screen">
@@ -1110,21 +1121,144 @@ if ($id) {
         }
 
         // ============================================================
-        // 2. FLATPICKR DATE/TIME PICKER
+        // 2. FLATPICKR DATE/TIME PICKER พร้อมแสดง พ.ศ. ไทย
         // ============================================================
+        
+        // Thai locale แบบกำหนดเอง
+        const thaiLocale = {
+            weekdays: {
+                shorthand: ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'],
+                longhand: ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
+            },
+            months: {
+                shorthand: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
+                longhand: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+            },
+            firstDayOfWeek: 1,
+            rangeSeparator: ' ถึง ',
+            weekAbbreviation: 'สัปดาห์',
+            scrollTitle: 'เลื่อนเพื่อเพิ่มหรือลด',
+            toggleTitle: 'คลิกเพื่อเปลี่ยน',
+            time_24hr: true,
+            ordinal: function() {
+                return '';
+            }
+        };
+
+        // Plugin สำหรับแสดง พ.ศ. ใน altInput
+        function buddhistPlugin() {
+            return function(fp) {
+                return {
+                    onReady: function() {
+                        updateDisplay(fp);
+                    },
+                    onChange: function() {
+                        updateDisplay(fp);
+                    },
+                    onOpen: function() {
+                        updateDisplay(fp);
+                    },
+                    onClose: function() {
+                        updateDisplay(fp);
+                    },
+                    onMonthChange: function() {
+                        updateDisplay(fp);
+                    },
+                    onYearChange: function() {
+                        updateDisplay(fp);
+                    },
+                    onValueUpdate: function() {
+                        updateDisplay(fp);
+                    }
+                };
+            };
+        }
+
+        // อัพเดท altInput ให้แสดง พ.ศ.
+        function updateDisplay(fp) {
+            if (!fp.altInput || !fp.selectedDates[0]) return;
+            
+            const date = fp.selectedDates[0];
+            const buddhistYear = date.getFullYear() + 543;
+            const day = date.getDate();
+            const month = thaiLocale.months.longhand[date.getMonth()];
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            
+            // แสดงเป็น "9 กรกฎาคม 2569 02:01"
+            fp.altInput.value = day + ' ' + month + ' ' + buddhistYear + ' ' + hour + ':' + minute;
+        }
+
+        // แปลงวันที่จาก พ.ศ. กลับเป็น ค.ศ.
+        function parseThaiDate(dateStr, format) {
+            // ตรวจสอบรูปแบบ "9 กรกฎาคม 2569 02:01"
+            const regex = /(\d{1,2})\s+(มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s+(\d{4})\s+(\d{1,2}):(\d{2})/;
+            const match = dateStr.match(regex);
+            
+            if (match) {
+                const day = parseInt(match[1]);
+                const monthStr = match[2];
+                const buddhistYear = parseInt(match[3]);
+                const hour = parseInt(match[4]);
+                const minute = parseInt(match[5]);
+                
+                const monthMap = {
+                    'มกราคม': 0, 'กุมภาพันธ์': 1, 'มีนาคม': 2, 'เมษายน': 3,
+                    'พฤษภาคม': 4, 'มิถุนายน': 5, 'กรกฎาคม': 6, 'สิงหาคม': 7,
+                    'กันยายน': 8, 'ตุลาคม': 9, 'พฤศจิกายน': 10, 'ธันวาคม': 11
+                };
+                
+                const month = monthMap[monthStr];
+                const christianYear = buddhistYear - 543;
+                
+                if (month !== undefined && christianYear > 0) {
+                    return new Date(christianYear, month, day, hour, minute);
+                }
+            }
+            
+            // fallback
+            return flatpickr.parseDate(dateStr, format);
+        }
+
+        // Flatpickr Config
         const dateConfig = {
             enableTime: true,
             time_24hr: true,
-            dateFormat: "Y-m-d H:i",
+            dateFormat: "Y-m-d H:i",        // เก็บเป็น ค.ศ.
             altInput: true,
             altFormat: "j F Y H:i",
-            locale: "th",
+            locale: thaiLocale,
             allowInput: true,
             minuteIncrement: 1,
-            defaultDate: new Date()
+            plugins: [buddhistPlugin()],
+            parseDate: parseThaiDate,
+            defaultDate: null
         };
+
+        // สร้าง Flatpickr instances
         const eventPicker = flatpickr('#event_datetime', dateConfig);
         const reportPicker = flatpickr('#report_datetime', dateConfig);
+
+        // ตั้งค่าเริ่มต้น
+        function setInitialValue(picker, elementId) {
+            const element = document.getElementById(elementId);
+            if (element && element.value) {
+                const date = new Date(element.value);
+                if (!isNaN(date.getTime())) {
+                    picker.setDate(date, false);
+                    updateDisplay(picker);
+                }
+            }
+        }
+
+        setInitialValue(eventPicker, 'event_datetime');
+        setInitialValue(reportPicker, 'report_datetime');
+
+        // บังคับอัพเดทอีกครั้ง
+        setTimeout(() => {
+            updateDisplay(eventPicker);
+            updateDisplay(reportPicker);
+        }, 100);
 
         // ============================================================
         // 3. TOGGLE "อื่นๆ" FIELDS
@@ -1149,7 +1283,6 @@ if ($id) {
                 updateProgress();
             }));
             toggleOther(name, name + '_other');
-            // เรียกครั้งแรกเพื่ออัปเดต
             setTimeout(() => toggleOther(name, name + '_other'), 100);
         });
 
@@ -1179,7 +1312,6 @@ if ($id) {
             previewEl.classList.add('visible');
         }
 
-        // Click handler
         severityCards.forEach(card => {
             card.addEventListener('click', function(e) {
                 const radio = this.querySelector('input[type="radio"]');
@@ -1187,14 +1319,12 @@ if ($id) {
                     radio.checked = true;
                 }
 
-                // Reset all cards
                 severityCards.forEach(c => {
                     c.style.borderColor = '#e2e8f0';
                     c.style.background = 'white';
                     c.style.boxShadow = '';
                 });
 
-                // Set selected
                 const color = this.dataset.color || '#2563eb';
                 this.style.borderColor = color;
                 this.style.background = color + '18';
@@ -1205,7 +1335,6 @@ if ($id) {
             });
         });
 
-        // Trigger preview on load
         const checkedCard = document.querySelector('.severity-card input[type="radio"]:checked');
         if (checkedCard) {
             const parent = checkedCard.closest('.severity-card');
@@ -1281,7 +1410,6 @@ if ($id) {
                 if (filled) {
                     this.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
                     this.classList.add('filled');
-                    // Trigger char counter update
                     ['detail', 'initial_solution', 'suggestion'].forEach(id => {
                         document.getElementById(id)?.dispatchEvent(new Event('input'));
                     });
@@ -1329,12 +1457,10 @@ if ($id) {
             if (textEl) textEl.textContent = percent + '%';
         }
 
-        // Update progress on all inputs
         document.querySelectorAll('input, textarea, select').forEach(el => {
             el.addEventListener('input', updateProgress);
             el.addEventListener('change', updateProgress);
         });
-        // Initial progress
         setTimeout(updateProgress, 300);
 
         // ============================================================
@@ -1365,7 +1491,6 @@ if ($id) {
             .catch(() => {});
         }
 
-        // Trigger auto-save on input change (debounced 30s)
         form.addEventListener('input', function() {
             clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(autoSaveDraft, 30000);
@@ -1379,14 +1504,12 @@ if ($id) {
         // 9. KEYBOARD SHORTCUTS
         // ============================================================
         document.addEventListener('keydown', function(e) {
-            // Ctrl+S / Cmd+S = Save
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 if (isEditable) {
                     form.dispatchEvent(new Event('submit'));
                 }
             }
-            // Escape = Cancel
             if (e.key === 'Escape') {
                 const cancelBtn = document.querySelector('.btn-cancel');
                 if (cancelBtn) {
@@ -1397,7 +1520,7 @@ if ($id) {
         });
 
         // ============================================================
-        // 10. SMART VALIDATION - Scroll to error
+        // 10. SMART VALIDATION
         // ============================================================
         document.querySelectorAll('.form-input, .form-select').forEach(el => {
             el.addEventListener('invalid', function(e) {
@@ -1405,16 +1528,11 @@ if ($id) {
                 this.classList.add('error');
                 this.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-                // Show error message
-                const label = document.querySelector(`label[for="${this.id}"]`) ||
-                             document.querySelector(`.form-label`);
-                if (label) {
-                    const msg = document.createElement('div');
-                    msg.className = 'text-red-500 text-xs mt-1 animate-in';
-                    msg.textContent = '⚠️ ' + (this.validationMessage || 'กรุณากรอกข้อมูลให้ถูกต้อง');
-                    this.parentNode.appendChild(msg);
-                    setTimeout(() => msg.remove(), 4000);
-                }
+                const msg = document.createElement('div');
+                msg.className = 'text-red-500 text-xs mt-1 animate-in';
+                msg.textContent = '⚠️ ' + (this.validationMessage || 'กรุณากรอกข้อมูลให้ถูกต้อง');
+                this.parentNode.appendChild(msg);
+                setTimeout(() => msg.remove(), 4000);
             });
 
             el.addEventListener('input', function() {
@@ -1437,7 +1555,6 @@ if ($id) {
             }
         });
 
-        // Reset formChanged on submit
         form.addEventListener('submit', function() {
             formChanged = false;
         });
@@ -1460,7 +1577,6 @@ if ($id) {
                 return;
             }
 
-            // Check "อื่นๆ" fields
             let otherEmpty = false;
             ['unit', 'risk_type'].forEach(name => {
                 const sel = document.querySelector(`input[name="${name}"]:checked`);
@@ -1484,7 +1600,6 @@ if ($id) {
                 return;
             }
 
-            // Validate datetime
             const evInput = document.getElementById('event_datetime');
             const rpInput = document.getElementById('report_datetime');
 
@@ -1507,7 +1622,6 @@ if ($id) {
                 return;
             }
 
-            // Confirm
             Swal.fire({
                 title: 'ยืนยันการบันทึก?',
                 text: 'คุณต้องการบันทึกรายงานนี้ใช่หรือไม่',
@@ -1568,20 +1682,14 @@ if ($id) {
         });
 
         // ============================================================
-        // 13. PRINT (ปรับปรุง)
+        // 13. TOOLTIP
         // ============================================================
-        // ปุ่ม Print อยู่แล้วใน HTML
-
-        // ============================================================
-        // 14. TOOLTIP สำหรับ Keyboard Shortcuts
-        // ============================================================
-        // แสดง Tooltip เมื่อ hover ที่ปุ่มบันทึก
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) {
             submitBtn.title = 'Ctrl+S';
         }
 
-        console.log('✅ Interactive features loaded successfully!');
+        console.log('✅ ระบบพร้อมใช้งาน! Date Picker แสดง พ.ศ. ไทยเรียบร้อย');
     });
 </script>
 <?php include 'includes/footer.php'; ?>
