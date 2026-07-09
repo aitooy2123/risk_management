@@ -314,6 +314,7 @@ $isAdmin = isAdmin();
         background: rgba(255, 255, 255, 0.03);
         border-radius: 50%;
     }
+
     .page-header::after {
         content: '';
         position: absolute;
@@ -1298,8 +1299,8 @@ $isAdmin = isAdmin();
                     <?php $start = max(1, $page - 2);
                     $end   = min($totalPages, $page + 2); ?>
                     <?php if ($start > 1): ?><a href="<?= buildRiskPageUrl(1, $_GET) ?>" class="page-link">1</a><?php if ($start > 2): ?><span class="px-1 text-gray-400">...</span><?php endif; ?><?php endif; ?>
-                    <?php for ($i = $start; $i <= $end; $i++): ?><a href="<?= buildRiskPageUrl($i, $_GET) ?>" class="page-link <?= $i == $page ? 'active' : '' ?>"><?= $i ?></a><?php endfor; ?>
-                    <?php if ($end < $totalPages): ?><?php if ($end < $totalPages - 1): ?><span class="px-1 text-gray-400">...</span><?php endif; ?><a href="<?= buildRiskPageUrl($totalPages, $_GET) ?>" class="page-link"><?= $totalPages ?></a><?php endif; ?>
+                            <?php for ($i = $start; $i <= $end; $i++): ?><a href="<?= buildRiskPageUrl($i, $_GET) ?>" class="page-link <?= $i == $page ? 'active' : '' ?>"><?= $i ?></a><?php endfor; ?>
+                            <?php if ($end < $totalPages): ?><?php if ($end < $totalPages - 1): ?><span class="px-1 text-gray-400">...</span><?php endif; ?><a href="<?= buildRiskPageUrl($totalPages, $_GET) ?>" class="page-link"><?= $totalPages ?></a><?php endif; ?>
                     <?php if ($page < $totalPages): ?><a href="<?= buildRiskPageUrl($page + 1, $_GET) ?>" class="page-link"><i class="fas fa-chevron-right"></i></a><?php else: ?><span class="page-link disabled"><i class="fas fa-chevron-right"></i></span><?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -1313,6 +1314,7 @@ $isAdmin = isAdmin();
                     <h4>
                         <i class="fas fa-shield-alt text-blue-600"></i>
                         ข้อมูลการจัดการความเสี่ยง
+                        <span style="font-size:0.7rem;font-weight:400;color:#64748b;margin-left:0.5rem;">⌨️ ใช้แป้นพิมพ์ลัดเพื่อความรวดเร็ว</span>
                     </h4>
                     <ul>
                         <li><span class="dot"></span> <strong>Admin:</strong> จัดการได้ทั้งหมด</li>
@@ -1321,10 +1323,10 @@ $isAdmin = isAdmin();
                         <li><span class="dot"></span> <strong>มีรายงานแล้ว:</strong> แก้ไขไม่ได้อีก</li>
                         <li><span class="dot"></span> <strong>ดำเนินการแล้ว:</strong> ยังเพิ่มสรุปผลได้</li>
                         <li><span class="dot"></span> <strong>การลบ:</strong> เฉพาะ Admin เท่านั้น</li>
+                        <li><span class="dot"></span> <strong>Shortcuts:</strong> <kbd>Ctrl+A</kbd> เลือกทั้งหมด · <kbd>Ctrl+D</kbd> ลบที่เลือก · <kbd>Esc</kbd> ปิดเมนู</li>
                     </ul>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
@@ -1346,9 +1348,9 @@ $isAdmin = isAdmin();
         icon.classList.toggle('open');
 
         if (subtitle) {
-            subtitle.textContent = collapse.classList.contains('open')
-                ? 'คลิกเพื่อปิดกรองข้อมูล'
-                : 'คลิกเพื่อเปิดกรองข้อมูล';
+            subtitle.textContent = collapse.classList.contains('open') ?
+                'คลิกเพื่อปิดกรองข้อมูล' :
+                'คลิกเพื่อเปิดกรองข้อมูล';
         }
     }
 
@@ -1578,13 +1580,13 @@ $isAdmin = isAdmin();
         }
         // Ctrl+D = Delete selected (Admin only)
         <?php if (isAdmin()): ?>
-        if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-            if (!e.target.closest('input, textarea, select')) {
-                e.preventDefault();
-                const deleteBtn = document.getElementById('deleteSelected');
-                if (deleteBtn) deleteBtn.click();
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                if (!e.target.closest('input, textarea, select')) {
+                    e.preventDefault();
+                    const deleteBtn = document.getElementById('deleteSelected');
+                    if (deleteBtn) deleteBtn.click();
+                }
             }
-        }
         <?php endif; ?>
         // Ctrl+P = Print (open print dialog)
         if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
@@ -1596,9 +1598,9 @@ $isAdmin = isAdmin();
     console.log('📊 Total risks:', <?= $totalRows ?>);
     console.log('📄 Current page:', <?= $page ?>, 'of', <?= $totalPages ?>);
     <?php if (isAdmin()): ?>
-    console.log('👑 Admin mode enabled');
+        console.log('👑 Admin mode enabled');
     <?php else: ?>
-    console.log('👤 User mode: <?= htmlspecialchars($_SESSION['username']) ?>');
+        console.log('👤 User mode: <?= htmlspecialchars($_SESSION['username']) ?>');
     <?php endif; ?>
 </script>
 

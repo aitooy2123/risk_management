@@ -8,11 +8,20 @@
  * - ป้องกันลบตัวเองและ Admin คนสุดท้าย
  * - ใช้ SweetAlert2 สำหรับการแจ้งเตือนและการยืนยัน
  * - Keyboard Shortcuts: Ctrl+A เลือกทั้งหมด, Ctrl+D ลบที่เลือก
+ * - วันที่แสดง พ.ศ. ไทย (วัน เดือน ปี)
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
 require_once 'includes/functions.php';
 if (!isLoggedIn() || !isAdmin()) redirect('dashboard.php');
+
+// ===== ฟังก์ชันแปลงวันที่เป็น พ.ศ. ไทย =====
+function thaiDateShort($date) {
+    if (empty($date)) return '-';
+    $ts = strtotime($date);
+    $months = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    return date('j', $ts) . ' ' . $months[date('n', $ts)] . ' ' . (date('Y', $ts) + 543);
+}
 
 $search       = trim($_GET['search'] ?? '');
 $role_filter  = $_GET['role'] ?? '';
@@ -626,116 +635,196 @@ function buildUserPageUrl($page, $currentParams)
         border: 2px solid #e2e8f0;
     }
 
-    /* Buttons */
-    .btn-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+    /* ==================== DROPDOWN ==================== */
+    .dropdown-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-toggle {
         width: 32px;
         height: 32px;
         border-radius: 8px;
-        transition: all 0.15s;
-        text-decoration: none;
-        border: none;
+        background: white;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
+        color: var(--text-muted);
+        font-size: 1rem;
+        font-weight: 700;
+        transition: all 0.2s;
     }
 
-    .btn-icon:hover {
-        transform: scale(1.1);
+    .dropdown-toggle:hover {
+        background: var(--primary-light);
+        border-color: #bfdbfe;
+        color: var(--primary);
     }
 
-    .btn-icon.edit {
-        background: #eff6ff;
-        color: #2563eb;
+    .dropdown-toggle.active {
+        background: var(--primary-light);
+        border-color: #93c5fd;
+        color: var(--primary);
     }
 
-    .btn-icon.edit:hover {
-        background: #dbeafe;
+    .dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 5px);
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        min-width: 200px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-8px);
+        transition: all 0.2s;
+        overflow: hidden;
+        padding: 0.3rem;
     }
 
-    .btn-icon.delete {
-        background: #fef2f2;
-        color: #dc2626;
+    .dropdown-menu.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
     }
 
-    .btn-icon.delete:hover {
-        background: #fee2e2;
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.45rem;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        font-family: 'Sarabun', sans-serif;
     }
 
-    .btn-icon.disabled {
-        opacity: 0.4;
+    .dropdown-item:hover {
+        background: var(--surface-secondary);
+    }
+
+    .dropdown-item i {
+        width: 18px;
+        text-align: center;
+        font-size: 0.8rem;
+    }
+
+    .dropdown-item.edit {
+        color: var(--warning);
+    }
+
+    .dropdown-item.edit:hover {
+        background: var(--warning-light);
+    }
+
+    .dropdown-item.view {
+        color: var(--primary);
+    }
+
+    .dropdown-item.view:hover {
+        background: var(--primary-light);
+    }
+
+    .dropdown-item.delete {
+        color: var(--danger);
+    }
+
+    .dropdown-item.delete:hover {
+        background: var(--danger-light);
+    }
+
+    .dropdown-item.locked {
+        color: var(--text-muted);
         cursor: not-allowed;
-        pointer-events: none;
-        background: #f1f5f9;
-        color: #94a3b8;
+        opacity: 0.55;
     }
 
-    .btn-icon.disabled:hover {
-        transform: none;
+    .dropdown-divider {
+        height: 1px;
+        background: var(--border-light);
+        margin: 0.2rem 0.55rem;
     }
 
     /* ==================== INFO CARD ==================== */
     .info-card {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(191, 219, 254, 0.6);
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
         border-radius: 1.25rem;
-        padding: 1.25rem 1.5rem;
+        padding: 1.5rem 1.75rem;
         margin-top: 1.5rem;
         display: flex;
         align-items: flex-start;
-        gap: 1rem;
-        box-shadow: 0 4px 20px rgba(37, 99, 235, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+        gap: 1.25rem;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
     }
 
     .info-icon-circle {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        background: #eff6ff;
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: #dbeafe;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         flex-shrink: 0;
         border: 1px solid #bfdbfe;
         color: #2563eb;
     }
 
     .info-content h4 {
-        font-size: 0.9rem;
+        font-size: 1rem;
         font-weight: 700;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         color: #1e293b;
-        margin-bottom: 0.5rem;
     }
 
     .info-content ul {
         list-style: none;
         padding: 0;
         margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.3rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
     }
 
     .info-content ul li {
         font-size: 0.8rem;
-        color: #475569;
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        background: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.6rem;
+        border: 1px solid #dbeafe;
+        color: #475569;
     }
 
     .info-content ul li .dot {
-        width: 5px;
-        height: 5px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
-        background: #93c5fd;
+        background: #60a5fa;
         flex-shrink: 0;
     }
 
     .info-content ul li strong {
-        color: #334155;
+        color: #1e293b;
     }
 
     .info-content ul li .highlight {
@@ -838,7 +927,6 @@ function buildUserPageUrl($page, $currentParams)
     }
 
     @media (max-width: 768px) {
-
         .filter-grid-5,
         .filter-grid-2 {
             grid-template-columns: 1fr;
@@ -852,13 +940,23 @@ function buildUserPageUrl($page, $currentParams)
             font-size: 1.25rem;
         }
 
-        .info-card {
-            flex-direction: column;
-            align-items: stretch;
+        .info-content ul {
+            grid-template-columns: 1fr;
         }
 
-        .info-content ul {
+        .table-responsive {
+            overflow-x: auto;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .action-bar {
             flex-direction: column;
+        }
+
+        .btn-action {
+            width: 100%;
+            justify-content: center;
         }
     }
 
@@ -961,6 +1059,7 @@ function buildUserPageUrl($page, $currentParams)
                 <span class="shortcuts-hint">
                     <span><kbd>Ctrl+A</kbd> เลือกทั้งหมด</span>
                     <span><kbd>Ctrl+D</kbd> ลบที่เลือก</span>
+                    <span><kbd>Ctrl+E</kbd> แก้ไข</span>
                     <span><kbd>Esc</kbd> ปิดเมนู</span>
                 </span>
             </div>
@@ -977,7 +1076,7 @@ function buildUserPageUrl($page, $currentParams)
                         <span class="font-semibold text-gray-700"><i class="fas fa-users text-blue-600 mr-1"></i> รายชื่อผู้ใช้</span>
                         <span class="text-xs text-gray-500"><?= count($users) ?> / <?= number_format($totalUsers) ?> คน · หน้า <?= $page ?>/<?= max(1, $totalPages) ?></span>
                     </div>
-                    <div>
+                    <div class="table-responsive">
                         <table>
                             <thead>
                                 <tr>
@@ -989,7 +1088,7 @@ function buildUserPageUrl($page, $currentParams)
                                     <th>แผนก</th>
                                     <th>บทบาท</th>
                                     <th>วันที่สมัคร</th>
-                                    <th style="width:90px;text-align:center;">จัดการ</th>
+                                    <th style="width:45px;text-align:center;">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1017,15 +1116,28 @@ function buildUserPageUrl($page, $currentParams)
                                         <td class="text-gray-500"><?= htmlspecialchars($user['email'] ?: '-') ?></td>
                                         <td class="text-gray-500"><?= htmlspecialchars($user['department'] ?: '-') ?></td>
                                         <td><span class="pill <?= $user['role'] == 'admin' ? 'pill-admin' : 'pill-user' ?>"><i class="fas <?= $user['role'] == 'admin' ? 'fa-crown' : 'fa-user' ?> text-xs"></i> <?= $user['role'] == 'admin' ? 'Admin' : 'User' ?></span></td>
-                                        <td class="text-gray-500 text-sm"><?= date('d/m/Y', strtotime($user['created_at'])) ?></td>
+                                        <td class="text-gray-500 text-sm"><?= thaiDateShort($user['created_at']) ?></td>
                                         <td>
-                                            <div style="display:flex;gap:3px;justify-content:center;">
-                                                <a href="user_form.php?id=<?= $user['id'] ?>" class="btn-icon edit" title="แก้ไขผู้ใช้ (Ctrl+E)"><i class="fas fa-edit text-sm"></i></a>
-                                                <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                                    <button class="btn-icon delete delete-single" data-id="<?= $user['id'] ?>" data-username="<?= htmlspecialchars($user['username']) ?>" title="ลบผู้ใช้"><i class="fas fa-trash text-sm"></i></button>
-                                                <?php else: ?>
-                                                    <span class="btn-icon disabled" title="ไม่สามารถลบตัวเองได้"><i class="fas fa-trash text-sm"></i></span>
-                                                <?php endif; ?>
+                                            <div class="dropdown-wrapper">
+                                                <button class="dropdown-toggle" onclick="toggleDropdown(event, 'udm-<?= $user['id'] ?>')" title="เมนู">⋮</button>
+                                                <div class="dropdown-menu" id="udm-<?= $user['id'] ?>">
+                                                    <a href="user_form.php?id=<?= $user['id'] ?>" class="dropdown-item edit">
+                                                        <i class="fas fa-edit"></i> แก้ไขผู้ใช้
+                                                    </a>
+                                                    <a href="view_user.php?id=<?= $user['id'] ?>" class="dropdown-item view">
+                                                        <i class="fas fa-eye"></i> ดูรายละเอียด
+                                                    </a>
+                                                    <div class="dropdown-divider"></div>
+                                                    <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                                                        <button class="dropdown-item delete delete-single" data-id="<?= $user['id'] ?>" data-username="<?= htmlspecialchars($user['username']) ?>">
+                                                            <i class="fas fa-trash"></i> ลบผู้ใช้
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <span class="dropdown-item locked">
+                                                            <i class="fas fa-lock"></i> ไม่สามารถลบตัวเองได้
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -1051,9 +1163,15 @@ function buildUserPageUrl($page, $currentParams)
 
             <!-- ==================== INFO CARD ==================== -->
             <div class="info-card">
-                <div class="info-icon-circle"><i class="fas fa-info"></i></div>
+                <div class="info-icon-circle">
+                    <i class="fas fa-info-circle"></i>
+                </div>
                 <div class="info-content">
-                    <h4>📌 หมายเหตุ <span style="font-size:0.7rem;font-weight:400;color:#64748b;margin-left:0.5rem;">⌨️ ใช้แป้นพิมพ์ลัดเพื่อความรวดเร็ว</span></h4>
+                    <h4>
+                        <i class="fas fa-user-shield text-blue-600"></i>
+                        ข้อมูลการจัดการผู้ใช้
+                        <span style="font-size:0.7rem;font-weight:400;color:#64748b;margin-left:0.5rem;">⌨️ ใช้แป้นพิมพ์ลัดเพื่อความรวดเร็ว</span>
+                    </h4>
                     <ul>
                         <li><span class="dot"></span> <strong>Admin</strong> สามารถเพิ่ม/แก้ไข/ลบผู้ใช้ได้ทั้งหมด</li>
                         <li><span class="dot"></span> <strong>ไม่สามารถลบตัวเอง</strong> หรือ <strong>Admin คนสุดท้าย</strong> ได้ <span class="shortcut">🔒</span></li>
@@ -1083,6 +1201,42 @@ function buildUserPageUrl($page, $currentParams)
         i.classList.toggle('open');
         s.textContent = c.classList.contains('open') ? 'คลิกเพื่อปิดค้นหาและกรอง' : 'คลิกเพื่อเปิดค้นหาและกรอง';
     }
+
+    // ============================================================
+    // DROPDOWN TOGGLE
+    // ============================================================
+    function toggleDropdown(e, id) {
+        e.stopPropagation();
+
+        const menu = document.getElementById(id);
+        const toggle = menu.previousElementSibling;
+
+        // Close all other dropdowns
+        document.querySelectorAll('.dropdown-menu.show').forEach(function(openMenu) {
+            if (openMenu.id !== id) {
+                openMenu.classList.remove('show');
+                if (openMenu.previousElementSibling) {
+                    openMenu.previousElementSibling.classList.remove('active');
+                }
+            }
+        });
+
+        // Toggle current dropdown
+        menu.classList.toggle('show');
+        toggle.classList.toggle('active');
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown-wrapper')) {
+            document.querySelectorAll('.dropdown-menu.show').forEach(function(menu) {
+                menu.classList.remove('show');
+                if (menu.previousElementSibling) {
+                    menu.previousElementSibling.classList.remove('active');
+                }
+            });
+        }
+    });
 
     // ============================================================
     // DEBOUNCE SEARCH
@@ -1224,6 +1378,15 @@ function buildUserPageUrl($page, $currentParams)
     document.querySelectorAll('.delete-single').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
+            
+            // Close dropdown
+            const dropdownMenu = this.closest('.dropdown-menu');
+            if (dropdownMenu) {
+                dropdownMenu.classList.remove('show');
+                if (dropdownMenu.previousElementSibling) {
+                    dropdownMenu.previousElementSibling.classList.remove('active');
+                }
+            }
 
             Swal.fire({
                 title: '⚠️ ยืนยันการลบ',
@@ -1272,47 +1435,31 @@ function buildUserPageUrl($page, $currentParams)
             }
         }
 
-        // Ctrl+E = Edit first selected (or go to user_form)
+        // Ctrl+E = Edit first user
         if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
             if (!e.target.closest('input, textarea, select')) {
                 e.preventDefault();
-                const firstEdit = document.querySelector('.btn-icon.edit');
+                const firstEdit = document.querySelector('.dropdown-item.edit');
                 if (firstEdit) {
                     window.location.href = firstEdit.href;
                 }
             }
         }
 
-        // Escape = Close modals and dropdowns
+        // Escape = Close dropdowns
         if (e.key === 'Escape') {
-            // Close any open SweetAlert
-            const swal = document.querySelector('.swal2-container');
-            if (swal) {
-                // Don't auto-close, let user decide
-            }
-            // Close any open dropdowns
-            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+            document.querySelectorAll('.dropdown-menu.show').forEach(function(menu) {
                 menu.classList.remove('show');
+                if (menu.previousElementSibling) {
+                    menu.previousElementSibling.classList.remove('active');
+                }
             });
         }
     });
 
     // ============================================================
-    // TOOLTIP FOR SHORTCUTS
-    // ============================================================
-    document.querySelectorAll('.btn-icon').forEach(el => {
-        el.addEventListener('mouseenter', function() {
-            const title = this.getAttribute('title');
-            if (title) {
-                // Show native tooltip
-            }
-        });
-    });
-
-    // ============================================================
     // INITIALIZE
     // ============================================================
-    // If filter has active filters, ensure collapse is open
     (function() {
         const collapse = document.getElementById('filterCollapse');
         if (collapse && collapse.classList.contains('open')) {
