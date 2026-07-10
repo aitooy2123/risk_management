@@ -273,10 +273,10 @@ $page_title = 'ตั้งค่าระบบ';
     
     <style>
         :root {
-            --primary: #2563eb;
-            --primary-dark: #1e40af;
-            --primary-light: #eff6ff;
-            --primary-gradient: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #1d4ed8 100%);
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #eef2ff;
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
             --surface: #ffffff;
             --surface-secondary: #f8fafc;
             --border: #e2e8f0;
@@ -284,18 +284,23 @@ $page_title = 'ตั้งค่าระบบ';
             --text: #0f172a;
             --text-secondary: #475569;
             --text-muted: #94a3b8;
-            --success: #059669;
+            --success: #10b981;
             --success-light: #ecfdf5;
-            --warning: #d97706;
+            --warning: #f59e0b;
             --warning-light: #fffbeb;
-            --danger: #dc2626;
+            --danger: #ef4444;
             --danger-light: #fef2f2;
-            --purple: #7c3aed;
+            --purple: #8b5cf6;
             --purple-light: #f5f3ff;
             --cyan: #06b6d4;
             --cyan-light: #ecfeff;
-            --rose: #e11d48;
+            --rose: #f43f5e;
             --rose-light: #fff1f2;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --shadow-glow: 0 0 40px -10px rgba(99, 102, 241, 0.3);
         }
 
         * {
@@ -306,112 +311,159 @@ $page_title = 'ตั้งค่าระบบ';
 
         body {
             font-family: 'Sarabun', sans-serif;
-            background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 30%, #ede9fe 60%, #fce7f3 100%);
+            background: #f8fafc;
             min-height: 100vh;
         }
 
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 20px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
         .page-container {
-            max-width: 1200px;
+            max-width: 1280px;
             margin: 0 auto;
         }
 
-        /* ==================== HEADER ==================== */
+        /* ==================== HEADER - MODERN ==================== */
         .page-header {
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4f46e5 60%, #6366f1 100%);
             border-radius: 1.5rem;
-            padding: 1.75rem 2.25rem;
+            padding: 2rem 2.5rem;
             margin-bottom: 1.5rem;
             color: white;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(37, 99, 235, 0.2);
+            box-shadow: var(--shadow-xl), var(--shadow-glow);
         }
 
         .page-header::before {
             content: '';
             position: absolute;
             top: -50%;
-            right: -10%;
-            width: 350px;
-            height: 350px;
-            background: rgba(255, 255, 255, 0.03);
+            right: -20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
             border-radius: 50%;
+            animation: float 8s ease-in-out infinite;
         }
 
         .page-header::after {
             content: '';
             position: absolute;
             bottom: -30%;
-            left: -5%;
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            left: 5%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, transparent 70%);
             border-radius: 50%;
-            pointer-events: none;
+            animation: float 6s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
+        }
+
+        .page-header-content {
+            position: relative;
+            z-index: 1;
         }
 
         .page-header h1 {
-            font-size: 1.6rem;
+            font-size: 1.75rem;
             font-weight: 700;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            position: relative;
-            z-index: 1;
+            gap: 0.875rem;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
         }
 
-        .page-header h1 .icon-circle {
-            width: 46px;
-            height: 46px;
-            border-radius: 13px;
-            background: rgba(255, 255, 255, 0.15);
+        .icon-hex {
+            width: 52px;
+            height: 52px;
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            display: inline-flex;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 1.5rem;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
         }
 
-        .header-stats {
+        .header-meta {
             display: flex;
-            gap: 1.5rem;
-            margin-top: 1rem;
-            position: relative;
-            z-index: 1;
+            gap: 2rem;
             flex-wrap: wrap;
         }
 
-        .header-stat {
-            display: flex;
+        .header-badge {
+            display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.8);
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
         }
 
-        .header-stat i {
-            font-size: 0.7rem;
-            opacity: 0.6;
+        .header-badge:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
         }
 
-        /* ==================== TABS ==================== */
+        .header-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34d399;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ==================== TABS - PILL STYLE ==================== */
         .tabs-nav {
             display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1.25rem;
+            gap: 0.25rem;
+            margin-bottom: 1.5rem;
             background: white;
-            padding: 0.5rem;
+            padding: 0.375rem;
             border-radius: 1rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            box-shadow: var(--shadow-sm);
             border: 1px solid var(--border);
             overflow-x: auto;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(10px);
         }
 
         .tab-btn {
             flex: 1;
             min-width: max-content;
-            padding: 0.75rem 1.25rem;
+            padding: 0.75rem 1.5rem;
             border: none;
             background: transparent;
             border-radius: 0.75rem;
@@ -420,151 +472,203 @@ $page_title = 'ตั้งค่าระบบ';
             font-weight: 600;
             font-size: 0.85rem;
             color: var(--text-muted);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
+            gap: 0.625rem;
             white-space: nowrap;
+            position: relative;
+        }
+
+        .tab-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            background: var(--primary-gradient);
+            z-index: -1;
         }
 
         .tab-btn:hover {
-            background: var(--surface-secondary);
             color: var(--text-secondary);
+            background: var(--surface-secondary);
         }
 
         .tab-btn.active {
-            background: var(--primary-gradient);
             color: white;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            background: var(--primary-gradient);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            transform: scale(1.03);
         }
 
         .tab-btn.danger-tab.active {
-            background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #ef4444 100%);
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
         }
 
         .tab-content {
             display: none;
-            animation: fadeIn 0.3s ease;
+            animation: fadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .tab-content.active {
             display: block;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        /* ==================== CARDS ==================== */
-        .settings-card {
-            background: var(--surface);
-            border-radius: 1rem;
+        /* ==================== CARDS - MINIMALIST ==================== */
+        .card {
+            background: white;
+            border-radius: 1.25rem;
             border: 1px solid var(--border);
-            margin-bottom: 1.25rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-sm);
             overflow: hidden;
             transition: all 0.3s ease;
         }
 
-        .settings-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: #cbd5e1;
         }
 
-        .settings-card-header {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            background: linear-gradient(to right, #f8fafc, #f1f5f9);
+        .card-header {
+            padding: 1.25rem 1.75rem;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
 
-        .settings-card-title {
+        .card-title {
             font-size: 1.1rem;
             font-weight: 700;
             color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            letter-spacing: -0.01em;
         }
 
-        .icon-bg {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
+        .icon-box {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1rem;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
         }
 
-        .icon-bg.blue { background: var(--primary-light); color: var(--primary); border: 1px solid #bfdbfe; }
-        .icon-bg.amber { background: var(--warning-light); color: var(--warning); border: 1px solid #fde68a; }
-        .icon-bg.green { background: var(--success-light); color: var(--success); border: 1px solid #a7f3d0; }
-        .icon-bg.purple { background: var(--purple-light); color: var(--purple); border: 1px solid #ddd6fe; }
-        .icon-bg.cyan { background: var(--cyan-light); color: var(--cyan); border: 1px solid #a5f3fc; }
-        .icon-bg.rose { background: var(--rose-light); color: var(--rose); border: 1px solid #fecdd3; }
-        .icon-bg.red { background: var(--danger-light); color: var(--danger); border: 1px solid #fecaca; }
-
-        .settings-card-body {
-            padding: 1.5rem;
+        .card:hover .icon-box {
+            transform: rotate(-5deg) scale(1.1);
         }
 
-        /* ==================== STATS GRID ==================== */
+        .icon-box.indigo { background: #eef2ff; color: #6366f1; }
+        .icon-box.amber { background: #fffbeb; color: #f59e0b; }
+        .icon-box.emerald { background: #ecfdf5; color: #10b981; }
+        .icon-box.violet { background: #f5f3ff; color: #8b5cf6; }
+        .icon-box.cyan { background: #ecfeff; color: #06b6d4; }
+        .icon-box.rose { background: #fff1f2; color: #f43f5e; }
+
+        .card-body {
+            padding: 1.75rem;
+        }
+
+        /* ==================== STATS CARDS ==================== */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.75rem;
         }
 
         .stat-card {
             background: white;
-            border-radius: 1rem;
-            padding: 1.25rem;
+            border-radius: 1.25rem;
+            padding: 1.5rem;
             border: 1px solid var(--border);
-            text-align: center;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+            border-radius: 0 0 0 100%;
+            opacity: 0.05;
+            transition: opacity 0.3s ease;
         }
 
         .stat-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
         }
 
-        .stat-icon {
+        .stat-card:hover::after {
+            opacity: 0.1;
+        }
+
+        .stat-card:nth-child(1)::after { background: #6366f1; }
+        .stat-card:nth-child(2)::after { background: #f59e0b; }
+        .stat-card:nth-child(3)::after { background: #10b981; }
+        .stat-card:nth-child(4)::after { background: #8b5cf6; }
+
+        .stat-icon-wrapper {
             width: 48px;
             height: 48px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 0.75rem;
-            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
         }
 
         .stat-value {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 700;
             color: var(--text);
+            letter-spacing: -0.02em;
+            margin-bottom: 0.25rem;
         }
 
         .stat-label {
-            font-size: 0.75rem;
+            font-size: 0.78rem;
             color: var(--text-muted);
-            margin-top: 0.25rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         /* ==================== FORM ELEMENTS ==================== */
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1.25rem;
+            gap: 1.5rem;
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 0.35rem;
+            gap: 0.5rem;
         }
 
         .form-group.full-width {
@@ -572,95 +676,195 @@ $page_title = 'ตั้งค่าระบบ';
         }
 
         .form-label {
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             font-weight: 600;
             color: var(--text-secondary);
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
         }
 
         .form-label i {
             color: var(--text-muted);
-            font-size: 0.7rem;
-            width: 16px;
-            text-align: center;
+            font-size: 0.75rem;
         }
 
         .form-input {
-            padding: 0.65rem 0.9rem;
-            border: 1.5px solid var(--border);
-            border-radius: 0.6rem;
-            font-size: 0.85rem;
+            padding: 0.75rem 1rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
             outline: none;
             font-family: 'Sarabun', sans-serif;
-            background: #fafbfc;
+            background: #f8fafc;
             color: var(--text);
             width: 100%;
-            transition: all 0.2s;
+            transition: all 0.25s ease;
+        }
+
+        .form-input:hover {
+            border-color: #cbd5e1;
+            background: white;
         }
 
         .form-input:focus {
-            border-color: var(--primary);
+            border-color: #6366f1;
             background: white;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
         }
 
         select.form-input {
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 0.8rem center;
-            background-size: 11px;
+            background-position: right 1rem center;
             padding-right: 2.5rem;
         }
 
         .help-text {
-            font-size: 0.73rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
-            line-height: 1.4;
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .help-text::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            flex-shrink: 0;
+        }
+
+        /* ==================== TOGGLE SWITCH ==================== */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            transition: background 0.2s ease;
+        }
+
+        .toggle-row:hover {
+            background: #f8fafc;
+        }
+
+        .toggle-info {
+            flex: 1;
+        }
+
+        .toggle-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .toggle-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 28px;
+            flex-shrink: 0;
+            margin-left: 1.5rem;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #cbd5e1;
+            transition: all 0.3s ease;
+            border-radius: 28px;
+        }
+
+        .switch-slider:before {
+            content: "";
+            position: absolute;
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: all 0.3s ease;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .switch-slider {
+            background: #6366f1;
+        }
+
+        input:checked + .switch-slider:before {
+            transform: translateX(20px);
         }
 
         /* ==================== DANGER ZONE ==================== */
         .danger-zone {
-            border: 2px dashed #fecaca;
-            border-radius: 1rem;
-            padding: 1.5rem;
+            border: 2px dashed #fca5a5;
+            border-radius: 1.25rem;
+            padding: 2rem;
             background: #fef2f2;
-            margin-bottom: 1.25rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
         }
 
-        .danger-zone-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #991b1b;
+        .danger-zone:hover {
+            border-color: #f87171;
+            background: #fef2f2;
+        }
+
+        .danger-zone-header {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #991b1b;
         }
 
-        .danger-zone-grid {
+        .danger-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            gap: 0.75rem;
         }
 
         .danger-btn {
-            padding: 0.75rem 1.25rem;
-            border-radius: 0.6rem;
+            padding: 0.875rem 1.25rem;
+            border-radius: 0.75rem;
             font-weight: 600;
             cursor: pointer;
             font-family: 'Sarabun', sans-serif;
             font-size: 0.85rem;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            border: 1px solid #fecaca;
+            gap: 0.625rem;
+            border: 1px solid #fca5a5;
             background: white;
             color: #dc2626;
-            transition: all 0.25s;
+            transition: all 0.3s ease;
             width: 100%;
             justify-content: center;
         }
@@ -669,162 +873,38 @@ $page_title = 'ตั้งค่าระบบ';
             background: #dc2626;
             color: white;
             border-color: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
         }
 
         .danger-btn.warning {
-            border-color: #fde68a;
+            border-color: #fcd34d;
             color: #d97706;
         }
-
         .danger-btn.warning:hover {
             background: #d97706;
-            color: white;
             border-color: #d97706;
-        }
-
-        .danger-btn.success {
-            border-color: #a7f3d0;
-            color: #059669;
-        }
-
-        .danger-btn.success:hover {
-            background: #059669;
-            color: white;
-            border-color: #059669;
-        }
-
-        /* ==================== LOGO UPLOAD ==================== */
-        .logo-preview {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: contain;
-            border: 3px solid var(--border);
-            background: white;
-            padding: 5px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .logo-upload-area {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-
-        .file-upload-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--primary-light);
-            color: var(--primary);
-            border: 1px dashed #bfdbfe;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .file-upload-btn:hover {
-            background: #dbeafe;
-        }
-
-        /* ==================== TOGGLE SWITCH ==================== */
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem 0;
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .toggle-row:last-child {
-            border-bottom: none;
-        }
-
-        .toggle-info { flex: 1; }
-        .toggle-label { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 0.15rem; }
-        .toggle-description { font-size: 0.78rem; color: var(--text-muted); }
-
-        .switch-wrapper {
-            position: relative;
-            display: inline-block;
-            width: 52px;
-            height: 28px;
-            cursor: pointer;
-            flex-shrink: 0;
-            margin-left: 1.5rem;
-        }
-
-        .switch-wrapper:hover { opacity: 0.9; }
-        .switch-input { opacity: 0; width: 0; height: 0; }
-
-        .switch-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #e2e8f0;
-            transition: all 0.3s ease;
-            border-radius: 34px;
-            border: 2px solid #e2e8f0;
-        }
-
-        .switch-slider:before {
-            position: absolute;
-            content: "";
-            height: 20px; width: 20px;
-            left: 2px; bottom: 2px;
-            background-color: white;
-            transition: all 0.3s ease;
-            border-radius: 50%;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-
-        .switch-input:checked + .switch-slider {
-            background-color: #10b981;
-            border-color: #10b981;
-        }
-
-        .switch-input:checked + .switch-slider:before {
-            transform: translateX(24px);
-        }
-
-        .switch-slider::after {
-            content: '✕';
-            position: absolute;
-            right: 8px; top: 50%;
-            transform: translateY(-50%);
-            font-size: 10px;
-            color: #94a3b8;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-
-        .switch-input:checked + .switch-slider::after {
-            content: '✓';
-            left: 8px; right: auto;
-            color: white;
+            box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
         }
 
         /* ==================== BUTTONS ==================== */
-        .action-buttons {
+        .action-bar {
             display: flex;
             gap: 1rem;
             margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border-light);
+            padding-top: 1.75rem;
+            border-top: 1px solid #f1f5f9;
             flex-wrap: wrap;
         }
 
         .btn {
-            padding: 0.75rem 2rem;
-            border-radius: 0.6rem;
+            padding: 0.75rem 1.75rem;
+            border-radius: 0.75rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.25s;
+            transition: all 0.3s ease;
             font-family: 'Sarabun', sans-serif;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
@@ -835,125 +915,200 @@ $page_title = 'ตั้งค่าระบบ';
         .btn-primary {
             background: var(--primary-gradient);
             color: white;
-            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
-
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
         }
 
-        .btn-secondary {
+        .btn-outline {
             background: white;
             color: var(--text-secondary);
-            border: 1px solid var(--border);
+            border: 1.5px solid #e2e8f0;
         }
-
-        .btn-secondary:hover {
-            background: var(--surface-secondary);
+        .btn-outline:hover {
             border-color: #cbd5e1;
+            background: #f8fafc;
+            transform: translateY(-1px);
         }
 
-        .btn-danger {
-            background: var(--danger-light);
-            color: var(--danger);
-            border: 1px solid #fecaca;
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+        }
+        .btn-ghost:hover {
+            background: #f1f5f9;
+            color: var(--text-secondary);
         }
 
-        .btn-danger:hover {
-            background: #fee2e2;
+        /* ==================== LOGO UPLOAD ==================== */
+        .logo-upload-group {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
         }
 
-        /* ==================== ALERT ==================== */
+        .logo-preview {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            object-fit: contain;
+            border: 3px solid #e2e8f0;
+            background: white;
+            padding: 6px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .logo-preview:hover {
+            border-color: #6366f1;
+            box-shadow: var(--shadow-md);
+        }
+
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            background: #eef2ff;
+            color: #6366f1;
+            border: 1.5px dashed #a5b4fc;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-size: 0.825rem;
+            font-weight: 600;
+            transition: all 0.25s ease;
+        }
+
+        .upload-btn:hover {
+            background: #e0e7ff;
+            border-color: #818cf8;
+        }
+
+        /* ==================== ALERTS ==================== */
         .alert {
             padding: 1rem 1.25rem;
-            border-radius: 0.75rem;
-            margin-bottom: 1.5rem;
+            border-radius: 0.875rem;
+            margin-bottom: 1.25rem;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            animation: slideDown 0.3s ease;
+            animation: alertIn 0.4s ease;
         }
 
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
+        @keyframes alertIn {
+            from { opacity: 0; transform: translateY(-12px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .alert-success { background: var(--success-light); color: #166534; border: 1px solid #bbf7d0; }
-        .alert-error { background: var(--danger-light); color: #991b1b; border: 1px solid #fecaca; }
-        .alert i { font-size: 1.2rem; flex-shrink: 0; }
+        .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
         /* ==================== INFO BOX ==================== */
-        .info-box {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 1rem;
-            padding: 1.25rem 1.5rem;
-            margin-top: 1.5rem;
+        .tip-box {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 1.25rem;
+            padding: 1.5rem 1.75rem;
+            margin-top: 2rem;
             display: flex;
-            align-items: flex-start;
-            gap: 1rem;
+            gap: 1.25rem;
+            transition: all 0.3s ease;
         }
 
-        .info-box-icon {
-            width: 40px; height: 40px;
-            border-radius: 10px;
-            background: #dbeafe;
+        .tip-box:hover {
+            border-color: #7dd3fc;
+            box-shadow: var(--shadow-md);
+        }
+
+        .tip-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1rem;
+            font-size: 1.1rem;
             flex-shrink: 0;
-            border: 1px solid #bfdbfe;
-            color: #2563eb;
+            color: #0284c7;
+            box-shadow: var(--shadow-sm);
         }
 
-        .info-box-content { flex: 1; }
-        .info-box-title { font-size: 0.85rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; }
-        .info-box-text { font-size: 0.78rem; color: #475569; line-height: 1.6; }
+        .tip-content h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #0c4a6e;
+            margin-bottom: 0.5rem;
+        }
 
-        .last-saved {
+        .tip-content p {
+            font-size: 0.8rem;
+            color: #475569;
+            line-height: 1.7;
+        }
+
+        .last-updated {
             font-size: 0.75rem;
             color: var(--text-muted);
             display: flex;
             align-items: center;
-            gap: 0.3rem;
-            margin-top: 0.5rem;
+            gap: 0.375rem;
+            margin-top: 0.75rem;
         }
 
         /* ==================== RESPONSIVE ==================== */
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
             .form-grid { grid-template-columns: 1fr; }
+            .logo-upload-group { flex-direction: column; align-items: flex-start; }
+        }
+
+        @media (max-width: 768px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .danger-zone-grid { grid-template-columns: 1fr; }
-            .tabs-nav { flex-direction: column; }
-            .page-header { padding: 1.25rem 1.5rem; }
-            .page-header h1 { font-size: 1.25rem; }
-            .action-buttons { flex-direction: column; }
+            .danger-grid { grid-template-columns: 1fr; }
+            .tabs-nav { gap: 0.125rem; }
+            .tab-btn { padding: 0.625rem 1rem; font-size: 0.8rem; }
+            .page-header { padding: 1.5rem; border-radius: 1rem; }
+            .page-header h1 { font-size: 1.35rem; }
+            .header-meta { gap: 0.75rem; }
+            .action-bar { flex-direction: column; }
             .btn { width: 100%; justify-content: center; }
             .toggle-row { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .switch-wrapper { margin-left: 0; }
-            .logo-upload-area { flex-direction: column; align-items: flex-start; }
-            .header-stats { flex-direction: column; gap: 0.5rem; }
+            .switch { margin-left: 0; }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="flex h-screen">
         <?php include 'includes/sidebar.php'; ?>
-        <div class="flex-1 p-4 md:p-5 overflow-y-auto">
+        <div class="flex-1 p-4 md:p-6 overflow-y-auto">
             <div class="page-container">
 
                 <!-- ==================== HEADER ==================== -->
                 <div class="page-header">
-                    <h1><span class="icon-circle">⚙️</span> ตั้งค่าระบบ</h1>
-                    <div class="header-stats">
-                        <span class="header-stat"><i class="fas fa-check-circle"></i> จัดการการตั้งค่าทั้งหมด</span>
-                        <span class="header-stat"><i class="fas fa-shield-alt"></i> เฉพาะ Admin</span>
-                        <span class="header-stat"><i class="fas fa-sync-alt"></i> มีผลทันที</span>
+                    <div class="page-header-content">
+                        <h1>
+                            <span class="icon-hex">⚙️</span> 
+                            การตั้งค่าระบบ
+                        </h1>
+                        <div class="header-meta">
+                            <span class="header-badge">
+                                <span class="dot"></span> ออนไลน์
+                            </span>
+                            <span class="header-badge">
+                                <i class="fas fa-shield-alt"></i> ผู้ดูแลระบบเท่านั้น
+                            </span>
+                            <span class="header-badge">
+                                <i class="fas fa-sync-alt"></i> ผลลัพธ์ทันที
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -972,133 +1127,128 @@ $page_title = 'ตั้งค่าระบบ';
                 <!-- ==================== TABS ==================== -->
                 <div class="tabs-nav">
                     <button class="tab-btn active" data-tab="general">
-                        <i class="fas fa-cog"></i> ทั่วไป
+                        <i class="fas fa-sliders-h"></i> ทั่วไป
                     </button>
                     <button class="tab-btn" data-tab="display">
-                        <i class="fas fa-desktop"></i> การแสดงผล
+                        <i class="fas fa-palette"></i> แสดงผล
                     </button>
                     <button class="tab-btn" data-tab="notifications">
-                        <i class="fas fa-bell"></i> การแจ้งเตือน
+                        <i class="fas fa-bell"></i> แจ้งเตือน
                     </button>
                     <button class="tab-btn" data-tab="security">
-                        <i class="fas fa-shield-alt"></i> ความปลอดภัย
+                        <i class="fas fa-lock"></i> ความปลอดภัย
                     </button>
-                    <button class="tab-btn" data-tab="system">
-                        <i class="fas fa-server"></i> ระบบฐานข้อมูล
+                    <button class="tab-btn danger-tab" data-tab="system">
+                        <i class="fas fa-database"></i> ระบบ
                     </button>
                 </div>
 
-                <!-- ==================== FORM ==================== -->
+                <!-- ==================== MAIN FORM ==================== -->
                 <form method="POST" id="settingsForm" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="action" value="save_settings" id="formAction">
 
                     <!-- TAB: ทั่วไป -->
                     <div class="tab-content active" id="tab-general">
-                        <div class="settings-card">
-                            <div class="settings-card-header">
-                                <div class="settings-card-title">
-                                    <div class="icon-bg blue"><i class="fas fa-globe"></i></div>
-                                    ข้อมูลระบบ
-                                </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="icon-box indigo"><i class="fas fa-info-circle"></i></div>
+                                <div class="card-title">ข้อมูลระบบ</div>
                             </div>
-                            <div class="settings-card-body">
+                            <div class="card-body">
                                 <div class="form-grid">
                                     <div class="form-group full-width">
-                                        <label class="form-label" for="site_name"><i class="fas fa-tag"></i> ชื่อระบบ</label>
-                                        <input type="text" name="site_name" id="site_name" class="form-input" 
+                                        <label class="form-label"><i class="fas fa-heading"></i> ชื่อระบบ</label>
+                                        <input type="text" name="site_name" class="form-input" 
                                                value="<?= htmlspecialchars($settings['site_name']) ?>" required>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label" for="site_description"><i class="fas fa-info-circle"></i> คำอธิบายระบบ</label>
-                                        <input type="text" name="site_description" id="site_description" class="form-input" 
+                                        <label class="form-label"><i class="fas fa-align-left"></i> คำอธิบาย</label>
+                                        <input type="text" name="site_description" class="form-input" 
                                                value="<?= htmlspecialchars($settings['site_description']) ?>">
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label" for="site_organization"><i class="fas fa-building"></i> หน่วยงาน</label>
-                                        <input type="text" name="site_organization" id="site_organization" class="form-input" 
+                                        <label class="form-label"><i class="fas fa-building"></i> หน่วยงาน</label>
+                                        <input type="text" name="site_organization" class="form-input" 
                                                value="<?= htmlspecialchars($settings['site_organization']) ?>">
                                     </div>
                                     <div class="form-group full-width">
-                                        <label class="form-label"><i class="fas fa-image"></i> โลโก้ระบบ</label>
-                                        <div class="logo-upload-area">
+                                        <label class="form-label"><i class="fas fa-image"></i> โลโก้</label>
+                                        <div class="logo-upload-group">
                                             <img src="<?= htmlspecialchars($settings['site_logo']) ?>" 
                                                  alt="Logo" class="logo-preview" id="logoPreview"
                                                  onerror="this.src='assets/default-logo.png'">
                                             <div>
-                                                <label class="file-upload-btn">
-                                                    <i class="fas fa-upload"></i> อัปโหลดโลโก้
+                                                <label class="upload-btn">
+                                                    <i class="fas fa-cloud-upload-alt"></i> เลือกไฟล์
                                                     <input type="file" name="site_logo_file" accept="image/*" 
                                                            style="display:none" onchange="previewLogo(this)">
                                                 </label>
-                                                <span class="help-text" style="display:block;margin-top:0.5rem;">หรือระบุ URL ด้านล่าง</span>
+                                                <span class="help-text" style="margin-top:0.5rem;">PNG, JPG, SVG หรือ WebP</span>
                                             </div>
                                         </div>
                                         <input type="text" name="site_logo_url" class="form-input" 
                                                value="<?= htmlspecialchars($settings['site_logo']) ?>" 
-                                               placeholder="หรือวาง URL โลโก้" style="margin-top:0.75rem;">
+                                               placeholder="หรือวาง URL โลโก้" style="margin-top:1rem;">
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="settings-card">
-                            <div class="settings-card-header">
-                                <div class="settings-card-title">
-                                    <div class="icon-bg cyan"><i class="fas fa-sliders-h"></i></div>
-                                    การตั้งค่าพื้นฐาน
-                                </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="icon-box cyan"><i class="fas fa-cog"></i></div>
+                                <div class="card-title">ค่าพื้นฐาน</div>
                             </div>
-                            <div class="settings-card-body">
+                            <div class="card-body">
                                 <div class="form-grid">
                                     <div class="form-group">
-                                        <label class="form-label" for="items_per_page"><i class="fas fa-list-ol"></i> จำนวนรายการต่อหน้า</label>
-                                        <select name="items_per_page" id="items_per_page" class="form-input">
-                                            <option value="5" <?= $settings['items_per_page'] == '5' ? 'selected' : '' ?>>5 รายการ</option>
-                                            <option value="10" <?= $settings['items_per_page'] == '10' ? 'selected' : '' ?>>10 รายการ</option>
-                                            <option value="25" <?= $settings['items_per_page'] == '25' ? 'selected' : '' ?>>25 รายการ</option>
-                                            <option value="50" <?= $settings['items_per_page'] == '50' ? 'selected' : '' ?>>50 รายการ</option>
-                                            <option value="100" <?= $settings['items_per_page'] == '100' ? 'selected' : '' ?>>100 รายการ</option>
+                                        <label class="form-label"><i class="fas fa-list"></i> รายการต่อหน้า</label>
+                                        <select name="items_per_page" class="form-input">
+                                            <?php foreach ([5, 10, 25, 50, 100] as $val): ?>
+                                                <option value="<?= $val ?>" <?= $settings['items_per_page'] == $val ? 'selected' : '' ?>>
+                                                    <?= $val ?> รายการ
+                                                </option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label" for="session_timeout"><i class="fas fa-clock"></i> หมดเวลาเซสชัน (นาที)</label>
-                                        <input type="number" name="session_timeout" id="session_timeout" class="form-input" 
-                                               value="<?= htmlspecialchars($settings['session_timeout']) ?>" min="5" max="240" required>
+                                        <label class="form-label"><i class="fas fa-clock"></i> หมดเวลาเซสชัน (นาที)</label>
+                                        <input type="number" name="session_timeout" class="form-input" 
+                                               value="<?= htmlspecialchars($settings['session_timeout']) ?>" min="5" max="240">
+                                        <span class="help-text">5 - 240 นาที</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TAB: การแสดงผล -->
+                    <!-- TAB: แสดงผล -->
                     <div class="tab-content" id="tab-display">
-                        <div class="settings-card">
-                            <div class="settings-card-header">
-                                <div class="settings-card-title">
-                                    <div class="icon-bg purple"><i class="fas fa-desktop"></i></div>
-                                    การแสดงผล Sidebar
-                                </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="icon-box violet"><i class="fas fa-columns"></i></div>
+                                <div class="card-title">เมนูนำทาง</div>
                             </div>
-                            <div class="settings-card-body">
+                            <div class="card-body">
                                 <div class="toggle-row">
                                     <div class="toggle-info">
-                                        <div class="toggle-label">📊 แสดงเมนู Dashboard</div>
-                                        <div class="toggle-description">แสดง/ซ่อนเมนูภาพรวมระบบ (เฉพาะ Admin)</div>
+                                        <div class="toggle-title">📊 แดชบอร์ด</div>
+                                        <div class="toggle-desc">แสดงเมนูภาพรวมระบบ</div>
                                     </div>
-                                    <label class="switch-wrapper">
-                                        <input type="checkbox" name="sidebar_show_dashboard" class="switch-input" value="1" 
+                                    <label class="switch">
+                                        <input type="checkbox" name="sidebar_show_dashboard" value="1" 
                                                <?= ($settings['sidebar_show_dashboard'] ?? '1') == '1' ? 'checked' : '' ?>>
                                         <span class="switch-slider"></span>
                                     </label>
                                 </div>
                                 <div class="toggle-row">
                                     <div class="toggle-info">
-                                        <div class="toggle-label">📈 แสดงเมนูรายงาน</div>
-                                        <div class="toggle-description">แสดง/ซ่อนเมนูรายงานใน Sidebar</div>
+                                        <div class="toggle-title">📈 รายงาน</div>
+                                        <div class="toggle-desc">แสดงเมนูรายงานผล</div>
                                     </div>
-                                    <label class="switch-wrapper">
-                                        <input type="checkbox" name="sidebar_show_reports" class="switch-input" value="1" 
+                                    <label class="switch">
+                                        <input type="checkbox" name="sidebar_show_reports" value="1" 
                                                <?= ($settings['sidebar_show_reports'] ?? '1') == '1' ? 'checked' : '' ?>>
                                         <span class="switch-slider"></span>
                                     </label>
@@ -1107,34 +1257,32 @@ $page_title = 'ตั้งค่าระบบ';
                         </div>
                     </div>
 
-                    <!-- TAB: การแจ้งเตือน -->
+                    <!-- TAB: แจ้งเตือน -->
                     <div class="tab-content" id="tab-notifications">
-                        <div class="settings-card">
-                            <div class="settings-card-header">
-                                <div class="settings-card-title">
-                                    <div class="icon-bg amber"><i class="fas fa-bell"></i></div>
-                                    การแจ้งเตือน
-                                </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="icon-box amber"><i class="fas fa-bell"></i></div>
+                                <div class="card-title">ตั้งค่าการแจ้งเตือน</div>
                             </div>
-                            <div class="settings-card-body">
+                            <div class="card-body">
                                 <div class="toggle-row">
                                     <div class="toggle-info">
-                                        <div class="toggle-label">🔔 เปิดการแจ้งเตือน</div>
-                                        <div class="toggle-description">ส่งการแจ้งเตือนเมื่อมีการเปลี่ยนแปลงสถานะความเสี่ยง</div>
+                                        <div class="toggle-title">🔔 เปิดการแจ้งเตือน</div>
+                                        <div class="toggle-desc">แจ้งเตือนเมื่อสถานะความเสี่ยงเปลี่ยนแปลง</div>
                                     </div>
-                                    <label class="switch-wrapper">
-                                        <input type="checkbox" name="notification_enabled" class="switch-input" value="1" 
+                                    <label class="switch">
+                                        <input type="checkbox" name="notification_enabled" value="1" 
                                                <?= $settings['notification_enabled'] == '1' ? 'checked' : '' ?>>
                                         <span class="switch-slider"></span>
                                     </label>
                                 </div>
                                 <div class="toggle-row">
                                     <div class="toggle-info">
-                                        <div class="toggle-label">💾 สำรองข้อมูลอัตโนมัติ</div>
-                                        <div class="toggle-description">สำรองข้อมูลทุกวันเวลา 00:00 น.</div>
+                                        <div class="toggle-title">💾 สำรองข้อมูลอัตโนมัติ</div>
+                                        <div class="toggle-desc">สำรองข้อมูลทุกวันเวลา 00:00 น.</div>
                                     </div>
-                                    <label class="switch-wrapper">
-                                        <input type="checkbox" name="backup_enabled" class="switch-input" value="1" 
+                                    <label class="switch">
+                                        <input type="checkbox" name="backup_enabled" value="1" 
                                                <?= $settings['backup_enabled'] == '1' ? 'checked' : '' ?>>
                                         <span class="switch-slider"></span>
                                     </label>
@@ -1145,35 +1293,33 @@ $page_title = 'ตั้งค่าระบบ';
 
                     <!-- TAB: ความปลอดภัย -->
                     <div class="tab-content" id="tab-security">
-                        <div class="settings-card">
-                            <div class="settings-card-header">
-                                <div class="settings-card-title">
-                                    <div class="icon-bg green"><i class="fas fa-shield-alt"></i></div>
-                                    ความปลอดภัย
-                                </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="icon-box emerald"><i class="fas fa-shield-alt"></i></div>
+                                <div class="card-title">นโยบายความปลอดภัย</div>
                             </div>
-                            <div class="settings-card-body">
+                            <div class="card-body">
                                 <div class="form-grid">
                                     <div class="form-group">
-                                        <label class="form-label" for="login_attempts"><i class="fas fa-lock"></i> จำนวนการเข้าสู่ระบบสูงสุด</label>
-                                        <input type="number" name="login_attempts" id="login_attempts" class="form-input" 
-                                               value="<?= htmlspecialchars($settings['login_attempts']) ?>" min="1" max="10" required>
-                                        <span class="help-text">จำนวนครั้งที่อนุญาตให้เข้าสู่ระบบผิดก่อนล็อคบัญชี</span>
+                                        <label class="form-label"><i class="fas fa-lock"></i> จำนวนเข้าสู่ระบบผิดสูงสุด</label>
+                                        <input type="number" name="login_attempts" class="form-input" 
+                                               value="<?= htmlspecialchars($settings['login_attempts']) ?>" min="1" max="10">
+                                        <span class="help-text">ก่อนล็อคบัญชีชั่วคราว</span>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label" for="password_min_length"><i class="fas fa-key"></i> ความยาวรหัสผ่านขั้นต่ำ</label>
-                                        <input type="number" name="password_min_length" id="password_min_length" class="form-input" 
-                                               value="<?= htmlspecialchars($settings['password_min_length']) ?>" min="6" max="20" required>
-                                        <span class="help-text">จำนวนตัวอักษรขั้นต่ำสำหรับรหัสผ่าน</span>
+                                        <label class="form-label"><i class="fas fa-key"></i> ความยาวรหัสผ่านขั้นต่ำ</label>
+                                        <input type="number" name="password_min_length" class="form-input" 
+                                               value="<?= htmlspecialchars($settings['password_min_length']) ?>" min="6" max="20">
+                                        <span class="help-text">จำนวนตัวอักษร</span>
                                     </div>
                                 </div>
                                 <div class="toggle-row">
                                     <div class="toggle-info">
-                                        <div class="toggle-label">🔧 โหมดบำรุงรักษา</div>
-                                        <div class="toggle-description">ปิดการเข้าถึงสำหรับผู้ใช้ทั่วไป</div>
+                                        <div class="toggle-title">🔧 โหมดบำรุงรักษา</div>
+                                        <div class="toggle-desc">ปิดการเข้าถึงสำหรับผู้ใช้ทั่วไป</div>
                                     </div>
-                                    <label class="switch-wrapper">
-                                        <input type="checkbox" name="maintenance_mode" class="switch-input" value="1" 
+                                    <label class="switch">
+                                        <input type="checkbox" name="maintenance_mode" value="1" 
                                                <?= $settings['maintenance_mode'] == '1' ? 'checked' : '' ?>>
                                         <span class="switch-slider"></span>
                                     </label>
@@ -1182,121 +1328,117 @@ $page_title = 'ตั้งค่าระบบ';
                         </div>
                     </div>
 
-                    <!-- ปุ่มบันทึก (แสดงเฉพาะแท็บที่ไม่ใช่ระบบ) -->
-                    <div class="action-buttons" id="saveButtons">
+                    <!-- Action Bar -->
+                    <div class="action-bar" id="saveButtons">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> บันทึกการตั้งค่า
                         </button>
-                        <a href="dashboard.php" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> กลับหน้าหลัก
+                        <a href="dashboard.php" class="btn btn-outline">
+                            <i class="fas fa-arrow-left"></i> กลับ
                         </a>
-                        <button type="button" class="btn btn-danger" id="resetBtn">
+                        <button type="button" class="btn btn-ghost" id="resetBtn">
                             <i class="fas fa-undo"></i> คืนค่าเริ่มต้น
                         </button>
                     </div>
-                    <div class="last-saved" id="lastSavedInfo">
-                        <i class="fas fa-history"></i> บันทึกล่าสุด: <?= date('d/m/Y H:i:s') ?>
+                    <div class="last-updated" id="lastSavedInfo">
+                        <i class="fas fa-history"></i> อัปเดตล่าสุด: <?= date('d/m/Y H:i') ?>
                     </div>
                 </form>
 
-                <!-- ==================== TAB: ระบบ (อยู่นอก form หลัก) ==================== -->
+                <!-- TAB: ระบบ -->
                 <div class="tab-content" id="tab-system">
-                    <!-- สถิติระบบ -->
+                    <!-- Stats -->
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-icon" style="background:#eff6ff;color:#2563eb;">
+                            <div class="stat-icon-wrapper" style="background:#eef2ff;color:#6366f1;">
                                 <i class="fas fa-users"></i>
                             </div>
                             <div class="stat-value"><?= number_format($stats['users']) ?></div>
-                            <div class="stat-label">ผู้ใช้ทั้งหมด</div>
+                            <div class="stat-label">ผู้ใช้</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-icon" style="background:#fef3c7;color:#d97706;">
+                            <div class="stat-icon-wrapper" style="background:#fffbeb;color:#f59e0b;">
                                 <i class="fas fa-crown"></i>
                             </div>
                             <div class="stat-value"><?= number_format($stats['admin_count']) ?></div>
-                            <div class="stat-label">ผู้ดูแลระบบ</div>
+                            <div class="stat-label">แอดมิน</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-icon" style="background:#ecfdf5;color:#059669;">
-                                <i class="fas fa-clipboard-list"></i>
+                            <div class="stat-icon-wrapper" style="background:#ecfdf5;color:#10b981;">
+                                <i class="fas fa-exclamation-triangle"></i>
                             </div>
                             <div class="stat-value"><?= number_format($stats['risks']) ?></div>
-                            <div class="stat-label">ความเสี่ยงทั้งหมด</div>
+                            <div class="stat-label">ความเสี่ยง</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-icon" style="background:#f5f3ff;color:#7c3aed;">
+                            <div class="stat-icon-wrapper" style="background:#f5f3ff;color:#8b5cf6;">
                                 <i class="fas fa-file-alt"></i>
                             </div>
                             <div class="stat-value"><?= number_format($stats['reports']) ?></div>
-                            <div class="stat-label">รายงานผล</div>
+                            <div class="stat-label">รายงาน</div>
                         </div>
                     </div>
 
-                    <!-- นำเข้าข้อมูลทดสอบ -->
-                    <div class="settings-card">
-                        <div class="settings-card-header">
-                            <div class="settings-card-title">
-                                <div class="icon-bg green"><i class="fas fa-download"></i></div>
-                                นำเข้าข้อมูล
-                            </div>
+                    <!-- Import -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="icon-box emerald"><i class="fas fa-file-import"></i></div>
+                            <div class="card-title">นำเข้าข้อมูล</div>
                         </div>
-                        <div class="settings-card-body">
-                            <p class="text-gray-600 mb-4">นำเข้าข้อมูลทดสอบจากไฟล์ install.sql เพื่อใช้ในการทดสอบระบบ</p>
+                        <div class="card-body">
+                            <p style="color:#475569;margin-bottom:1rem;font-size:0.875rem;">
+                                นำเข้าข้อมูลทดสอบจาก <code style="background:#f1f5f9;padding:0.15rem 0.5rem;border-radius:0.25rem;">install.sql</code>
+                            </p>
                             <form method="POST" id="importForm">
                                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                                 <input type="hidden" name="action" value="import_sample_data">
                                 <button type="button" class="btn btn-primary" onclick="confirmImport()">
-                                    <i class="fas fa-file-import"></i> นำเข้าข้อมูลทดสอบ
+                                    <i class="fas fa-download"></i> นำเข้าเลย
                                 </button>
                             </form>
                         </div>
                     </div>
 
-                    <!-- ล้างข้อมูล (Danger Zone) -->
+                    <!-- Danger Zone -->
                     <div class="danger-zone">
-                        <div class="danger-zone-title">
-                            <i class="fas fa-exclamation-triangle"></i> โซนอันตราย - ล้างข้อมูล
+                        <div class="danger-zone-header">
+                            <i class="fas fa-radiation-alt"></i> โซนอันตราย
                         </div>
-                        <p class="text-red-600 text-sm mb-4">
-                            <i class="fas fa-info-circle"></i> 
-                            การล้างข้อมูลไม่สามารถกู้คืนได้ กรุณาสำรองข้อมูลก่อนดำเนินการ
+                        <p style="color:#991b1b;font-size:0.85rem;margin-bottom:1.5rem;">
+                            ⚠️ การล้างข้อมูลไม่สามารถกู้คืนได้
                         </p>
-                        
                         <form method="POST" id="clearDataForm">
                             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                             <input type="hidden" name="action" value="clear_data">
-                            <input type="hidden" name="clear_type" id="clearType" value="">
-                            
-                            <div class="danger-zone-grid">
+                            <input type="hidden" name="clear_type" id="clearType">
+                            <div class="danger-grid">
                                 <button type="button" class="danger-btn warning" onclick="confirmClear('risks')">
-                                    <i class="fas fa-clipboard-list"></i> ล้างความเสี่ยงทั้งหมด
+                                    <i class="fas fa-clipboard-list"></i> ล้างความเสี่ยง
                                 </button>
                                 <button type="button" class="danger-btn warning" onclick="confirmClear('reports')">
-                                    <i class="fas fa-file-alt"></i> ล้างรายงานผลทั้งหมด
+                                    <i class="fas fa-file-alt"></i> ล้างรายงาน
                                 </button>
                                 <button type="button" class="danger-btn" onclick="confirmClear('users_except_admin')">
-                                    <i class="fas fa-users-slash"></i> ล้างผู้ใช้ทั้งหมด (ยกเว้น Admin)
+                                    <i class="fas fa-users-slash"></i> ล้างผู้ใช้
                                 </button>
                                 <button type="button" class="danger-btn" onclick="confirmClear('all')">
-                                    <i class="fas fa-skull"></i> ล้างทั้งหมด (เหลือเฉพาะ Admin)
+                                    <i class="fas fa-skull"></i> ล้างทั้งหมด
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- Info Box -->
-                <div class="info-box">
-                    <div class="info-box-icon"><i class="fas fa-info-circle"></i></div>
-                    <div class="info-box-content">
-                        <div class="info-box-title">ข้อมูลการตั้งค่าระบบ</div>
-                        <div class="info-box-text">
-                            • การตั้งค่าทั้งหมดมีผลทันทีหลังจากบันทึก<br>
-                            • การเปลี่ยนแปลงอาจส่งผลต่อการทำงานของระบบ<br>
-                            • ควรสำรองข้อมูลก่อนทำการเปลี่ยนแปลงที่สำคัญ<br>
-                            • การล้างข้อมูลไม่สามารถกู้คืนได้
-                        </div>
+                <!-- Tip Box -->
+                <div class="tip-box">
+                    <div class="tip-icon"><i class="fas fa-lightbulb"></i></div>
+                    <div class="tip-content">
+                        <h4>เคล็ดลับ</h4>
+                        <p>
+                            • การตั้งค่ามีผลทันทีหลังบันทึก<br>
+                            • ตั้งเวลาหมดเซสชันให้เหมาะสมเพื่อความปลอดภัย<br>
+                            • สำรองข้อมูลก่อนล้างหรือนำเข้าข้อมูล
+                        </p>
                     </div>
                 </div>
 
@@ -1305,199 +1447,156 @@ $page_title = 'ตั้งค่าระบบ';
     </div>
 
     <script>
-        // ========== TAB SWITCHING ==========
+        // ===== TABS =====
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
                 document.getElementById('tab-' + this.dataset.tab).classList.add('active');
-                localStorage.setItem('settingsActiveTab', this.dataset.tab);
+                localStorage.setItem('settingsTab', this.dataset.tab);
                 
-                // Show/hide save buttons based on tab
-                const saveButtons = document.getElementById('saveButtons');
-                const lastSaved = document.getElementById('lastSavedInfo');
+                const saveBtns = document.getElementById('saveButtons');
+                const lastUpd = document.getElementById('lastSavedInfo');
                 if (this.dataset.tab === 'system') {
-                    if (saveButtons) saveButtons.style.display = 'none';
-                    if (lastSaved) lastSaved.style.display = 'none';
+                    if (saveBtns) saveBtns.style.display = 'none';
+                    if (lastUpd) lastUpd.style.display = 'none';
                 } else {
-                    if (saveButtons) saveButtons.style.display = 'flex';
-                    if (lastSaved) lastSaved.style.display = 'flex';
+                    if (saveBtns) saveBtns.style.display = 'flex';
+                    if (lastUpd) lastUpd.style.display = 'flex';
                 }
             });
         });
 
-        const savedTab = localStorage.getItem('settingsActiveTab');
-        if (savedTab) {
-            const tabBtn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
-            if (tabBtn) {
-                tabBtn.click();
-            }
-        }
+        const saved = localStorage.getItem('settingsTab');
+        if (saved) document.querySelector(`[data-tab="${saved}"]`)?.click();
 
-        // ========== LOGO PREVIEW ==========
+        // ===== LOGO =====
         function previewLogo(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('logoPreview').src = e.target.result;
-                };
-                reader.readAsDataURL(input.files[0]);
+            if (input.files?.[0]) {
+                if (input.files[0].size > 2 * 1024 * 1024) {
+                    Swal.fire({ icon: 'warning', title: 'ไฟล์ใหญ่เกินไป', text: 'สูงสุด 2MB', confirmButtonColor: '#6366f1' });
+                    input.value = '';
+                    return;
+                }
+                const r = new FileReader();
+                r.onload = e => document.getElementById('logoPreview').src = e.target.result;
+                r.readAsDataURL(input.files[0]);
             }
         }
 
-        // ========== SAVE CONFIRMATION ==========
+        // ===== SAVE =====
         document.getElementById('settingsForm').addEventListener('submit', function(e) {
             if (document.getElementById('formAction').value !== 'save_settings') return;
             e.preventDefault();
             Swal.fire({
-                title: 'บันทึกการตั้งค่า?',
-                html: '<p>คุณต้องการบันทึกการเปลี่ยนแปลงใช่หรือไม่?</p><p class="text-sm text-gray-500">การตั้งค่าจะมีผลทันที</p>',
+                title: 'บันทึก?',
+                text: 'การตั้งค่าจะมีผลทันที',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#3b82f6',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: '<i class="fas fa-save"></i> บันทึก',
-                cancelButtonText: 'ยกเลิก',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'กำลังบันทึก...',
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading()
-                    });
+                confirmButtonColor: '#6366f1',
+                confirmButtonText: 'บันทึก',
+                cancelButtonText: 'ยกเลิก'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                     this.submit();
                 }
             });
         });
 
-        // ========== RESET ==========
-        document.getElementById('resetBtn').addEventListener('click', function() {
+        // ===== RESET =====
+        document.getElementById('resetBtn').addEventListener('click', () => {
             Swal.fire({
                 title: 'คืนค่าเริ่มต้น?',
-                html: '<p class="text-red-600 font-semibold">⚠️ คำเตือน!</p><p>การตั้งค่าทั้งหมดจะถูกเปลี่ยนกลับเป็นค่าเริ่มต้น</p><p class="text-sm text-gray-500">คุณยังต้องกด "บันทึก" เพื่อยืนยัน</p>',
+                text: 'คุณยังต้องกดบันทึกเพื่อยืนยัน',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: 'ยืนยันคืนค่า',
-                cancelButtonText: 'ยกเลิก',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById('site_name').value = 'Risk Management';
-                    document.getElementById('site_description').value = 'ระบบบริหารความเสี่ยง';
-                    document.getElementById('site_organization').value = 'ศูนย์อนามัยที่ 8 อุดรธานี';
-                    document.querySelector('input[name="site_logo_url"]').value = '';
-                    document.getElementById('items_per_page').value = '10';
-                    document.getElementById('session_timeout').value = '30';
-                    document.getElementById('login_attempts').value = '5';
-                    document.getElementById('password_min_length').value = '8';
-                    document.querySelectorAll('.switch-input').forEach(t => t.checked = true);
-                    document.querySelector('input[name="maintenance_mode"]').checked = false;
-                    
-                    Swal.fire({ icon: 'success', title: 'รีเซ็ตฟอร์มแล้ว', text: 'กรุณากด "บันทึก" เพื่อยืนยัน', confirmButtonColor: '#3b82f6', timer: 3000 });
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    document.querySelector('[name="site_name"]').value = 'Risk Management';
+                    document.querySelector('[name="site_description"]').value = 'ระบบบริหารความเสี่ยง';
+                    document.querySelector('[name="site_organization"]').value = 'ศูนย์อนามัยที่ 8 อุดรธานี';
+                    document.querySelector('[name="site_logo_url"]').value = '';
+                    document.querySelector('[name="items_per_page"]').value = '10';
+                    document.querySelector('[name="session_timeout"]').value = '30';
+                    document.querySelector('[name="login_attempts"]').value = '5';
+                    document.querySelector('[name="password_min_length"]').value = '8';
+                    document.querySelectorAll('.switch input').forEach(t => t.checked = true);
+                    document.querySelector('[name="maintenance_mode"]').checked = false;
+                    Swal.fire({ icon: 'success', title: 'รีเซ็ตแล้ว', timer: 2000, confirmButtonColor: '#6366f1' });
                 }
             });
         });
 
-        // ========== CLEAR DATA ==========
+        // ===== CLEAR =====
         function confirmClear(type) {
-            const titles = {
-                'risks': 'ล้างความเสี่ยงทั้งหมด',
-                'reports': 'ล้างรายงานผลทั้งหมด',
-                'users_except_admin': 'ล้างผู้ใช้ทั้งหมด (ยกเว้น Admin)',
-                'all': 'ล้างข้อมูลทั้งหมด'
+            const m = {
+                risks: ['ล้างความเสี่ยง', 'ข้อมูลความเสี่ยงทั้งหมดจะถูกลบ'],
+                reports: ['ล้างรายงาน', 'รายงานทั้งหมดจะถูกลบ'],
+                users_except_admin: ['ล้างผู้ใช้', 'ผู้ใช้ทั้งหมด (ยกเว้นคุณ) จะถูกลบ'],
+                all: ['ล้างทั้งหมด', 'ทุกอย่างจะถูกลบเหลือแค่ Admin']
             };
-            
-            const messages = {
-                'risks': 'ข้อมูลความเสี่ยงและรายงานผลทั้งหมดจะถูกลบถาวร!',
-                'reports': 'ข้อมูลรายงานผลทั้งหมดจะถูกลบถาวร!',
-                'users_except_admin': 'ผู้ใช้ทั้งหมด (ยกเว้นคุณ) จะถูกลบ พร้อมข้อมูลความเสี่ยงของพวกเขา!',
-                'all': 'ข้อมูลทั้งหมดจะถูกลบ เหลือเฉพาะบัญชี Admin ของคุณ! การกระทำนี้ไม่สามารถกู้คืนได้!'
-            };
-            
             Swal.fire({
-                title: '⚠️ ยืนยัน: ' + titles[type],
-                html: '<p class="text-red-600 font-semibold">' + messages[type] + '</p><p class="text-sm text-gray-500 mt-2">การกระทำนี้ไม่สามารถเรียกคืนได้!</p>',
+                title: m[type][0] + '?',
+                text: m[type][1],
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: '<i class="fas fa-trash"></i> ยืนยันการล้าง',
-                cancelButtonText: 'ยกเลิก',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Double confirmation for 'all'
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก'
+            }).then(r => {
+                if (r.isConfirmed) {
                     if (type === 'all') {
                         Swal.fire({
-                            title: '⚠️ ยืนยันครั้งสุดท้าย!',
-                            html: '<p class="text-red-600 font-bold text-lg">ล้างข้อมูลทั้งหมดจริงหรือไม่?</p><p>ข้อมูลทั้งหมดจะหายไปถาวร!</p>',
+                            title: 'แน่ใจสุดท้าย?',
+                            text: 'ไม่มีทางกู้คืน!',
                             icon: 'error',
                             showCancelButton: true,
                             confirmButtonColor: '#dc2626',
-                            cancelButtonColor: '#64748b',
-                            confirmButtonText: 'ใช่ ล้างทั้งหมด!',
-                            cancelButtonText: 'ยกเลิก'
-                        }).then((result2) => {
-                            if (result2.isConfirmed) {
-                                submitClearForm(type);
-                            }
-                        });
+                            confirmButtonText: 'ล้าง!',
+                        }).then(r2 => { if (r2.isConfirmed) submitClear(type); });
                     } else {
-                        submitClearForm(type);
+                        submitClear(type);
                     }
                 }
             });
         }
 
-        function submitClearForm(type) {
+        function submitClear(type) {
             document.getElementById('clearType').value = type;
-            
-            Swal.fire({
-                title: 'กำลังดำเนินการ...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-            
+            Swal.fire({ title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             document.getElementById('clearDataForm').submit();
         }
 
-        // ========== IMPORT DATA ==========
+        // ===== IMPORT =====
         function confirmImport() {
             Swal.fire({
                 title: 'นำเข้าข้อมูลทดสอบ?',
-                html: '<p>ระบบจะนำเข้าข้อมูลทดสอบจากไฟล์ install.sql</p><p class="text-sm text-amber-600 mt-2"><i class="fas fa-info-circle"></i> ข้อมูลที่มีอยู่แล้วจะไม่ถูกเขียนทับ</p>',
+                text: 'ข้อมูลที่มีอยู่จะไม่ถูกเขียนทับ',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#059669',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: '<i class="fas fa-file-import"></i> นำเข้า',
+                confirmButtonColor: '#10b981',
+                confirmButtonText: 'นำเข้า',
                 cancelButtonText: 'ยกเลิก'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'กำลังนำเข้า...',
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading()
-                    });
+            }).then(r => {
+                if (r.isConfirmed) {
+                    Swal.fire({ title: 'กำลังนำเข้า...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                     document.getElementById('importForm').submit();
                 }
             });
         }
 
-        // ========== SUCCESS/ERROR ==========
+        // ===== AUTO ALERTS =====
         <?php if ($success_message): ?>
-            Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: '<?= htmlspecialchars($success_message) ?>', confirmButtonColor: '#3b82f6', timer: 3000 });
+            Swal.fire({ icon: 'success', title: 'สำเร็จ', text: '<?= htmlspecialchars($success_message) ?>', timer: 3000, confirmButtonColor: '#6366f1' });
         <?php endif; ?>
         <?php if ($error_message): ?>
-            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด!', text: '<?= htmlspecialchars($error_message) ?>', confirmButtonColor: '#3b82f6' });
+            Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: '<?= htmlspecialchars($error_message) ?>', confirmButtonColor: '#6366f1' });
         <?php endif; ?>
-
-        console.log('✅ Settings page loaded successfully!');
-        console.log('📊 System stats:', <?= json_encode($stats) ?>);
     </script>
 </body>
 </html>
