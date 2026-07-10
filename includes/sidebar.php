@@ -7,6 +7,51 @@ if (!defined('ACCESS_ALLOWED')) {
 $current_page = basename($_SERVER['PHP_SELF']);
 $is_admin = isAdmin();
 
+// ===== ฟังก์ชันดึงค่าการตั้งค่าระบบ =====
+function getSystemSettings($pdo) {
+    $defaults = [
+        'site_name' => 'Risk Management',
+        'site_description' => 'ระบบบริหารความเสี่ยง',
+        'site_organization' => 'ศูนย์อนามัยที่ 8 อุดรธานี',
+        'site_logo' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/%E0%B9%82%E0%B8%A5%E0%B9%82%E0%B8%81%E0%B9%89%E0%B8%A8%E0%B8%B9%E0%B8%99%E0%B8%A2%E0%B9%8C%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%A1%E0%B8%B1%E0%B8%A2%E0%B8%97%E0%B8%B5%E0%B9%88_8.png/1920px-%E0%B9%82%E0%B8%A5%E0%B9%82%E0%B8%81%E0%B9%89%E0%B8%A8%E0%B8%B9%E0%B8%99%E0%B8%A2%E0%B9%8C%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%A1%E0%B8%B1%E0%B8%A2%E0%B8%97%E0%B8%B5%E0%B9%88_8.png',
+        'sidebar_show_dashboard' => '1',
+        'sidebar_show_reports' => '1'
+    ];
+    
+    try {
+        $stmt = $pdo->query("SHOW TABLES LIKE 'system_settings'");
+        if ($stmt->rowCount() > 0) {
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                if (!empty($row['setting_value'])) {
+                    $defaults[$row['setting_key']] = $row['setting_value'];
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // ใช้ค่าเริ่มต้น
+    }
+    
+    return $defaults;
+}
+
+// ดึงค่าการตั้งค่า
+$settings = isset($pdo) ? getSystemSettings($pdo) : [
+    'site_name' => 'Risk Management',
+    'site_description' => 'ระบบบริหารความเสี่ยง',
+    'site_organization' => 'ศูนย์อนามัยที่ 8 อุดรธานี',
+    'site_logo' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/%E0%B9%82%E0%B8%A5%E0%B9%82%E0%B8%81%E0%B9%89%E0%B8%A8%E0%B8%B9%E0%B8%99%E0%B8%A2%E0%B9%8C%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%A1%E0%B8%B1%E0%B8%A2%E0%B8%97%E0%B8%B5%E0%B9%88_8.png/1920px-%E0%B9%82%E0%B8%A5%E0%B9%82%E0%B8%81%E0%B9%89%E0%B8%A8%E0%B8%B9%E0%B8%99%E0%B8%A2%E0%B9%8C%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%A1%E0%B8%B1%E0%B8%A2%E0%B8%97%E0%B8%B5%E0%B9%88_8.png',
+    'sidebar_show_dashboard' => '1',
+    'sidebar_show_reports' => '1'
+];
+
+$site_name = $settings['site_name'];
+$site_description = $settings['site_description'];
+$site_organization = $settings['site_organization'];
+$site_logo = $settings['site_logo'];
+$show_dashboard = $settings['sidebar_show_dashboard'] ?? '1';
+$show_reports = $settings['sidebar_show_reports'] ?? '1';
+
 // นับจำนวนความเสี่ยงที่ยังไม่ดำเนินการ (สำหรับแสดง badge)
 $pending_risk_count = 0;
 if (isset($pdo)) {
@@ -20,6 +65,22 @@ if (isset($pdo)) {
         $pending_risk_count = $stmt->fetchColumn();
     } catch (Exception $e) {
         $pending_risk_count = 0;
+    }
+}
+
+// นับจำนวนความเสี่ยงที่ดำเนินการแล้ว
+$resolved_risk_count = 0;
+if (isset($pdo)) {
+    try {
+        if ($is_admin) {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM risks WHERE status = 'ดำเนินการแล้ว'");
+        } else {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM risks WHERE user_id = ? AND status = 'ดำเนินการแล้ว'");
+            $stmt->execute([$_SESSION['user_id']]);
+        }
+        $resolved_risk_count = $stmt->fetchColumn();
+    } catch (Exception $e) {
+        $resolved_risk_count = 0;
     }
 }
 
@@ -50,7 +111,7 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
             <div class="logo-wrapper">
                 <div class="logo-ring"></div>
                 <div class="logo-glow"></div>
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/%E0%B9%82%E0%B8%A5%E0%B9%82%E0%B8%81%E0%B9%89%E0%B8%A8%E0%B8%B9%E0%B8%99%E0%B8%A2%E0%B9%8C%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%A1%E0%B8%B1%E0%B8%A2%E0%B8%97%E0%B8%B5%E0%B9%88_8.png/1920px-%E0%B9%82%E0%B8%A5%E0%B9%82%E0%B8%81%E0%B9%89%E0%B8%A8%E0%B8%B9%E0%B8%99%E0%B8%A2%E0%B9%8C%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%A1%E0%B8%B1%E0%B8%A2%E0%B8%97%E0%B8%B5%E0%B9%88_8.png"
+                <img src="<?= htmlspecialchars($site_logo) ?>"
                     alt="Logo" class="logo-image"
                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                 <div class="logo-fallback" style="display:none;">
@@ -58,9 +119,15 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
                 </div>
             </div>
             <div class="flex-1 min-w-0">
-                <h1 class="text-sm font-bold text-white leading-tight">Risk Management</h1>
-                <p class="text-[10px] text-blue-300/70 leading-tight mt-0.5">ระบบบริหารความเสี่ยง</p>
-                <p class="text-[9px] text-blue-300/50 leading-tight mt-0.5">ศูนย์อนามัยที่ 8 อุดรธานี</p>
+                <h1 class="text-sm font-bold text-white leading-tight">
+                    <?= htmlspecialchars($site_name) ?>
+                </h1>
+                <p class="text-[10px] text-blue-300/70 leading-tight mt-0.5">
+                    <?= htmlspecialchars($site_description) ?>
+                </p>
+                <p class="text-[9px] text-blue-300/50 leading-tight mt-0.5">
+                    <?= htmlspecialchars($site_organization) ?>
+                </p>
             </div>
         </div>
     </div>
@@ -69,7 +136,7 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
     <nav class="px-3 py-4 flex-1 space-y-0.5 overflow-y-auto scrollbar-thin">
         
         <!-- Dashboard (เฉพาะ Admin) -->
-        <?php if ($is_admin): ?>
+        <?php if ($is_admin && $show_dashboard == '1'): ?>
             <div class="nav-section">
                 <div class="nav-section-label">
                     <i class="fas fa-crown text-amber-400 text-[8px] mr-1"></i> ผู้ดูแลระบบ
@@ -92,8 +159,8 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
                 <i class="fas fa-th-large text-blue-400 text-[8px] mr-1"></i> เมนูหลัก
             </div>
             
-            <!-- เมนูรายการความเสี่ยง (รวมหน้า view, report) -->
-            <a href="risks.php" class="menu-item <?= isMenuActive('risks.php', $current_page, ['view_risk.php', 'report_summary.php', 'view_report.php']) ? 'active' : '' ?>">
+            <!-- เมนูรายการความเสี่ยง (รวมหน้า view, edit) -->
+            <a href="risks.php" class="menu-item <?= isMenuActive('risks.php', $current_page, ['view_risk.php', 'edit_risk.php']) ? 'active' : '' ?>">
                 <div class="menu-icon">
                     <i class="fas fa-clipboard-list"></i>
                 </div>
@@ -114,6 +181,8 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
                     <span class="menu-text">เพิ่มความเสี่ยง</span>
                 </div>
             </a>
+
+    
         </div>
 
         <!-- จัดการระบบ (เฉพาะ Admin) -->
@@ -131,6 +200,17 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
                         <?php if ($user_count > 0): ?>
                             <span class="menu-badge menu-badge-users"><?= number_format($user_count) ?></span>
                         <?php endif; ?>
+                    </div>
+                </a>
+                
+                <!-- เมนูตั้งค่าระบบ -->
+                <a href="settings.php" class="menu-item <?= isMenuActive('settings.php', $current_page, ['system_config.php', 'backup.php']) ? 'active' : '' ?>">
+                    <div class="menu-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <div class="menu-content">
+                        <span class="menu-text">ตั้งค่าระบบ</span>
+                        <span class="menu-badge menu-badge-settings">ใหม่</span>
                     </div>
                 </a>
             </div>
@@ -199,6 +279,19 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
                 setTimeout(() => {
                     window.location.href = 'logout.php';
                 }, 600);
+            }
+        });
+    });
+
+    // ========== Active Menu Tracking ==========
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentPath = window.location.pathname;
+        const menuItems = document.querySelectorAll('.menu-item');
+        
+        menuItems.forEach(item => {
+            const href = item.getAttribute('href');
+            if (href && currentPath.includes(href)) {
+                item.classList.add('active');
             }
         });
     });
@@ -349,9 +442,31 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
         overflow: hidden;
     }
     
+    .menu-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 0;
+        background: #60a5fa;
+        border-radius: 0 3px 3px 0;
+        transition: height 0.3s ease;
+    }
+    
+    .menu-item:hover::before {
+        height: 60%;
+    }
+    
     .menu-item:hover {
         background: rgba(255, 255, 255, 0.05);
         color: rgba(255, 255, 255, 0.85);
+    }
+    
+    .menu-item.active::before {
+        height: 80%;
+        background: #3b82f6;
     }
     
     .menu-item.active {
@@ -383,6 +498,18 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
         background: rgba(59, 130, 246, 0.25);
         box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
         color: #93c5fd;
+    }
+    
+    /* Animation สำหรับไอคอนตั้งค่าระบบ */
+    .menu-item.active .menu-icon i.fa-sliders-h {
+        animation: settingsSpin 3s ease-in-out infinite;
+    }
+    
+    @keyframes settingsSpin {
+        0% { transform: rotate(0deg); }
+        25% { transform: rotate(15deg); }
+        75% { transform: rotate(-15deg); }
+        100% { transform: rotate(0deg); }
     }
 
     .menu-content {
@@ -423,15 +550,29 @@ function isMenuActive($page, $current_page, $sub_pages = []) {
         animation: badgePulse 2s ease-in-out infinite;
     }
     
-    @keyframes badgePulse {
-        0%, 100% { opacity: 0.8; }
-        50% { opacity: 1; }
+    .menu-badge-resolved {
+        background: rgba(52, 211, 153, 0.2);
+        color: #34d399;
+        border: 1px solid rgba(52, 211, 153, 0.3);
     }
     
     .menu-badge-users {
         background: rgba(167, 139, 250, 0.25);
         color: #c4b5fd;
         border: 1px solid rgba(167, 139, 250, 0.3);
+    }
+    
+    /* Badge สำหรับตั้งค่าระบบ */
+    .menu-badge-settings {
+        background: rgba(52, 211, 153, 0.2);
+        color: #34d399;
+        border: 1px solid rgba(52, 211, 153, 0.3);
+        animation: badgePulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes badgePulse {
+        0%, 100% { opacity: 0.8; }
+        50% { opacity: 1; }
     }
 
     /* ========== Logout Button ========== */
