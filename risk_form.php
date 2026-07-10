@@ -12,6 +12,7 @@
  * - Date Picker แบบ datetime-local (เสถียร 100%)
  * - วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์
  * - ปุ่มเติมข้อมูลอัตโนมัติสำหรับรายละเอียด
+ * - Responsive Full Screen Design
  */
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -112,17 +113,41 @@ if ($id) {
         --primary-dark: #1e40af;
         --primary-light: #eff6ff;
         --primary-gradient: linear-gradient(135deg, #1e3a8a 0%, #1e40af 40%, #2563eb 100%);
+        --sidebar-width: 280px;
+        --sidebar-collapsed-width: 80px;
+    }
+
+    * {
+        box-sizing: border-box;
     }
 
     body {
         background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 30%, #ede9fe 60%, #fce7f3 100%);
         min-height: 100vh;
         font-family: 'Sarabun', sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Responsive Container */
+    .main-wrapper {
+        display: flex;
+        min-height: 100vh;
+        width: 100%;
+    }
+
+    .content-area {
+        flex: 1;
+        min-width: 0;
+        padding: 1.5rem;
+        overflow-y: auto;
+        height: 100vh;
     }
 
     .form-container {
-        max-width: 800px;
+        max-width: 900px;
         margin: 0 auto;
+        width: 100%;
     }
 
     /* Header */
@@ -160,7 +185,7 @@ if ($id) {
     }
 
     .form-header h2 {
-        font-size: 1.6rem;
+        font-size: clamp(1.2rem, 2.5vw, 1.6rem);
         font-weight: 700;
         position: relative;
         z-index: 1;
@@ -168,11 +193,13 @@ if ($id) {
         align-items: center;
         gap: 0.75rem;
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin: 0;
     }
 
     .form-header h2 .icon-circle {
         width: 46px;
         height: 46px;
+        min-width: 46px;
         border-radius: 13px;
         background: rgba(255, 255, 255, 0.2);
         backdrop-filter: blur(10px);
@@ -185,7 +212,7 @@ if ($id) {
 
     .form-header p {
         color: rgba(255, 255, 255, 0.85);
-        font-size: 0.9rem;
+        font-size: clamp(0.8rem, 1.5vw, 0.9rem);
         position: relative;
         z-index: 1;
         margin-top: 0.5rem;
@@ -214,6 +241,7 @@ if ($id) {
     .objective-box ul {
         list-style: none;
         padding: 0;
+        margin: 0;
     }
 
     .objective-box li {
@@ -254,11 +282,13 @@ if ($id) {
         gap: 0.75rem;
         border-bottom: 1px solid #f1f5f9;
         background: #fafbfc;
+        flex-wrap: wrap;
     }
 
     .card-header-icon {
         width: 38px;
         height: 38px;
+        min-width: 38px;
         border-radius: 10px;
         display: flex;
         align-items: center;
@@ -270,6 +300,7 @@ if ($id) {
         font-weight: 700;
         color: #1e293b;
         font-size: 0.95rem;
+        flex: 1;
     }
 
     .card-header-badge {
@@ -277,7 +308,7 @@ if ($id) {
         font-weight: 600;
         padding: 0.2rem 0.6rem;
         border-radius: 9999px;
-        margin-left: auto;
+        white-space: nowrap;
     }
 
     .card-header-badge.admin-only {
@@ -366,10 +397,10 @@ if ($id) {
         color: #ef4444;
     }
 
-    /* Radio Card */
+    /* Radio Grid - Responsive */
     .radio-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         gap: 0.5rem;
     }
 
@@ -400,6 +431,7 @@ if ($id) {
         accent-color: #2563eb;
         width: 16px;
         height: 16px;
+        flex-shrink: 0;
     }
 
     .radio-card .radio-label {
@@ -408,10 +440,10 @@ if ($id) {
         font-weight: 500;
     }
 
-    /* Severity Radio */
+    /* Severity Grid - Responsive */
     .severity-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 0.75rem;
     }
 
@@ -449,7 +481,7 @@ if ($id) {
     }
 
     .severity-card .sev-icon {
-        font-size: 1.8rem;
+        font-size: clamp(1.2rem, 3vw, 1.8rem);
         margin-bottom: 0.1rem;
         transition: transform 0.3s ease;
     }
@@ -459,7 +491,7 @@ if ($id) {
     }
 
     .severity-card .sev-letter {
-        font-size: 1.4rem;
+        font-size: clamp(1rem, 2.5vw, 1.4rem);
         font-weight: 700;
         transition: transform 0.3s ease;
     }
@@ -469,7 +501,7 @@ if ($id) {
     }
 
     .severity-card .sev-desc {
-        font-size: 0.75rem;
+        font-size: clamp(0.65rem, 1.5vw, 0.75rem);
         color: #64748b;
         line-height: 1.4;
         margin-top: 0.1rem;
@@ -542,11 +574,6 @@ if ($id) {
         font-weight: 500;
     }
 
-    .status-select option[value=""] {
-        color: #94a3b8 !important;
-        font-weight: 400 !important;
-    }
-
     .status-badge {
         display: inline-flex;
         align-items: center;
@@ -556,6 +583,7 @@ if ($id) {
         font-size: 0.8rem;
         font-weight: 600;
         transition: all 0.2s;
+        white-space: nowrap;
     }
 
     /* Buttons */
@@ -574,6 +602,7 @@ if ($id) {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
+        white-space: nowrap;
     }
 
     .btn-submit:hover:not(:disabled) {
@@ -602,6 +631,7 @@ if ($id) {
         align-items: center;
         gap: 0.4rem;
         border: 1px solid #e2e8f0;
+        white-space: nowrap;
     }
 
     .btn-cancel:hover {
@@ -622,6 +652,7 @@ if ($id) {
         align-items: center;
         gap: 0.4rem;
         border: 1px solid #bfdbfe;
+        white-space: nowrap;
     }
 
     .btn-back:hover {
@@ -645,6 +676,7 @@ if ($id) {
         font-family: 'Sarabun', sans-serif;
         user-select: none;
         -webkit-user-select: none;
+        white-space: nowrap;
     }
 
     .btn-default:hover {
@@ -663,11 +695,6 @@ if ($id) {
         color: #1e40af;
         cursor: default;
         pointer-events: none;
-    }
-
-    .btn-default.filled:hover {
-        background: #dbeafe;
-        transform: none;
     }
 
     /* Locked Overlay */
@@ -692,6 +719,7 @@ if ($id) {
         background: #f1f5f9;
         color: #64748b;
         font-size: 0.9rem;
+        flex-wrap: wrap;
     }
 
     /* Auto-save indicator */
@@ -714,6 +742,97 @@ if ($id) {
         animation: slideUp 0.3s ease;
     }
 
+    /* Grid Utility */
+    .grid {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .grid-cols-1 {
+        grid-template-columns: 1fr;
+    }
+
+    .space-y-4 > * + * {
+        margin-top: 1rem;
+    }
+
+    .mt-2 {
+        margin-top: 0.5rem;
+    }
+    
+    .mt-3 {
+        margin-top: 0.75rem;
+    }
+
+    .pt-2 {
+        padding-top: 0.5rem;
+    }
+    
+    .pb-8 {
+        padding-bottom: 2rem;
+    }
+
+    .mr-2 {
+        margin-right: 0.5rem;
+    }
+    
+    .ml-auto {
+        margin-left: auto;
+    }
+
+    .text-xs {
+        font-size: 0.75rem;
+    }
+    
+    .text-sm {
+        font-size: 0.875rem;
+    }
+
+    .text-gray-400 {
+        color: #94a3b8;
+    }
+    
+    .text-gray-500 {
+        color: #64748b;
+    }
+
+    .text-red-500 {
+        color: #ef4444;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    .flex {
+        display: flex;
+    }
+    
+    .flex-wrap {
+        flex-wrap: wrap;
+    }
+    
+    .items-center {
+        align-items: center;
+    }
+    
+    .justify-end {
+        justify-content: flex-end;
+    }
+    
+    .gap-2 {
+        gap: 0.5rem;
+    }
+    
+    .gap-3 {
+        gap: 0.75rem;
+    }
+    
+    .gap-4 {
+        gap: 1rem;
+    }
+
+    /* Animations */
     @keyframes slideUp {
         from {
             opacity: 0;
@@ -754,23 +873,253 @@ if ($id) {
         font-family: 'Sarabun', sans-serif !important;
     }
 
+    /* ============================================ */
+    /* RESPONSIVE DESIGN - MOBILE FIRST */
+    /* ============================================ */
+
+    /* Tablet: 768px - 1024px */
+    @media (min-width: 768px) {
+        .grid-cols-1 {
+            grid-template-columns: 1fr;
+        }
+        
+        .md\:grid-cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .md\:inline {
+            display: inline !important;
+        }
+        
+        .md\:p-6 {
+            padding: 1.5rem;
+        }
+    }
+
+    /* Mobile: < 768px */
+    @media (max-width: 767px) {
+        .content-area {
+            padding: 0.75rem;
+        }
+
+        .form-header {
+            padding: 1rem 1rem;
+            border-radius: 1rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.1rem;
+            gap: 0.5rem;
+        }
+
+        .form-header h2 .icon-circle {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .form-header p {
+            font-size: 0.75rem;
+        }
+
+        .objective-box {
+            padding: 1rem;
+        }
+
+        .card-header {
+            padding: 0.75rem 1rem;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .radio-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .severity-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .severity-card {
+            padding: 0.75rem 0.4rem;
+        }
+
+        .severity-card .sev-icon {
+            font-size: 1.2rem;
+        }
+
+        .severity-card .sev-letter {
+            font-size: 1rem;
+        }
+
+        .severity-card .sev-desc {
+            font-size: 0.65rem;
+        }
+
+        .btn-submit,
+        .btn-cancel,
+        .btn-back {
+            padding: 0.6rem 1rem;
+            font-size: 0.8rem;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .flex.items-center.gap-3 {
+            flex-direction: column;
+        }
+
+        .flex.items-center.gap-3 .ml-auto {
+            margin-left: 0;
+        }
+
+        .status-display {
+            font-size: 0.8rem;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        #auto-save-indicator {
+            bottom: 0.75rem;
+            right: 0.75rem;
+            font-size: 0.75rem;
+            padding: 0.4rem 0.75rem;
+        }
+
+        .form-card {
+            border-radius: 0.75rem;
+        }
+
+        input[type="datetime-local"].form-input {
+            font-size: 0.8rem;
+        }
+
+        /* Sidebar handling */
+        .sidebar {
+            position: fixed;
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .mobile-menu-btn {
+            display: block !important;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1001;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+    }
+
+    /* Small Mobile: < 480px */
+    @media (max-width: 480px) {
+        .severity-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 0.4rem;
+        }
+
+        .severity-card {
+            padding: 0.6rem 0.3rem;
+        }
+
+        .severity-card .sev-icon {
+            font-size: 1rem;
+        }
+
+        .severity-card .sev-letter {
+            font-size: 0.85rem;
+        }
+
+        .severity-card .sev-desc {
+            font-size: 0.6rem;
+        }
+
+        .form-header {
+            padding: 0.75rem 0.75rem;
+            border-radius: 0.75rem;
+        }
+
+        .form-header h2 {
+            font-size: 1rem;
+        }
+
+        .form-header h2 .icon-circle {
+            width: 30px;
+            height: 30px;
+            min-width: 30px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+    }
+
+    /* Large Desktop: > 1200px */
+    @media (min-width: 1200px) {
+        .form-container {
+            max-width: 1000px;
+        }
+
+        .severity-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .radio-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .md\:grid-cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* Print */
     @media print {
-        .sidebar, .form-header, .objective-box, .btn-submit, .btn-cancel, .btn-back,
-        #auto-save-indicator, .locked-overlay, .card-header-badge {
+        .sidebar, 
+        .form-header, 
+        .objective-box, 
+        .btn-submit, 
+        .btn-cancel, 
+        .btn-back,
+        #auto-save-indicator, 
+        .locked-overlay, 
+        .card-header-badge,
+        .mobile-menu-btn {
             display: none !important;
         }
         body {
             background: white !important;
         }
+        .content-area {
+            padding: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
         .form-card {
             border: 1px solid #ddd !important;
             box-shadow: none !important;
             break-inside: avoid;
+            margin-bottom: 0.5rem !important;
         }
         .form-container {
             max-width: 100% !important;
         }
-        .form-input, .status-select {
+        .form-input, 
+        .status-select {
             border: 1px solid #ccc !important;
             background: white !important;
         }
@@ -787,27 +1136,16 @@ if ($id) {
             border: 1px solid #000 !important;
         }
     }
-
-    @media (max-width: 768px) {
-        .radio-grid,
-        .severity-grid {
-            grid-template-columns: 1fr;
-        }
-        .form-header {
-            padding: 1.25rem 1.25rem;
-        }
-        .form-header h2 {
-            font-size: 1.2rem;
-        }
-        .card-body {
-            padding: 1rem;
-        }
-    }
 </style>
 
-<div class="flex h-screen">
+<!-- Mobile Menu Button -->
+<button class="mobile-menu-btn" onclick="toggleSidebar()" style="display: none;">
+    <i class="fas fa-bars"></i>
+</button>
+
+<div class="main-wrapper">
     <?php include 'includes/sidebar.php'; ?>
-    <div class="flex-1 p-4 md:p-6 overflow-y-auto">
+    <div class="content-area">
         <div class="form-container">
 
             <!-- Header -->
@@ -943,7 +1281,7 @@ if ($id) {
                         <span class="card-header-badge" style="background:#fef2f2;color:#dc2626;">จำเป็น</span>
                     </div>
                     <div class="card-body">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2">
                             <div>
                                 <label class="form-label">📅 วันที่เกิดเหตุการณ์ <span class="required">*</span></label>
                                 <input type="datetime-local" id="event_datetime" name="event_datetime" 
@@ -955,7 +1293,7 @@ if ($id) {
                                 <input type="datetime-local" id="report_datetime" name="report_datetime" 
                                     value="<?= $report_datetime ?>"
                                     class="form-input" required <?= !$is_editable ? 'disabled' : '' ?>>
-                                <small class="text-gray-400" style="font-size: 0.7rem;">วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์</small>
+                                <small style="font-size: 0.7rem; color: #94a3b8;">วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์</small>
                             </div>
                         </div>
                     </div>
@@ -1032,7 +1370,7 @@ if ($id) {
                                     <?php endforeach; ?>
                                 </select>
                                 <?php if ($is_admin): ?>
-                                    <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
+                                    <p class="text-xs text-gray-400 mt-2"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
                                 <?php endif; ?>
 
                                 <?php if (!empty($risk['status'])): ?>
@@ -1088,7 +1426,7 @@ if ($id) {
                         <a href="risks.php" class="btn-cancel">
                             <i class="fas fa-times"></i> ยกเลิก
                         </a>
-                        <span class="text-xs text-gray-400 ml-auto hidden md:inline">Ctrl+S บันทึก • Esc ยกเลิก</span>
+                        <span class="text-xs text-gray-400 ml-auto" style="display: none;" id="shortcut-hint">Ctrl+S บันทึก • Esc ยกเลิก</span>
                     <?php else: ?>
                         <a href="risks.php" class="btn-back">
                             <i class="fas fa-arrow-left"></i> กลับไปหน้ารายการ
@@ -1106,6 +1444,22 @@ if ($id) {
 </div>
 
 <script>
+// Mobile Sidebar Toggle
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('open');
+    }
+}
+
+// Show shortcut hint on desktop
+if (window.innerWidth >= 768) {
+    const hint = document.getElementById('shortcut-hint');
+    if (hint) {
+        hint.style.display = 'inline';
+    }
+}
+
 function fillDefaultTexts() {
     var detail = document.getElementById('detail');
     var solution = document.getElementById('initial_solution');
@@ -1179,7 +1533,6 @@ function fillDefaultTexts() {
         const reportDatetimeInput = document.getElementById('report_datetime');
 
         if (eventDatetimeInput && reportDatetimeInput) {
-            // ตั้งค่าวันที่ปัจจุบันเป็น max
             const now = new Date();
             const todayStr = now.getFullYear() + '-' + 
                              String(now.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -1190,7 +1543,6 @@ function fillDefaultTexts() {
             eventDatetimeInput.max = todayStr;
             reportDatetimeInput.max = todayStr;
             
-            // ตั้งค่า min ของวันที่รายงาน = วันที่เกิดเหตุการณ์
             if (eventDatetimeInput.value) {
                 reportDatetimeInput.min = eventDatetimeInput.value;
                 if (reportDatetimeInput.value && reportDatetimeInput.value < eventDatetimeInput.value) {
@@ -1198,12 +1550,10 @@ function fillDefaultTexts() {
                 }
             }
             
-            // เมื่อเปลี่ยนวันที่เกิดเหตุการณ์ -> ปรับ min ของวันที่รายงาน
             eventDatetimeInput.addEventListener('change', function() {
                 if (this.value) {
                     reportDatetimeInput.min = this.value;
                     
-                    // ถ้าวันที่รายงานน้อยกว่า -> ปรับให้เท่ากัน
                     if (reportDatetimeInput.value && reportDatetimeInput.value < this.value) {
                         reportDatetimeInput.value = this.value;
                         Swal.fire({
@@ -1217,14 +1567,12 @@ function fillDefaultTexts() {
                         });
                     }
                     
-                    // ถ้ายังไม่มีวันที่รายงาน -> ตั้งให้เท่ากัน
                     if (!reportDatetimeInput.value) {
                         reportDatetimeInput.value = this.value;
                     }
                 }
             });
             
-            // ตรวจสอบเมื่อเปลี่ยนวันที่รายงาน
             reportDatetimeInput.addEventListener('change', function() {
                 const eventDate = eventDatetimeInput.value;
                 const reportDate = this.value;
@@ -1454,7 +1802,7 @@ function fillDefaultTexts() {
                 this.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                 const msg = document.createElement('div');
-                msg.className = 'text-red-500 text-xs mt-1 animate-in';
+                msg.className = 'text-red-500 text-xs mt-2 animate-in';
                 msg.textContent = '⚠️ ' + (this.validationMessage || 'กรุณากรอกข้อมูลให้ถูกต้อง');
                 this.parentNode.appendChild(msg);
                 setTimeout(() => msg.remove(), 4000);
@@ -1488,7 +1836,6 @@ function fillDefaultTexts() {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
 
-            // ตรวจสอบวันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์
             const eventDate = document.getElementById('event_datetime').value;
             const reportDate = document.getElementById('report_datetime').value;
             
@@ -1594,7 +1941,7 @@ function fillDefaultTexts() {
             });
         });
 
-        console.log('✅ ระบบพร้อมใช้งาน! (Date Validation Active)');
+        console.log('✅ ระบบพร้อมใช้งาน! (Responsive Full Screen + Date Validation Active)');
     });
 </script>
 <?php include 'includes/footer.php'; ?>
