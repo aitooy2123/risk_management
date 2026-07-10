@@ -13,7 +13,8 @@
  * - Date Picker แบบ datetime-local (เสถียร 100%)
  * - วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์
  * - ปุ่มเติมข้อมูลอัตโนมัติสำหรับรายละเอียด
- * - Responsive Full Screen Design
+ * - Full Page Size Responsive Design - Single Column (col-12)
+ * - Summernote Editor สำหรับรายละเอียดและแนวทางแก้ไข
  */
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -101,7 +102,13 @@ if ($id) {
 }
 ?>
 <?php include 'includes/header.php'; ?>
+
+<!-- Summernote CSS & JS -->
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     const isEditable = <?= json_encode($is_editable) ?>;
     const isAdmin = <?= json_encode($is_admin) ?>;
@@ -114,8 +121,7 @@ if ($id) {
         --primary-dark: #1e40af;
         --primary-light: #eff6ff;
         --primary-gradient: linear-gradient(135deg, #1e3a8a 0%, #1e40af 40%, #2563eb 100%);
-        --sidebar-width: 280px;
-        --sidebar-collapsed-width: 80px;
+        --form-max-width: 1000px;
     }
 
     * {
@@ -130,7 +136,7 @@ if ($id) {
         padding: 0;
     }
 
-    /* Responsive Container */
+    /* Full Page Container */
     .main-wrapper {
         display: flex;
         min-height: 100vh;
@@ -140,15 +146,16 @@ if ($id) {
     .content-area {
         flex: 1;
         min-width: 0;
-        padding: 1.5rem;
+        padding: 1.5rem 2rem;
         overflow-y: auto;
         height: 100vh;
+        display: flex;
+        justify-content: center;
     }
 
     .form-container {
-        max-width: 900px;
-        margin: 0 auto;
         width: 100%;
+        margin: 0 auto;
     }
 
     /* Header */
@@ -243,6 +250,9 @@ if ($id) {
         list-style: none;
         padding: 0;
         margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
     }
 
     .objective-box li {
@@ -321,6 +331,93 @@ if ($id) {
         padding: 1.5rem;
     }
 
+    /* ============ SUMMERNOTE OVERRIDES ============ */
+    .summernote-editor-wrapper {
+        position: relative;
+    }
+
+    .note-editor.note-frame {
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 0.6rem !important;
+        transition: all 0.2s;
+        overflow: hidden;
+    }
+
+    .note-editor.note-frame:hover {
+        border-color: #cbd5e1 !important;
+    }
+
+    .note-editor.note-frame .note-editing-area {
+        border-radius: 0 0 0.6rem 0.6rem !important;
+    }
+
+    .note-editor.note-frame .note-statusbar {
+        border-top: 1px solid #f1f5f9 !important;
+        background: #fafbfc !important;
+        border-radius: 0 0 0.6rem 0.6rem !important;
+    }
+
+    .note-editor.note-frame .note-toolbar {
+        background: #fafbfc !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        border-radius: 0.6rem 0.6rem 0 0 !important;
+        padding: 0.5rem !important;
+    }
+
+    .note-editor.note-frame .note-btn {
+        border-radius: 0.4rem !important;
+        border: 1px solid transparent !important;
+        background: transparent !important;
+        color: #475569 !important;
+        transition: all 0.15s;
+        font-family: 'Sarabun', sans-serif !important;
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.6rem !important;
+    }
+
+    .note-editor.note-frame .note-btn:hover {
+        background: #e2e8f0 !important;
+        color: #1e293b !important;
+    }
+
+    .note-editor.note-frame .note-btn.active {
+        background: #dbeafe !important;
+        color: #2563eb !important;
+        border-color: #93c5fd !important;
+    }
+
+    .note-editor.note-frame .note-placeholder {
+        font-family: 'Sarabun', sans-serif !important;
+        color: #94a3b8 !important;
+        font-size: 0.9rem !important;
+    }
+
+    .note-editor.note-frame .note-editable {
+        font-family: 'Sarabun', sans-serif !important;
+        font-size: 0.9rem !important;
+        line-height: 1.6 !important;
+        color: #1e293b !important;
+        min-height: 150px !important;
+    }
+
+    .note-editor.note-frame .note-editable:focus {
+        box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.08) !important;
+    }
+
+    /* Disabled state for Summernote */
+    .note-editor.note-frame.disabled-editor {
+        pointer-events: none;
+        opacity: 0.6;
+        background: #f1f5f9 !important;
+    }
+
+    .note-editor.note-frame.disabled-editor .note-editable {
+        background: #f1f5f9 !important;
+        color: #94a3b8 !important;
+    }
+
+    /* ============ END SUMMERNOTE OVERRIDES ============ */
+
     /* Input */
     .form-input {
         width: 100%;
@@ -362,12 +459,6 @@ if ($id) {
         cursor: pointer;
     }
 
-    textarea.form-input {
-        resize: vertical;
-        min-height: 100px;
-        line-height: 1.6;
-    }
-
     .form-label {
         display: flex;
         align-items: center;
@@ -383,27 +474,10 @@ if ($id) {
         font-size: 0.7rem;
     }
 
-    /* Character Counter */
-    .char-counter {
-        font-size: 0.7rem;
-        text-align: right;
-        margin-top: 0.25rem;
-        color: #94a3b8;
-        transition: color 0.3s;
-    }
-
-    .char-counter.warning {
-        color: #f59e0b;
-    }
-
-    .char-counter.danger {
-        color: #ef4444;
-    }
-
-    /* Radio Grid - Responsive */
+    /* Radio Grid */
     .radio-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 0.5rem;
     }
 
@@ -443,10 +517,10 @@ if ($id) {
         font-weight: 500;
     }
 
-    /* Severity Grid - Responsive */
+    /* Severity Grid */
     .severity-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 0.75rem;
     }
 
@@ -758,20 +832,32 @@ if ($id) {
         grid-template-columns: 1fr;
     }
 
+    .grid-cols-2 {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .gap-4 {
+        gap: 1rem;
+    }
+
     .space-y-4>*+* {
         margin-top: 1rem;
+    }
+
+    .mt-1 {
+        margin-top: 0.25rem;
     }
 
     .mt-2 {
         margin-top: 0.5rem;
     }
 
-    .mt-3 {
-        margin-top: 0.75rem;
-    }
-
     .pt-2 {
         padding-top: 0.5rem;
+    }
+
+    .pt-3 {
+        padding-top: 0.75rem;
     }
 
     .pb-8 {
@@ -832,10 +918,6 @@ if ($id) {
 
     .gap-3 {
         gap: 0.75rem;
-    }
-
-    .gap-4 {
-        gap: 1rem;
     }
 
     /* Animations */
@@ -904,29 +986,65 @@ if ($id) {
     }
 
     /* ============================================ */
-    /* RESPONSIVE DESIGN - MOBILE FIRST */
+    /* RESPONSIVE DESIGN - SINGLE COLUMN (col-12) */
     /* ============================================ */
 
-    /* Tablet: 768px - 1024px */
-    @media (min-width: 768px) {
-        .grid-cols-1 {
-            grid-template-columns: 1fr;
+    @media (min-width: 1400px) {
+        .content-area {
+            padding: 2rem 3rem;
         }
 
-        .md\:grid-cols-2 {
-            grid-template-columns: repeat(2, 1fr);
+        .severity-grid {
+            grid-template-columns: repeat(6, 1fr);
         }
 
-        .md\:inline {
-            display: inline !important;
-        }
-
-        .md\:p-6 {
-            padding: 1.5rem;
+        .radio-grid {
+            grid-template-columns: repeat(3, 1fr);
         }
     }
 
-    /* Mobile: < 768px */
+    @media (min-width: 1200px) and (max-width: 1399px) {
+        .content-area {
+            padding: 1.5rem 2rem;
+        }
+
+        .severity-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .radio-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (min-width: 1024px) and (max-width: 1199px) {
+        .content-area {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .severity-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .radio-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (min-width: 768px) and (max-width: 1023px) {
+        .content-area {
+            padding: 1rem;
+        }
+
+        .severity-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .radio-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
     @media (max-width: 767px) {
         .content-area {
             padding: 0.75rem;
@@ -956,6 +1074,11 @@ if ($id) {
 
         .objective-box {
             padding: 1rem;
+        }
+
+        .objective-box ul {
+            flex-direction: column;
+            gap: 0;
         }
 
         .card-header {
@@ -1025,39 +1148,21 @@ if ($id) {
             border-radius: 0.75rem;
         }
 
-        input[type="datetime-local"].form-input {
-            font-size: 0.8rem;
+        .grid-cols-2 {
+            grid-template-columns: 1fr;
         }
 
-        /* Sidebar handling */
-        .sidebar {
-            position: fixed;
-            z-index: 1000;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
+        /* Summernote mobile */
+        .note-toolbar .note-btn-group {
+            margin-bottom: 0.25rem !important;
         }
 
-        .sidebar.open {
-            transform: translateX(0);
-        }
-
-        .mobile-menu-btn {
-            display: block !important;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1001;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            cursor: pointer;
-            font-size: 1.2rem;
+        .note-toolbar .note-btn {
+            padding: 0.25rem 0.4rem !important;
+            font-size: 0.7rem !important;
         }
     }
 
-    /* Small Mobile: < 480px */
     @media (max-width: 480px) {
         .severity-grid {
             grid-template-columns: 1fr 1fr;
@@ -1098,26 +1203,6 @@ if ($id) {
         }
     }
 
-    /* Large Desktop: > 1200px */
-    @media (min-width: 1200px) {
-        .form-container {
-            max-width: 1000px;
-        }
-
-        .severity-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        .radio-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        .md\:grid-cols-2 {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    /* Print */
     @media print {
 
         .sidebar,
@@ -1129,7 +1214,9 @@ if ($id) {
         #auto-save-indicator,
         .locked-overlay,
         .card-header-badge,
-        .mobile-menu-btn {
+        .mobile-menu-btn,
+        .note-toolbar,
+        .note-statusbar {
             display: none !important;
         }
 
@@ -1168,12 +1255,8 @@ if ($id) {
             border: 1px solid #ccc !important;
         }
 
-        #severity-preview {
+        .note-editor.note-frame {
             border: 1px solid #ccc !important;
-        }
-
-        .radio-card:has(input:checked) {
-            border: 1px solid #000 !important;
         }
     }
 </style>
@@ -1219,7 +1302,11 @@ if ($id) {
                 <input type="hidden" name="form_token" value="<?= $_SESSION['form_token'] ?>">
                 <input type="hidden" name="id" value="<?= $id ?>">
 
-                <!-- รหัสผู้รายงาน -->
+                <!-- ============================================ -->
+                <!-- SINGLE COLUMN LAYOUT (col-12) -->
+                <!-- ============================================ -->
+
+                <!-- 1. รหัสผู้รายงาน (Full Width) -->
                 <div class="form-card animate-in">
                     <div class="card-header">
                         <div class="card-header-icon" style="background:#eff6ff;color:#2563eb;"><i class="fas fa-id-card"></i></div>
@@ -1232,7 +1319,7 @@ if ($id) {
                     </div>
                 </div>
 
-                <!-- กลุ่มงาน -->
+                <!-- 2. กลุ่มงาน (Full Width) -->
                 <div class="form-card animate-in">
                     <div class="card-header">
                         <div class="card-header-icon" style="background:#eef2ff;color:#4338ca;"><i class="fas fa-building"></i></div>
@@ -1258,7 +1345,7 @@ if ($id) {
                     </div>
                 </div>
 
-                <!-- ประเภทความเสี่ยง -->
+                <!-- 3. ประเภทความเสี่ยง (Full Width) -->
                 <div class="form-card animate-in">
                     <div class="card-header">
                         <div class="card-header-icon" style="background:#fffbeb;color:#d97706;"><i class="fas fa-tag"></i></div>
@@ -1283,7 +1370,7 @@ if ($id) {
                     </div>
                 </div>
 
-                <!-- ระดับความรุนแรง -->
+                <!-- 4. ระดับความรุนแรง (Full Width) -->
                 <div class="form-card animate-in">
                     <div class="card-header">
                         <div class="card-header-icon" style="background:#fef2f2;color:#dc2626;"><i class="fas fa-exclamation-triangle"></i></div>
@@ -1313,7 +1400,7 @@ if ($id) {
                     </div>
                 </div>
 
-                <!-- วันเวลา -->
+                <!-- 5. วันเวลา (Full Width) -->
                 <div class="form-card animate-in">
                     <div class="card-header">
                         <div class="card-header-icon" style="background:#f0fdf4;color:#16a34a;"><i class="fas fa-calendar-alt"></i></div>
@@ -1321,7 +1408,7 @@ if ($id) {
                         <span class="card-header-badge" style="background:#fef2f2;color:#dc2626;">จำเป็น</span>
                     </div>
                     <div class="card-body">
-                        <div class="grid grid-cols-1 md:grid-cols-2">
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="form-label">📅 วันที่เกิดเหตุการณ์ <span class="required">*</span></label>
                                 <input type="datetime-local" id="event_datetime" name="event_datetime"
@@ -1339,47 +1426,49 @@ if ($id) {
                     </div>
                 </div>
 
-                <!-- รายละเอียดและแนวทางแก้ไข -->
+                <!-- 6. รายละเอียดและแนวทางแก้ไข (Full Width) - SUMMERNOTE -->
                 <div class="form-card animate-in">
                     <div class="card-header">
                         <div class="card-header-icon" style="background:#f5f3ff;color:#6d28d9;"><i class="fas fa-pen-to-square"></i></div>
                         <h3 class="card-header-title">รายละเอียดและแนวทางแก้ไข</h3>
                         <span class="card-header-badge" style="background:#fef2f2;color:#dc2626;">จำเป็น</span>
                     </div>
-                    <div class="card-body space-y-4">
-                        <div>
-                            <label class="form-label">📝 รายละเอียดเหตุการณ์ <span class="required">*</span></label>
-                            <textarea name="detail" id="detail" rows="4" class="form-input" required
-                                placeholder="อธิบายรายละเอียดเหตุการณ์ที่เกิดขึ้น..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['detail'] ?? '') ?></textarea>
-                            <div class="char-counter" id="detail-counter">0 / 500</div>
-                        </div>
-                        <div>
-                            <label class="form-label">🔧 การแก้ไขเบื้องต้น <span class="required">*</span></label>
-                            <textarea name="initial_solution" id="initial_solution" rows="3" class="form-input" required
-                                placeholder="ระบุการแก้ไขเบื้องต้นที่ได้ดำเนินการ..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['initial_solution'] ?? '') ?></textarea>
-                            <div class="char-counter" id="solution-counter">0 / 500</div>
-                        </div>
-                        <div>
-                            <label class="form-label">💡 ปัญหาและข้อเสนอแนะ <span class="required">*</span></label>
-                            <textarea name="suggestion" id="suggestion" rows="3" class="form-input" required
-                                placeholder="ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['suggestion'] ?? '') ?></textarea>
-                            <div class="char-counter" id="suggestion-counter">0 / 500</div>
-                        </div>
-                        <?php if ($is_editable): ?>
-                            <div class="flex justify-end pt-2">
-                                <button type="button" id="fillDefaultBtn" class="btn-default"
-                                    data-default-detail="ไม่มีรายละเอียดเพิ่มเติม"
-                                    data-default-solution="ไม่มีการแก้ไขเบื้องต้น"
-                                    data-default-suggestion="ไม่มีข้อเสนอแนะเพิ่มเติม"
-                                    onclick="fillDefaultTexts(); return false;">
-                                    <i class="fas fa-pen"></i> ไม่มีข้อมูลในส่วนนี้
-                                </button>
+                    <div class="card-body">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="form-label">📝 รายละเอียดเหตุการณ์ <span class="required">*</span></label>
+                                <div class="summernote-editor-wrapper">
+                                    <textarea name="detail" id="detail" class="summernote-editor"
+                                        placeholder="อธิบายรายละเอียดเหตุการณ์ที่เกิดขึ้น..."><?= htmlspecialchars($risk['detail'] ?? '') ?></textarea>
+                                </div>
                             </div>
-                        <?php endif; ?>
+                            <div>
+                                <label class="form-label">🔧 การแก้ไขเบื้องต้น <span class="required">*</span></label>
+                                <div class="summernote-editor-wrapper">
+                                    <textarea name="initial_solution" id="initial_solution" class="summernote-editor"
+                                        placeholder="ระบุการแก้ไขเบื้องต้นที่ได้ดำเนินการ..."><?= htmlspecialchars($risk['initial_solution'] ?? '') ?></textarea>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">💡 ปัญหาและข้อเสนอแนะ <span class="required">*</span></label>
+                                <div class="summernote-editor-wrapper">
+                                    <textarea name="suggestion" id="suggestion" class="summernote-editor"
+                                        placeholder="ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข..."><?= htmlspecialchars($risk['suggestion'] ?? '') ?></textarea>
+                                </div>
+                            </div>
+                            <?php if ($is_editable): ?>
+                                <div class="flex justify-end pt-2">
+                                    <button type="button" id="fillDefaultBtn" class="btn-default"
+                                        onclick="fillDefaultTexts(); return false;">
+                                        <i class="fas fa-pen"></i> ไม่มีข้อมูลในส่วนนี้
+                                    </button>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
 
-                <!-- สถานะการดำเนินการ -->
+                <!-- 7. สถานะการดำเนินการ (Full Width) -->
                 <?php if ($is_admin || !$id): ?>
                     <div class="form-card animate-in">
                         <div class="card-header">
@@ -1410,25 +1499,9 @@ if ($id) {
                                     <?php endforeach; ?>
                                 </select>
                                 <?php if ($is_admin): ?>
-                                    <p class="text-xs text-gray-400 mt-2"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
+                                    <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
                                 <?php endif; ?>
-
-                                <?php if (!empty($risk['status'])): ?>
-                                    <?php
-                                    $currentStatus = $risk['status'];
-                                    $statusInfo = $statuses[$currentStatus] ?? null;
-                                    if ($statusInfo):
-                                    ?>
-                                        <div class="mt-3 flex items-center gap-2">
-                                            <span class="text-sm text-gray-500">สถานะปัจจุบัน:</span>
-                                            <span class="status-badge" style="background:<?= $statusInfo['bg'] ?>; color:<?= $statusInfo['color'] ?>; border:1px solid <?= $statusInfo['color'] ?>40;">
-                                                <i class="fas <?= $statusInfo['icon'] ?>"></i>
-                                                <?= $statusInfo['label'] ?>
-                                            </span>
-                                        </div>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-
+                                <div id="status-preview"></div>
                             <?php else: ?>
                                 <input type="hidden" name="status" value="<?= htmlspecialchars($risk['status'] ?? 'ยังไม่ดำเนินการ') ?>">
                                 <div class="status-display">
@@ -1458,7 +1531,7 @@ if ($id) {
                 <?php endif; ?>
 
                 <!-- Buttons -->
-                <div class="flex items-center gap-3 pt-2 pb-8 flex-wrap">
+                <div class="flex items-center gap-3 pt-3 pb-8 flex-wrap">
                     <?php if ($is_editable): ?>
                         <button type="submit" class="btn-submit" id="submitBtn">
                             <i class="fas fa-save"></i> บันทึกรายงาน
@@ -1500,51 +1573,33 @@ if ($id) {
         }
     }
 
+    /**
+     * เติมข้อความอัตโนมัติใน Summernote editors
+     */
     function fillDefaultTexts() {
-        var detail = document.getElementById('detail');
-        var solution = document.getElementById('initial_solution');
-        var suggestion = document.getElementById('suggestion');
-        var btn = document.getElementById('fillDefaultBtn');
+        const defaultTexts = {
+            detail: 'ไม่มีรายละเอียดเพิ่มเติม',
+            initial_solution: 'ไม่มีการแก้ไขเบื้องต้น',
+            suggestion: 'ไม่มีข้อเสนอแนะเพิ่มเติม'
+        };
 
-        if (!detail || !solution || !suggestion) {
-            alert('ไม่พบช่องกรอกข้อมูล');
-            return;
-        }
+        let hasFilled = false;
+        const btn = document.getElementById('fillDefaultBtn');
 
-        var hasFilled = false;
-
-        if (detail.value.trim() === '') {
-            detail.value = 'ไม่มีรายละเอียดเพิ่มเติม';
-            detail.dispatchEvent(new Event('input', {
-                bubbles: true
-            }));
-            detail.dispatchEvent(new Event('change', {
-                bubbles: true
-            }));
-            hasFilled = true;
-        }
-
-        if (solution.value.trim() === '') {
-            solution.value = 'ไม่มีการแก้ไขเบื้องต้น';
-            solution.dispatchEvent(new Event('input', {
-                bubbles: true
-            }));
-            solution.dispatchEvent(new Event('change', {
-                bubbles: true
-            }));
-            hasFilled = true;
-        }
-
-        if (suggestion.value.trim() === '') {
-            suggestion.value = 'ไม่มีข้อเสนอแนะเพิ่มเติม';
-            suggestion.dispatchEvent(new Event('input', {
-                bubbles: true
-            }));
-            suggestion.dispatchEvent(new Event('change', {
-                bubbles: true
-            }));
-            hasFilled = true;
-        }
+        // วนลูปเช็คและเติมข้อความ
+        ['detail', 'initial_solution', 'suggestion'].forEach(id => {
+            const $editor = $('#' + id);
+            if ($editor.length > 0) {
+                const isReallyEmpty = $editor.summernote('isEmpty');
+                const content = $editor.summernote('code').replace(/<[^>]*>/g, '').trim();
+                
+                // เช็คว่าว่างเปล่าจริงๆ
+                if (isReallyEmpty || !content || content === '<p><br></p>' || content === '<br>') {
+                    $editor.summernote('code', defaultTexts[id]);
+                    hasFilled = true;
+                }
+            }
+        });
 
         if (btn && hasFilled) {
             btn.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
@@ -1567,6 +1622,110 @@ if ($id) {
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // ============================================
+        // เริ่มต้น Summernote
+        // ============================================
+        const summernoteConfig = {
+            height: 200,
+            minHeight: 150,
+            maxHeight: 400,
+            lang: 'th-TH',
+            toolbar: [
+                ['style', ['bold', 'italic', 'underline', 'clear']],
+                ['fontsize', ['fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['insert', ['link', 'picture', 'table', 'hr']],
+                ['view', ['codeview', 'help']]
+            ],
+            fontSizes: ['12', '14', '16', '18', '20', '24', '30'],
+            disableDragAndDrop: false,
+            callbacks: {
+                onChange: function(contents, $editable) {
+                    // Trigger auto-save when content changes
+                    if (typeof autoSaveDraft === 'function') {
+                        clearTimeout(window._autoSaveTimer);
+                        window._autoSaveTimer = setTimeout(autoSaveDraft, 30000);
+                    }
+                    
+                    // Mark form as changed
+                    window._formChanged = true;
+                },
+                onInit: function() {
+                    // ถ้าไม่สามารถแก้ไขได้ → disable
+                    if (!isEditable) {
+                        $(this).summernote('disable');
+                        $(this).closest('.note-editor').addClass('disabled-editor');
+                    }
+                }
+            }
+        };
+
+        // Initialize Summernote for all editors
+        $('#detail').summernote({
+            ...summernoteConfig,
+            placeholder: 'อธิบายรายละเอียดเหตุการณ์ที่เกิดขึ้น...'
+        });
+
+        $('#initial_solution').summernote({
+            ...summernoteConfig,
+            placeholder: 'ระบุการแก้ไขเบื้องต้นที่ได้ดำเนินการ...'
+        });
+
+        $('#suggestion').summernote({
+            ...summernoteConfig,
+            placeholder: 'ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข...'
+        });
+
+        // ถ้าไม่สามารถแก้ไขได้ → disable ทุก editor
+        if (!isEditable) {
+            $('#detail, #initial_solution, #suggestion').each(function() {
+                if (!$(this).next('.note-editor').hasClass('disabled-editor')) {
+                    $(this).summernote('disable');
+                    $(this).closest('.note-editor').addClass('disabled-editor');
+                }
+            });
+        }
+
+        // ============================================
+        // ฟังก์ชั่น Auto-save (เก็บเนื้อหา Summernote ด้วย)
+        // ============================================
+        function autoSaveDraft() {
+            if (!isEditable) return;
+
+            // อัพเดทค่า textarea จาก Summernote ก่อนส่ง
+            $('#detail, #initial_solution, #suggestion').each(function() {
+                if ($(this).data('summernote')) {
+                    this.value = $(this).summernote('code');
+                }
+            });
+
+            const formData = new FormData(document.getElementById('riskForm'));
+            formData.append('auto_save', '1');
+            
+            fetch('action.php?action=save_risk_draft', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const indicator = document.getElementById('auto-save-indicator');
+                        if (indicator) {
+                            indicator.style.display = 'flex';
+                            setTimeout(() => {
+                                indicator.style.display = 'none';
+                            }, 3000);
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+
+        // ============================================
+        // Existing Code (คงเดิมทั้งหมด)
+        // ============================================
+
         if (!isEditable) {
             Swal.fire({
                 icon: 'info',
@@ -1578,9 +1737,7 @@ if ($id) {
             return;
         }
 
-        // ============================================================
-        // DATE VALIDATION - วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์
-        // ============================================================
+        // DATE VALIDATION
         const eventDatetimeInput = document.getElementById('event_datetime');
         const reportDatetimeInput = document.getElementById('report_datetime');
 
@@ -1605,7 +1762,6 @@ if ($id) {
             eventDatetimeInput.addEventListener('change', function() {
                 if (this.value) {
                     reportDatetimeInput.min = this.value;
-
                     if (reportDatetimeInput.value && reportDatetimeInput.value < this.value) {
                         reportDatetimeInput.value = this.value;
                         Swal.fire({
@@ -1618,7 +1774,6 @@ if ($id) {
                             position: 'top-end'
                         });
                     }
-
                     if (!reportDatetimeInput.value) {
                         reportDatetimeInput.value = this.value;
                     }
@@ -1628,7 +1783,6 @@ if ($id) {
             reportDatetimeInput.addEventListener('change', function() {
                 const eventDate = eventDatetimeInput.value;
                 const reportDate = this.value;
-
                 if (eventDate && reportDate && reportDate < eventDate) {
                     Swal.fire({
                         icon: 'warning',
@@ -1639,8 +1793,6 @@ if ($id) {
                     this.value = eventDate;
                 }
             });
-
-            console.log('✅ Date Validation พร้อมใช้งาน');
         }
 
         // Toggle "อื่นๆ" Fields
@@ -1680,7 +1832,6 @@ if ($id) {
             const letter = card.querySelector('.sev-letter')?.textContent || 'ระดับ A';
             const desc = card.querySelector('.sev-desc')?.textContent || '';
             const color = card.dataset.color || '#2563eb';
-
             previewEl.querySelector('.preview-icon i').className = 'fas ' + icon;
             previewEl.querySelector('.preview-icon').style.color = color;
             previewEl.querySelector('.preview-letter').textContent = letter;
@@ -1694,21 +1845,16 @@ if ($id) {
         severityCards.forEach(card => {
             card.addEventListener('click', function(e) {
                 const radio = this.querySelector('input[type="radio"]');
-                if (radio && !radio.disabled) {
-                    radio.checked = true;
-                }
-
+                if (radio && !radio.disabled) radio.checked = true;
                 severityCards.forEach(c => {
                     c.style.borderColor = '#e2e8f0';
                     c.style.background = 'white';
                     c.style.boxShadow = '';
                 });
-
                 const color = this.dataset.color || '#2563eb';
                 this.style.borderColor = color;
                 this.style.background = color + '18';
                 this.style.boxShadow = '0 0 0 3px ' + color + '30';
-
                 updateSeverityPreview(this);
             });
         });
@@ -1725,35 +1871,6 @@ if ($id) {
             }
         }
 
-        // Character Counter
-        function setupCharCounter(textareaId, counterId, maxLength = 500) {
-            const textarea = document.getElementById(textareaId);
-            const counter = document.getElementById(counterId);
-            if (!textarea || !counter) return;
-
-            function updateCounter() {
-                const len = textarea.value.length;
-                counter.textContent = len + ' / ' + maxLength;
-                counter.className = 'char-counter';
-                if (len > maxLength) {
-                    counter.classList.add('danger');
-                    textarea.classList.add('error');
-                } else if (len > maxLength * 0.8) {
-                    counter.classList.add('warning');
-                    textarea.classList.remove('error');
-                } else {
-                    textarea.classList.remove('error');
-                }
-            }
-
-            textarea.addEventListener('input', updateCounter);
-            updateCounter();
-        }
-
-        setupCharCounter('detail', 'detail-counter', 500);
-        setupCharCounter('initial_solution', 'solution-counter', 500);
-        setupCharCounter('suggestion', 'suggestion-counter', 500);
-
         // Status Select
         const statusSelect = document.getElementById('status');
         if (statusSelect) {
@@ -1763,7 +1880,6 @@ if ($id) {
                 statusPreview.id = 'status-preview';
                 statusSelect.parentNode.appendChild(statusPreview);
             }
-
             const statusColors = {
                 'ยังไม่ดำเนินการ': {
                     color: '#6b7280',
@@ -1786,55 +1902,25 @@ if ($id) {
                     icon: 'fa-ban'
                 }
             };
-
             statusSelect.addEventListener('change', function() {
                 const selectedValue = this.value;
-
                 if (selectedValue && statusColors[selectedValue]) {
                     const status = statusColors[selectedValue];
-                    statusPreview.innerHTML = `
-                        <span class="text-sm text-gray-500">ตัวอย่าง:</span>
+                    statusPreview.innerHTML = `<span class="text-sm text-gray-500">ตัวอย่าง:</span>
                         <span class="status-badge" style="background:${status.bg}; color:${status.color}; border:1px solid ${status.color}40;">
-                            <i class="fas ${status.icon}"></i>
-                            ${selectedValue}
-                        </span>
-                    `;
+                            <i class="fas ${status.icon}"></i> ${selectedValue}</span>`;
                     statusPreview.classList.add('visible');
                 } else {
                     statusPreview.classList.remove('visible');
                 }
             });
-
-            if (statusSelect.value) {
-                statusSelect.dispatchEvent(new Event('change'));
-            }
+            if (statusSelect.value) statusSelect.dispatchEvent(new Event('change'));
         }
 
         // Auto-save
         let autoSaveTimer = null;
         const form = document.getElementById('riskForm');
         const autoSaveIndicator = document.getElementById('auto-save-indicator');
-
-        function autoSaveDraft() {
-            if (!isEditable) return;
-            const formData = new FormData(form);
-            formData.append('auto_save', '1');
-
-            fetch('action.php?action=save_risk_draft', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        autoSaveIndicator.style.display = 'flex';
-                        setTimeout(() => {
-                            autoSaveIndicator.style.display = 'none';
-                        }, 3000);
-                    }
-                })
-                .catch(() => {});
-        }
 
         form.addEventListener('input', function() {
             clearTimeout(autoSaveTimer);
@@ -1849,9 +1935,7 @@ if ($id) {
         document.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                if (isEditable) {
-                    form.dispatchEvent(new Event('submit'));
-                }
+                if (isEditable) form.dispatchEvent(new Event('submit'));
             }
             if (e.key === 'Escape') {
                 const cancelBtn = document.querySelector('.btn-cancel');
@@ -1871,14 +1955,12 @@ if ($id) {
                     behavior: 'smooth',
                     block: 'center'
                 });
-
                 const msg = document.createElement('div');
                 msg.className = 'text-red-500 text-xs mt-2 animate-in';
                 msg.textContent = '⚠️ ' + (this.validationMessage || 'กรุณากรอกข้อมูลให้ถูกต้อง');
                 this.parentNode.appendChild(msg);
                 setTimeout(() => msg.remove(), 4000);
             });
-
             el.addEventListener('input', function() {
                 this.classList.remove('error');
             });
@@ -1892,7 +1974,6 @@ if ($id) {
         form.addEventListener('change', () => {
             formChanged = true;
         });
-
         window.addEventListener('beforeunload', function(e) {
             if (formChanged && isEditable) {
                 e.preventDefault();
@@ -1900,20 +1981,67 @@ if ($id) {
                 return e.returnValue;
             }
         });
-
         form.addEventListener('submit', function() {
             formChanged = false;
         });
 
-        // Form Submit
+        // Form Submit - Important: sync Summernote content before submit
         let submitting = false;
-
         form.addEventListener('submit', function(e) {
             e.preventDefault();
 
+            // ⭐ ซิงค์เนื้อหา Summernote ลง textarea ก่อนส่ง
+            let syncSuccess = true;
+            $('#detail, #initial_solution, #suggestion').each(function() {
+                try {
+                    if ($(this).data('summernote')) {
+                        this.value = $(this).summernote('code');
+                    }
+                } catch (err) {
+                    console.error('Error syncing Summernote:', err);
+                    syncSuccess = false;
+                }
+            });
+
+            if (!syncSuccess) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถดึงข้อมูลจาก Editor ได้ กรุณาลองใหม่อีกครั้ง',
+                    confirmButtonColor: '#2563eb'
+                });
+                return;
+            }
+
+            // Validate: ตรวจสอบว่า Summernote ไม่ว่างเปล่า
+            let hasEmptySummernote = false;
+            ['detail', 'initial_solution', 'suggestion'].forEach(id => {
+                const $editor = $('#' + id);
+                if ($editor.length > 0 && $editor.data('summernote')) {
+                    const isReallyEmpty = $editor.summernote('isEmpty');
+                    const content = $editor.summernote('code').replace(/<[^>]*>/g, '').trim();
+                    if (isReallyEmpty || !content) {
+                        hasEmptySummernote = true;
+                        $editor.closest('.note-editor').css('border-color', '#ef4444');
+                        setTimeout(() => {
+                            $editor.closest('.note-editor').css('border-color', '#e2e8f0');
+                        }, 3000);
+                    }
+                }
+            });
+
+            if (hasEmptySummernote) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณากรอกข้อมูล',
+                    text: 'กรุณากรอกรายละเอียดเหตุการณ์ การแก้ไขเบื้องต้น และข้อเสนอแนะให้ครบถ้วน',
+                    confirmButtonColor: '#2563eb'
+                });
+                return;
+            }
+
             const eventDate = document.getElementById('event_datetime').value;
             const reportDate = document.getElementById('report_datetime').value;
-
             if (eventDate && reportDate && reportDate < eventDate) {
                 Swal.fire({
                     icon: 'warning',
@@ -1960,66 +2088,72 @@ if ($id) {
                 return;
             }
 
+            // แสดง Loading
             Swal.fire({
-                title: 'ยืนยันการบันทึก?',
-                text: 'คุณต้องการบันทึกรายงานนี้ใช่หรือไม่',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#2563eb',
-                cancelButtonColor: '#94a3b8',
-                confirmButtonText: '✅ ยืนยัน',
-                cancelButtonText: '❌ ยกเลิก'
-            }).then(result => {
-                if (!result.isConfirmed) return;
+                title: 'กำลังบันทึกข้อมูล...',
+                text: 'กรุณารอสักครู่',
+                icon: 'info',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
 
-                submitting = true;
-                const btn = document.getElementById('submitBtn');
-                const orig = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+            submitting = true;
+            const btn = document.getElementById('submitBtn');
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
 
-                fetch('action.php?action=save_risk', {
-                        method: 'POST',
-                        body: new FormData(form)
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'บันทึกสำเร็จ',
-                                text: data.message,
-                                confirmButtonColor: '#2563eb'
-                            }).then(() => {
-                                window.location.href = 'risks.php';
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'ผิดพลาด',
-                                text: data.message || 'เกิดข้อผิดพลาดในการบันทึก',
-                                confirmButtonColor: '#2563eb'
-                            });
-                            submitting = false;
-                            btn.disabled = false;
-                            btn.innerHTML = orig;
-                        }
-                    })
-                    .catch(() => {
+            fetch('action.php?action=save_risk', {
+                    method: 'POST',
+                    body: new FormData(form)
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'บันทึกสำเร็จ!',
+                            text: data.message || 'ข้อมูลถูกบันทึกเรียบร้อยแล้ว',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            allowOutsideClick: false
+                        }).then(() => {
+                            window.location.href = 'risks.php';
+                        });
+
+                        setTimeout(() => {
+                            window.location.href = 'risks.php';
+                        }, 2000);
+                    } else {
                         Swal.fire({
                             icon: 'error',
-                            title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์',
-                            text: 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต',
+                            title: 'ผิดพลาด',
+                            text: data.message || 'เกิดข้อผิดพลาดในการบันทึก',
                             confirmButtonColor: '#2563eb'
                         });
                         submitting = false;
                         btn.disabled = false;
                         btn.innerHTML = orig;
+                    }
+                })
+                .catch(() => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์',
+                        text: 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต',
+                        confirmButtonColor: '#2563eb'
                     });
-            });
+                    submitting = false;
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                });
         });
 
-        console.log('✅ ระบบพร้อมใช้งาน! (Responsive Full Screen + Date Validation Active)');
+        console.log('✅ ระบบพร้อมใช้งาน! (Summernote Editors + col-12 Single Column + Auto Redirect)');
     });
 </script>
 <?php include 'includes/footer.php'; ?>

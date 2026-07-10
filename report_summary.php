@@ -1,7 +1,7 @@
 <?php
 
 /**
- * หน้าสรุปผลการรายงาน - ฟอร์มบันทึกข้อมูล
+ * หน้าสรุปผลการรายงาน - ฟอร์มบันทึกข้อมูล (Single Column Layout)
  * - User: สามารถแก้ไขสรุปผลได้ (เจ้าของรายการ)
  * - Admin: เห็นทั้งหมด และแก้ไขได้
  * - เข้าถึงได้ทุกรายการ (ไม่จำกัดเฉพาะ "ดำเนินการแล้ว")
@@ -11,6 +11,7 @@
  * - ใช้ SweetAlert2 สำหรับการแจ้งเตือน
  * - เมื่อบันทึกสรุปผล ระบบจะอัปเดตสถานะเป็น "ดำเนินการแล้ว" โดยอัตโนมัติ
  * - Responsive Full Screen Design พร้อม Sidebar
+ * - Single Column Layout (col-12)
  */
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
@@ -228,7 +229,6 @@ function formatFileSize($bytes) {
 $current_page = basename($_SERVER['PHP_SELF']);
 $is_admin = isAdmin();
 
-// ดึงค่าการตั้งค่าระบบ
 function getSystemSettings($pdo) {
     $defaults = [
         'site_name' => 'Risk Management',
@@ -267,7 +267,6 @@ $site_organization = $settings['site_organization'];
 $site_logo = $settings['site_logo'];
 $show_dashboard = $settings['sidebar_show_dashboard'] ?? '1';
 
-// นับจำนวนความเสี่ยงที่ยังไม่ดำเนินการ
 $pending_risk_count = 0;
 if (isset($pdo)) {
     try {
@@ -318,6 +317,7 @@ $statusIcon = getStatusIcon($currentStatus);
     <style>
         :root {
             --sidebar-width: 240px;
+            --content-max-width: 1000px;
         }
 
         * {
@@ -379,7 +379,6 @@ $statusIcon = getStatusIcon($currentStatus);
             pointer-events: none;
         }
 
-        /* Sidebar Logo */
         .sidebar-logo {
             padding: 1.25rem 1.25rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -471,7 +470,6 @@ $statusIcon = getStatusIcon($currentStatus);
             line-height: 1.3;
         }
 
-        /* Sidebar Nav */
         .sidebar-nav {
             flex: 1;
             padding: 1rem 0.75rem;
@@ -480,18 +478,9 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 1;
         }
 
-        .sidebar-nav::-webkit-scrollbar {
-            width: 3px;
-        }
-
-        .sidebar-nav::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .sidebar-nav::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.06);
-            border-radius: 3px;
-        }
+        .sidebar-nav::-webkit-scrollbar { width: 3px; }
+        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.06); border-radius: 3px; }
 
         .nav-section-label {
             font-size: 0.6rem;
@@ -534,26 +523,10 @@ $statusIcon = getStatusIcon($currentStatus);
             transition: height 0.3s ease;
         }
 
-        .menu-item:hover::before {
-            height: 60%;
-        }
-
-        .menu-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.85);
-        }
-
-        .menu-item.active::before {
-            height: 80%;
-            background: #3b82f6;
-        }
-
-        .menu-item.active {
-            background: rgba(255, 255, 255, 0.08);
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
+        .menu-item:hover::before { height: 60%; }
+        .menu-item:hover { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.85); }
+        .menu-item.active::before { height: 80%; background: #3b82f6; }
+        .menu-item.active { background: rgba(255, 255, 255, 0.08); color: white; font-weight: 600; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
 
         .menu-icon {
             width: 32px;
@@ -568,31 +541,11 @@ $statusIcon = getStatusIcon($currentStatus);
             transition: all 0.25s ease;
         }
 
-        .menu-item:hover .menu-icon {
-            background: rgba(255, 255, 255, 0.08);
-            transform: scale(1.05);
-        }
+        .menu-item:hover .menu-icon { background: rgba(255, 255, 255, 0.08); transform: scale(1.05); }
+        .menu-item.active .menu-icon { background: rgba(59, 130, 246, 0.25); box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); color: #93c5fd; }
 
-        .menu-item.active .menu-icon {
-            background: rgba(59, 130, 246, 0.25);
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
-            color: #93c5fd;
-        }
-
-        .menu-content {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            min-width: 0;
-        }
-
-        .menu-text {
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .menu-content { flex: 1; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+        .menu-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .menu-badge {
             font-size: 0.6rem;
@@ -604,38 +557,16 @@ $statusIcon = getStatusIcon($currentStatus);
             flex-shrink: 0;
         }
 
-        .menu-badge-admin {
-            background: rgba(251, 191, 36, 0.2);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.3);
-        }
-
-        .menu-badge-pending {
-            background: rgba(251, 191, 36, 0.2);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.3);
-            animation: badgePulse 2s ease-in-out infinite;
-        }
-
-        .menu-badge-users {
-            background: rgba(167, 139, 250, 0.25);
-            color: #c4b5fd;
-            border: 1px solid rgba(167, 139, 250, 0.3);
-        }
-
-        .menu-badge-settings {
-            background: rgba(52, 211, 153, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(52, 211, 153, 0.3);
-            animation: badgePulse 2s ease-in-out infinite;
-        }
+        .menu-badge-admin { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+        .menu-badge-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); animation: badgePulse 2s ease-in-out infinite; }
+        .menu-badge-users { background: rgba(167, 139, 250, 0.25); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, 0.3); }
+        .menu-badge-settings { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); animation: badgePulse 2s ease-in-out infinite; }
 
         @keyframes badgePulse {
             0%, 100% { opacity: 0.8; }
             50% { opacity: 1; }
         }
 
-        /* Sidebar Footer */
         .sidebar-footer {
             padding: 0.75rem;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -644,74 +575,20 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 1;
         }
 
-        .sidebar-user {
-            display: flex;
-            align-items: center;
-            gap: 0.625rem;
-            padding: 0.375rem;
-        }
-
-        .user-avatar-sidebar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            flex-shrink: 0;
-        }
-
-        .user-status-dot {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 8px;
-            height: 8px;
-            background: #34d399;
-            border-radius: 50%;
-            border: 2px solid #1e293b;
-        }
-
-        .sidebar-user-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .sidebar-user-name {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: white;
-            line-height: 1.2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .sidebar-user-role {
-            font-size: 0.625rem;
-            color: rgba(255, 255, 255, 0.4);
-            line-height: 1.2;
-        }
+        .sidebar-user { display: flex; align-items: center; gap: 0.625rem; padding: 0.375rem; }
+        .user-avatar-sidebar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.1); flex-shrink: 0; }
+        .user-status-dot { position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background: #34d399; border-radius: 50%; border: 2px solid #1e293b; }
+        .sidebar-user-info { flex: 1; min-width: 0; }
+        .sidebar-user-name { font-size: 0.75rem; font-weight: 600; color: white; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sidebar-user-role { font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); line-height: 1.2; }
 
         .logout-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            color: rgba(255, 255, 255, 0.3);
-            text-decoration: none;
-            transition: all 0.25s ease;
-            cursor: pointer;
-            background: none;
-            border: none;
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 8px;
+            color: rgba(255, 255, 255, 0.3); text-decoration: none;
+            transition: all 0.25s ease; cursor: pointer; background: none; border: none; flex-shrink: 0;
         }
-
-        .logout-btn:hover {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-        }
+        .logout-btn:hover { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 
         /* ===== Main Content ===== */
         .main-content {
@@ -723,7 +600,6 @@ $statusIcon = getStatusIcon($currentStatus);
             transition: margin-left 0.3s ease;
         }
 
-        /* Top Bar */
         .top-bar {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -738,71 +614,30 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 100;
         }
 
-        .top-bar-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
+        .top-bar-left { display: flex; align-items: center; gap: 0.75rem; }
+        .menu-toggle { display: none; background: none; border: none; color: #475569; font-size: 1.125rem; cursor: pointer; padding: 0.375rem; border-radius: 0.5rem; transition: all 0.2s; }
+        .menu-toggle:hover { background: #f1f5f9; color: #1e293b; }
 
-        .menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            color: #475569;
-            font-size: 1.125rem;
-            cursor: pointer;
-            padding: 0.375rem;
-            border-radius: 0.5rem;
-            transition: all 0.2s;
-        }
+        .breadcrumb { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: #64748b; }
+        .breadcrumb a { color: #64748b; text-decoration: none; transition: color 0.2s; }
+        .breadcrumb a:hover { color: #2563eb; }
+        .breadcrumb .current { color: #1e293b; font-weight: 600; }
 
-        .menu-toggle:hover {
-            background: #f1f5f9;
-            color: #1e293b;
-        }
-
-        .breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.8125rem;
-            color: #64748b;
-        }
-
-        .breadcrumb a {
-            color: #64748b;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .breadcrumb a:hover {
-            color: #2563eb;
-        }
-
-        .breadcrumb .current {
-            color: #1e293b;
-            font-weight: 600;
-        }
-
-        .top-bar-right {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.8125rem;
-            color: #475569;
-        }
+        .top-bar-right { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: #475569; }
 
         /* Page Content */
         .page-content {
             flex: 1;
             padding: 1.5rem;
             overflow-y: auto;
+            display: flex;
+            justify-content: center;
         }
 
         .content-container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: var(--content-max-width);
             width: 100%;
+            margin: 0 auto;
         }
 
         /* Page Header */
@@ -845,19 +680,13 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 1;
         }
 
-        /* Content Grid */
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-
         /* Cards */
         .card {
             background: white;
             border-radius: 1rem;
             border: 1px solid #e2e8f0;
             padding: 1.5rem;
+            margin-bottom: 1.5rem;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
@@ -919,29 +748,10 @@ $statusIcon = getStatusIcon($currentStatus);
             border: 1px solid;
         }
 
-        .badge-emerald {
-            background: #ecfdf5;
-            color: #065f46;
-            border-color: #a7f3d0;
-        }
-
-        .badge-sky {
-            background: #f0f9ff;
-            color: #075985;
-            border-color: #bae6fd;
-        }
-
-        .badge-gray {
-            background: #f9fafb;
-            color: #4b5563;
-            border-color: #e5e7eb;
-        }
-
-        .badge-slate {
-            background: #f8fafc;
-            color: #475569;
-            border-color: #e2e8f0;
-        }
+        .badge-emerald { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+        .badge-sky { background: #f0f9ff; color: #075985; border-color: #bae6fd; }
+        .badge-gray { background: #f9fafb; color: #4b5563; border-color: #e5e7eb; }
+        .badge-slate { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
 
         /* Severity */
         .severity-display {
@@ -967,22 +777,9 @@ $statusIcon = getStatusIcon($currentStatus);
             flex-shrink: 0;
         }
 
-        .severity-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .severity-level {
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin-bottom: 0.125rem;
-        }
-
-        .severity-desc {
-            font-size: 0.8rem;
-            line-height: 1.5;
-            color: #475569;
-        }
+        .severity-info { flex: 1; min-width: 0; }
+        .severity-level { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.125rem; }
+        .severity-desc { font-size: 0.8rem; line-height: 1.5; color: #475569; }
 
         /* Notice */
         .notice {
@@ -996,22 +793,11 @@ $statusIcon = getStatusIcon($currentStatus);
             line-height: 1.5;
         }
 
-        .notice-success {
-            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-            border: 1px solid #a7f3d0;
-            color: #065f46;
-        }
-
-        .notice-warning {
-            background: linear-gradient(135deg, #fffbeb, #fef3c7);
-            border: 1px solid #fde68a;
-            color: #92400e;
-        }
+        .notice-success { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1px solid #a7f3d0; color: #065f46; }
+        .notice-warning { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a; color: #92400e; }
 
         /* Form */
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
+        .form-group { margin-bottom: 1.25rem; }
 
         .form-label {
             font-size: 0.75rem;
@@ -1025,8 +811,7 @@ $statusIcon = getStatusIcon($currentStatus);
             gap: 0.35rem;
         }
 
-        .form-textarea,
-        .form-input {
+        .form-textarea, .form-input {
             width: 100%;
             padding: 0.75rem 0.875rem;
             border: 1.5px solid #e2e8f0;
@@ -1041,23 +826,9 @@ $statusIcon = getStatusIcon($currentStatus);
             resize: vertical;
         }
 
-        .form-textarea {
-            min-height: 100px;
-        }
-
-        .form-textarea:focus,
-        .form-input:focus {
-            border-color: #2563eb;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
-        }
-
-        .form-textarea:disabled,
-        .form-input:disabled {
-            background: #f1f5f9;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
+        .form-textarea { min-height: 100px; }
+        .form-textarea:focus, .form-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08); }
+        .form-textarea:disabled, .form-input:disabled { background: #f1f5f9; cursor: not-allowed; opacity: 0.7; }
 
         /* Buttons */
         .btn {
@@ -1076,58 +847,16 @@ $statusIcon = getStatusIcon($currentStatus);
             white-space: nowrap;
         }
 
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
-            background: #f8fafc;
-            color: #475569;
-            border-color: #e2e8f0;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background: #f1f5f9;
-            border-color: #cbd5e1;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #059669, #047857);
-            color: white;
-            border-color: #047857;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
-            transform: translateY(-1px);
-        }
-
-        .btn-sm {
-            padding: 0.35rem 0.75rem;
-            font-size: 0.75rem;
-            border-radius: 0.4rem;
-        }
-
-        .btn-outline-blue {
-            background: #eff6ff;
-            color: #1d4ed8;
-            border-color: #bfdbfe;
-        }
-
-        .btn-outline-blue:hover {
-            background: #dbeafe;
-        }
-
-        .btn-outline-green {
-            background: #f0fdf4;
-            color: #047857;
-            border-color: #bbf7d0;
-        }
-
-        .btn-outline-green:hover {
-            background: #dcfce7;
-        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+        .btn-secondary:hover:not(:disabled) { background: #f1f5f9; border-color: #cbd5e1; }
+        .btn-primary { background: linear-gradient(135deg, #059669, #047857); color: white; border-color: #047857; }
+        .btn-primary:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3); transform: translateY(-1px); }
+        .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; border-radius: 0.4rem; }
+        .btn-outline-blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+        .btn-outline-blue:hover { background: #dbeafe; }
+        .btn-outline-green { background: #f0fdf4; color: #047857; border-color: #bbf7d0; }
+        .btn-outline-green:hover { background: #dcfce7; }
 
         /* Upload */
         .upload-area {
@@ -1141,15 +870,8 @@ $statusIcon = getStatusIcon($currentStatus);
             display: block;
         }
 
-        .upload-area:hover:not(.disabled) {
-            border-color: #2563eb;
-            background: #eff6ff;
-        }
-
-        .upload-area.disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
+        .upload-area:hover:not(.disabled) { border-color: #2563eb; background: #eff6ff; }
+        .upload-area.disabled { cursor: not-allowed; opacity: 0.6; }
 
         .upload-icon-circle {
             width: 48px;
@@ -1162,22 +884,9 @@ $statusIcon = getStatusIcon($currentStatus);
             margin: 0 auto 0.75rem;
         }
 
-        .upload-icon-circle i {
-            font-size: 1.25rem;
-            color: #2563eb;
-        }
-
-        .upload-text {
-            font-weight: 600;
-            color: #475569;
-            font-size: 0.9rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .upload-hint {
-            font-size: 0.8rem;
-            color: #94a3b8;
-        }
+        .upload-icon-circle i { font-size: 1.25rem; color: #2563eb; }
+        .upload-text { font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.25rem; }
+        .upload-hint { font-size: 0.8rem; color: #94a3b8; }
 
         /* File Card */
         .file-card {
@@ -1224,40 +933,12 @@ $statusIcon = getStatusIcon($currentStatus);
             flex-wrap: wrap;
         }
 
-        .file-info-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
+        .file-info-left { display: flex; align-items: center; gap: 0.75rem; }
+        .file-icon { width: 40px; height: 40px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .file-name { font-weight: 600; font-size: 0.85rem; color: #1e293b; }
+        .file-meta { font-size: 0.72rem; color: #94a3b8; }
+        .file-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
-        .file-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-        }
-
-        .file-name {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #1e293b;
-        }
-
-        .file-meta {
-            font-size: 0.72rem;
-            color: #94a3b8;
-        }
-
-        .file-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        /* File Preview Inline */
         .file-preview-inline {
             margin-top: 0.75rem;
             display: inline-flex;
@@ -1283,9 +964,7 @@ $statusIcon = getStatusIcon($currentStatus);
             justify-content: center;
         }
 
-        .btn-remove:hover {
-            background: #fee2e2;
-        }
+        .btn-remove:hover { background: #fee2e2; }
 
         /* Form Footer */
         .form-footer {
@@ -1298,9 +977,7 @@ $statusIcon = getStatusIcon($currentStatus);
             flex-wrap: wrap;
         }
 
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
 
         /* Sidebar Overlay */
         .sidebar-overlay {
@@ -1314,9 +991,7 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 999;
         }
 
-        .sidebar-overlay.active {
-            display: block;
-        }
+        .sidebar-overlay.active { display: block; }
 
         /* Mobile Bottom Bar */
         .mobile-bottom-bar {
@@ -1335,144 +1010,49 @@ $statusIcon = getStatusIcon($currentStatus);
 
         /* ===== Responsive ===== */
         @media (max-width: 1024px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .page-content {
-                padding: 1rem;
-            }
-
-            .page-header {
-                padding: 1.25rem 1.5rem;
-            }
+            .page-content { padding: 1rem; }
+            .page-header { padding: 1.25rem 1.5rem; }
+            .content-container { max-width: 100%; }
         }
 
         @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                width: 260px;
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-            }
-
-            .sidebar-overlay.active {
-                display: block;
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .menu-toggle {
-                display: flex;
-            }
-
-            .top-bar {
-                padding: 0 1rem;
-            }
-
-            .page-content {
-                padding: 0.75rem;
-                padding-bottom: 5rem;
-            }
-
-            .page-header h1 {
-                font-size: 1.25rem;
-            }
-
-            .card {
-                padding: 1rem;
-            }
-
-            .info-grid {
-                grid-template-columns: 1fr;
-                gap: 0.75rem;
-            }
-
-            .severity-display {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .file-info {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .file-actions {
-                width: 100%;
-            }
-
-            .file-actions .btn {
-                flex: 1;
-                justify-content: center;
-            }
-
-            .form-footer {
-                flex-direction: column;
-            }
-
-            .form-footer .btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .mobile-bottom-bar {
-                display: flex;
-            }
-
-            .top-bar-right span {
-                display: none;
-            }
+            .sidebar { transform: translateX(-100%); width: 260px; }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.active { display: block; }
+            .main-content { margin-left: 0; }
+            .menu-toggle { display: flex; }
+            .top-bar { padding: 0 1rem; }
+            .page-content { padding: 0.75rem; padding-bottom: 5rem; }
+            .page-header h1 { font-size: 1.25rem; }
+            .card { padding: 1rem; }
+            .info-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+            .severity-display { flex-direction: column; text-align: center; }
+            .file-info { flex-direction: column; align-items: flex-start; }
+            .file-actions { width: 100%; }
+            .file-actions .btn { flex: 1; justify-content: center; }
+            .form-footer { flex-direction: column; }
+            .form-footer .btn { width: 100%; justify-content: center; }
+            .mobile-bottom-bar { display: flex; }
+            .top-bar-right span { display: none; }
         }
 
         @media (max-width: 480px) {
-            .page-header {
-                padding: 1rem;
-                border-radius: 0.75rem;
-            }
-
-            .page-header h1 {
-                font-size: 1.1rem;
-            }
-
-            .card {
-                padding: 0.875rem;
-                border-radius: 0.75rem;
-            }
-
-            .form-textarea,
-            .form-input {
-                font-size: 0.8rem;
-                padding: 0.625rem 0.75rem;
-            }
-
-            .form-textarea {
-                min-height: 80px;
-            }
-
-            .upload-area {
-                padding: 1.25rem;
-            }
-
-            .btn {
-                font-size: 0.8rem;
-                padding: 0.5rem 1rem;
-            }
+            .page-header { padding: 1rem; border-radius: 0.75rem; }
+            .page-header h1 { font-size: 1.1rem; }
+            .card { padding: 0.875rem; border-radius: 0.75rem; }
+            .form-textarea, .form-input { font-size: 0.8rem; padding: 0.625rem 0.75rem; }
+            .form-textarea { min-height: 80px; }
+            .upload-area { padding: 1.25rem; }
+            .btn { font-size: 0.8rem; padding: 0.5rem 1rem; }
         }
     </style>
 </head>
 <body>
     <div class="app-layout">
-        <!-- Sidebar Overlay -->
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
-            <!-- Logo -->
             <div class="sidebar-logo">
                 <div class="logo-wrapper">
                     <div class="logo-ring"></div>
@@ -1488,7 +1068,6 @@ $statusIcon = getStatusIcon($currentStatus);
                 </div>
             </div>
 
-            <!-- Navigation -->
             <nav class="sidebar-nav">
                 <?php if ($is_admin && $show_dashboard == '1'): ?>
                     <div class="nav-section-label">
@@ -1545,7 +1124,6 @@ $statusIcon = getStatusIcon($currentStatus);
                 <?php endif; ?>
             </nav>
 
-            <!-- User Footer -->
             <div class="sidebar-footer">
                 <div class="sidebar-user">
                     <div style="position:relative;flex-shrink:0;">
@@ -1567,7 +1145,6 @@ $statusIcon = getStatusIcon($currentStatus);
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Top Bar -->
             <div class="top-bar">
                 <div class="top-bar-left">
                     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
@@ -1587,7 +1164,7 @@ $statusIcon = getStatusIcon($currentStatus);
                 </div>
             </div>
 
-            <!-- Page Content -->
+            <!-- Page Content - SINGLE COLUMN -->
             <main class="page-content">
                 <div class="content-container">
                     <!-- Header -->
@@ -1599,226 +1176,227 @@ $statusIcon = getStatusIcon($currentStatus);
                         <p>บันทึกมาตรการแก้ไขและการติดตามผล</p>
                     </div>
 
-                    <!-- Content Grid -->
-                    <div class="content-grid">
-                        <!-- ข้อมูลความเสี่ยง -->
-                        <div class="card">
+                    <!-- ============================================ -->
+                    <!-- SINGLE COLUMN LAYOUT (col-12) -->
+                    <!-- ============================================ -->
+
+                    <!-- 1. ข้อมูลความเสี่ยง -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-info-circle" style="color:#2563eb;"></i>
+                                ข้อมูลความเสี่ยง
+                            </div>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">ประเภท</span>
+                                <span class="info-value"><?= htmlspecialchars($risk['risk_type'] ?? '-') ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">กลุ่มงาน</span>
+                                <span class="info-value"><?= htmlspecialchars($risk['unit'] ?? '-') ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">วันที่</span>
+                                <span class="info-value"><?= thaiDateView($risk['event_datetime']) ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">ผู้รายงาน</span>
+                                <span class="info-value"><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">สถานะ</span>
+                                <span>
+                                    <span class="badge <?= $statusBadgeClass ?>">
+                                        <i class="fas <?= $statusIcon ?>" style="font-size:0.7rem;"></i>
+                                        <?= htmlspecialchars($currentStatus) ?>
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- ระดับความเสี่ยง -->
+                        <div style="margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">
+                                <i class="fas fa-exclamation-triangle"></i> ระดับความเสี่ยง
+                            </div>
+                            <div class="severity-display" style="background: <?= $severityBgColor ?>; border-color: <?= $severityColor ?>33;">
+                                <div class="severity-icon" style="background: <?= $severityColor ?>;">
+                                    <?= htmlspecialchars($currentSeverity) ?>
+                                </div>
+                                <div class="severity-info">
+                                    <div class="severity-level" style="color: <?= $severityColor ?>;">
+                                        ระดับ <?= htmlspecialchars($currentSeverity) ?>
+                                        <span style="font-weight: 400; font-size: 0.8rem;">(<?= htmlspecialchars($severityLabel) ?>)</span>
+                                    </div>
+                                    <div class="severity-desc">
+                                        <?= htmlspecialchars($severityFullText) ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php if ($canEdit && $risk['status'] !== 'ดำเนินการแล้ว'): ?>
+                            <div class="notice notice-success">
+                                <i class="fas fa-info-circle"></i>
+                                <span>เมื่อบันทึกสรุปผล <strong>สถานะจะถูกเปลี่ยนเป็น "ดำเนินการแล้ว" โดยอัตโนมัติ</strong></span>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!$canEdit): ?>
+                            <div class="notice notice-warning">
+                                <i class="fas fa-lock"></i>
+                                <span>คุณอยู่ในโหมด <strong>อ่านอย่างเดียว</strong> — คุณไม่ใช่เจ้าของรายการนี้</span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- 2. ฟอร์มบันทึก -->
+                    <div class="card">
+                        <form method="POST" enctype="multipart/form-data" id="reportForm">
                             <div class="card-header">
                                 <div class="card-title">
-                                    <i class="fas fa-info-circle" style="color:#2563eb;"></i>
-                                    ข้อมูลความเสี่ยง
+                                    <i class="fas fa-edit" style="color:#7c3aed;"></i>
+                                    <?= $existingReport ? 'แก้ไขสรุปผล' : 'บันทึกสรุปผล' ?>
                                 </div>
-                            </div>
-
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <span class="info-label">ประเภท</span>
-                                    <span class="info-value"><?= htmlspecialchars($risk['risk_type'] ?? '-') ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">กลุ่มงาน</span>
-                                    <span class="info-value"><?= htmlspecialchars($risk['unit'] ?? '-') ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">วันที่</span>
-                                    <span class="info-value"><?= thaiDateView($risk['event_datetime']) ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">ผู้รายงาน</span>
-                                    <span class="info-value"><?= htmlspecialchars($risk['username'] ?? 'ไม่ระบุ') ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">สถานะ</span>
-                                    <span>
-                                        <span class="badge <?= $statusBadgeClass ?>">
-                                            <i class="fas <?= $statusIcon ?>" style="font-size:0.7rem;"></i>
-                                            <?= htmlspecialchars($currentStatus) ?>
-                                        </span>
+                                <?php if ($existingReport): ?>
+                                    <span style="font-size:0.75rem;color:#94a3b8;">
+                                        บันทึกล่าสุด: <?= date('d/m/Y H:i', strtotime($existingReport['created_at'])) ?>
                                     </span>
-                                </div>
+                                <?php endif; ?>
                             </div>
 
-                            <!-- ระดับความเสี่ยง -->
-                            <div style="margin-top: 1rem;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">
-                                    <i class="fas fa-exclamation-triangle"></i> ระดับความเสี่ยง
-                                </div>
-                                <div class="severity-display" style="background: <?= $severityBgColor ?>; border-color: <?= $severityColor ?>33;">
-                                    <div class="severity-icon" style="background: <?= $severityColor ?>;">
-                                        <?= htmlspecialchars($currentSeverity) ?>
-                                    </div>
-                                    <div class="severity-info">
-                                        <div class="severity-level" style="color: <?= $severityColor ?>;">
-                                            ระดับ <?= htmlspecialchars($currentSeverity) ?>
-                                            <span style="font-weight: 400; font-size: 0.8rem;">(<?= htmlspecialchars($severityLabel) ?>)</span>
-                                        </div>
-                                        <div class="severity-desc">
-                                            <?= htmlspecialchars($severityFullText) ?>
-                                        </div>
-                                    </div>
-                                </div>
+                            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                            <input type="hidden" name="risk_id" value="<?= $risk_id ?>">
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-tools" style="color:#3b82f6;"></i> มาตรการแก้ไข
+                                </label>
+                                <textarea name="corrective_action" class="form-textarea"
+                                    placeholder="ระบุมาตรการแก้ไขที่ดำเนินการ..."
+                                    rows="4" <?= !$canEdit ? 'disabled' : '' ?>><?= htmlspecialchars($existingReport['corrective_action'] ?? '') ?></textarea>
                             </div>
 
-                            <?php if ($canEdit && $risk['status'] !== 'ดำเนินการแล้ว'): ?>
-                                <div class="notice notice-success">
-                                    <i class="fas fa-info-circle"></i>
-                                    <span>เมื่อบันทึกสรุปผล <strong>สถานะจะถูกเปลี่ยนเป็น "ดำเนินการแล้ว" โดยอัตโนมัติ</strong></span>
-                                </div>
-                            <?php endif; ?>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-user-check" style="color:#8b5cf6;"></i> ผู้รับผิดชอบ
+                                </label>
+                                <input type="text" name="responsible_person" class="form-input"
+                                    placeholder="ระบุชื่อผู้รับผิดชอบ..."
+                                    value="<?= htmlspecialchars($existingReport['responsible_person'] ?? $_SESSION['username'] ?? '') ?>"
+                                    <?= !$canEdit ? 'disabled' : '' ?>>
+                            </div>
 
-                            <?php if (!$canEdit): ?>
-                                <div class="notice notice-warning">
-                                    <i class="fas fa-lock"></i>
-                                    <span>คุณอยู่ในโหมด <strong>อ่านอย่างเดียว</strong> — คุณไม่ใช่เจ้าของรายการนี้</span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-search" style="color:#059669;"></i> การติดตามผล
+                                </label>
+                                <textarea name="follow_up" class="form-textarea"
+                                    placeholder="ระบุผลการติดตาม..."
+                                    rows="4" <?= !$canEdit ? 'disabled' : '' ?>><?= htmlspecialchars($existingReport['follow_up'] ?? '') ?></textarea>
+                            </div>
 
-                        <!-- ฟอร์มบันทึก -->
-                        <div class="card">
-                            <form method="POST" enctype="multipart/form-data" id="reportForm">
-                                <div class="card-header">
-                                    <div class="card-title">
-                                        <i class="fas fa-edit" style="color:#7c3aed;"></i>
-                                        <?= $existingReport ? 'แก้ไขสรุปผล' : 'บันทึกสรุปผล' ?>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-chart-line" style="color:#f59e0b;"></i> ผลที่คาดว่าจะได้รับ
+                                </label>
+                                <textarea name="expected_outcome" class="form-textarea"
+                                    placeholder="ระบุผลที่คาดว่าจะได้รับ..."
+                                    rows="4" <?= !$canEdit ? 'disabled' : '' ?>><?= htmlspecialchars($existingReport['expected_outcome'] ?? '') ?></textarea>
+                            </div>
+
+                            <!-- แนบไฟล์ -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-paperclip" style="color:#6366f1;"></i> แนบไฟล์สรุปผล
+                                </label>
+
+                                <?php if (!empty($existingReport['report_file']) && file_exists($existingReport['report_file'])): ?>
+                                    <?php
+                                    $fp = str_replace('\\', '/', $existingReport['report_file']);
+                                    $fn = basename($fp);
+                                    $img = isImageFile($fp);
+                                    $fs = filesize($existingReport['report_file']);
+                                    ?>
+                                    <div class="file-card">
+                                        <div class="file-card-header">
+                                            <i class="fas fa-paperclip"></i> ไฟล์ปัจจุบัน
+                                        </div>
+                                        <?php if ($img): ?>
+                                            <div class="file-preview">
+                                                <a href="<?= htmlspecialchars($fp) ?>" data-fancybox="gallery" data-caption="<?= htmlspecialchars($fn) ?>">
+                                                    <img src="<?= htmlspecialchars($fp) ?>" alt="<?= htmlspecialchars($fn) ?>" onerror="this.style.display='none';">
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="file-info">
+                                            <div class="file-info-left">
+                                                <div class="file-icon" style="<?= $img ? 'background:#f0fdf4;' : 'background:#eff6ff;' ?>">
+                                                    <i class="fas <?= $img ? 'fa-file-image' : getFileIcon($fp) ?>"
+                                                        style="<?= $img ? 'color:#059669;' : 'color:#3b82f6;' ?>"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="file-name"><?= htmlspecialchars($fn) ?></div>
+                                                    <div class="file-meta">
+                                                        <?= strtoupper(pathinfo($fp, PATHINFO_EXTENSION)) ?> · <?= formatFileSize($fs) ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="file-actions">
+                                                <a href="<?= htmlspecialchars($fp) ?>" target="_blank" class="btn btn-sm btn-outline-blue" download>
+                                                    <i class="fas fa-download"></i> ดาวน์โหลด
+                                                </a>
+                                                <?php if ($img): ?>
+                                                    <a href="<?= htmlspecialchars($fp) ?>" data-fancybox="gallery" class="btn btn-sm btn-outline-green">
+                                                        <i class="fas fa-expand"></i> ดูภาพ
+                                                    </a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <?php if ($existingReport): ?>
-                                        <span style="font-size:0.75rem;color:#94a3b8;">
-                                            บันทึกล่าสุด: <?= date('d/m/Y H:i', strtotime($existingReport['created_at'])) ?>
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
+                                <?php endif; ?>
 
-                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                                <input type="hidden" name="risk_id" value="<?= $risk_id ?>">
-
-                                <div class="form-group">
-                                    <label class="form-label">
-                                        <i class="fas fa-tools" style="color:#3b82f6;"></i> มาตรการแก้ไข
-                                    </label>
-                                    <textarea name="corrective_action" class="form-textarea"
-                                        placeholder="ระบุมาตรการแก้ไขที่ดำเนินการ..."
-                                        rows="4" <?= !$canEdit ? 'disabled' : '' ?>><?= htmlspecialchars($existingReport['corrective_action'] ?? '') ?></textarea>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">
-                                        <i class="fas fa-user-check" style="color:#8b5cf6;"></i> ผู้รับผิดชอบ
-                                    </label>
-                                    <input type="text" name="responsible_person" class="form-input"
-                                        placeholder="ระบุชื่อผู้รับผิดชอบ..."
-                                        value="<?= htmlspecialchars($existingReport['responsible_person'] ?? $_SESSION['username'] ?? '') ?>"
-                                        <?= !$canEdit ? 'disabled' : '' ?>>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">
-                                        <i class="fas fa-search" style="color:#059669;"></i> การติดตามผล
-                                    </label>
-                                    <textarea name="follow_up" class="form-textarea"
-                                        placeholder="ระบุผลการติดตาม..."
-                                        rows="4" <?= !$canEdit ? 'disabled' : '' ?>><?= htmlspecialchars($existingReport['follow_up'] ?? '') ?></textarea>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">
-                                        <i class="fas fa-chart-line" style="color:#f59e0b;"></i> ผลที่คาดว่าจะได้รับ
-                                    </label>
-                                    <textarea name="expected_outcome" class="form-textarea"
-                                        placeholder="ระบุผลที่คาดว่าจะได้รับ..."
-                                        rows="4" <?= !$canEdit ? 'disabled' : '' ?>><?= htmlspecialchars($existingReport['expected_outcome'] ?? '') ?></textarea>
-                                </div>
-
-                                <!-- แนบไฟล์ -->
-                                <div class="form-group">
-                                    <label class="form-label">
-                                        <i class="fas fa-paperclip" style="color:#6366f1;"></i> แนบไฟล์สรุปผล
-                                    </label>
-
-                                    <?php if (!empty($existingReport['report_file']) && file_exists($existingReport['report_file'])): ?>
-                                        <?php
-                                        $fp = str_replace('\\', '/', $existingReport['report_file']);
-                                        $fn = basename($fp);
-                                        $img = isImageFile($fp);
-                                        $fs = filesize($existingReport['report_file']);
-                                        ?>
-                                        <div class="file-card">
-                                            <div class="file-card-header">
-                                                <i class="fas fa-paperclip"></i> ไฟล์ปัจจุบัน
-                                            </div>
-                                            <?php if ($img): ?>
-                                                <div class="file-preview">
-                                                    <a href="<?= htmlspecialchars($fp) ?>" data-fancybox="gallery" data-caption="<?= htmlspecialchars($fn) ?>">
-                                                        <img src="<?= htmlspecialchars($fp) ?>" alt="<?= htmlspecialchars($fn) ?>" onerror="this.style.display='none';">
-                                                    </a>
-                                                </div>
-                                            <?php endif; ?>
-                                            <div class="file-info">
-                                                <div class="file-info-left">
-                                                    <div class="file-icon" style="<?= $img ? 'background:#f0fdf4;' : 'background:#eff6ff;' ?>">
-                                                        <i class="fas <?= $img ? 'fa-file-image' : getFileIcon($fp) ?>"
-                                                            style="<?= $img ? 'color:#059669;' : 'color:#3b82f6;' ?>"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="file-name"><?= htmlspecialchars($fn) ?></div>
-                                                        <div class="file-meta">
-                                                            <?= strtoupper(pathinfo($fp, PATHINFO_EXTENSION)) ?> · <?= formatFileSize($fs) ?>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="file-actions">
-                                                    <a href="<?= htmlspecialchars($fp) ?>" target="_blank" class="btn btn-sm btn-outline-blue" download>
-                                                        <i class="fas fa-download"></i> ดาวน์โหลด
-                                                    </a>
-                                                    <?php if ($img): ?>
-                                                        <a href="<?= htmlspecialchars($fp) ?>" data-fancybox="gallery" class="btn btn-sm btn-outline-green">
-                                                            <i class="fas fa-expand"></i> ดูภาพ
-                                                        </a>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <label class="upload-area <?= !$canEdit ? 'disabled' : '' ?>" for="report_file">
-                                        <input type="file" id="report_file" name="report_file" class="hidden"
-                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
-                                            onchange="handleFileSelect(this)" <?= !$canEdit ? 'disabled' : '' ?>>
-                                        <div class="upload-icon-circle">
-                                            <i class="fas fa-cloud-upload-alt"></i>
-                                        </div>
-                                        <div class="upload-text">
-                                            <?= $canEdit ? 'คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง' : 'คุณไม่มีสิทธิ์ในการอัปโหลดไฟล์' ?>
-                                        </div>
-                                        <div class="upload-hint">PDF, Word, Excel, รูปภาพ (สูงสุด 10MB)</div>
-                                        <div id="file-preview-area" class="file-preview-inline" style="display:none;">
-                                            <i class="fas fa-file"></i>
-                                            <span id="selected-file-name"></span>
-                                            <span id="selected-file-size" style="color:#94a3b8;"></span>
-                                            <button type="button" class="btn-remove" onclick="removeSelectedFile(event)" aria-label="Remove file">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </div>
-                                    </label>
-                                </div>
-
-                                <!-- Form Footer (Desktop) -->
-                                <div class="form-footer" id="formFooterDesktop">
-                                    <a href="risks.php" class="btn btn-secondary">
-                                        <i class="fas fa-arrow-left"></i> กลับ
-                                    </a>
-                                    <?php if ($canEdit): ?>
-                                        <button type="submit" class="btn btn-primary" id="submitBtn">
-                                            <i class="fas fa-save"></i> <?= $existingReport ? 'อัปเดตข้อมูล' : 'บันทึกข้อมูล' ?>
+                                <label class="upload-area <?= !$canEdit ? 'disabled' : '' ?>" for="report_file">
+                                    <input type="file" id="report_file" name="report_file" class="hidden"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
+                                        onchange="handleFileSelect(this)" <?= !$canEdit ? 'disabled' : '' ?>>
+                                    <div class="upload-icon-circle">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                    </div>
+                                    <div class="upload-text">
+                                        <?= $canEdit ? 'คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง' : 'คุณไม่มีสิทธิ์ในการอัปโหลดไฟล์' ?>
+                                    </div>
+                                    <div class="upload-hint">PDF, Word, Excel, รูปภาพ (สูงสุด 10MB)</div>
+                                    <div id="file-preview-area" class="file-preview-inline" style="display:none;">
+                                        <i class="fas fa-file"></i>
+                                        <span id="selected-file-name"></span>
+                                        <span id="selected-file-size" style="color:#94a3b8;"></span>
+                                        <button type="button" class="btn-remove" onclick="removeSelectedFile(event)" aria-label="Remove file">
+                                            <i class="fas fa-times"></i>
                                         </button>
-                                    <?php else: ?>
-                                        <button type="button" class="btn btn-secondary" disabled>
-                                            <i class="fas fa-lock"></i> ไม่มีสิทธิ์แก้ไข
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
-                            </form>
-                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Form Footer -->
+                            <div class="form-footer" id="formFooterDesktop">
+                                <a href="risks.php" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> กลับ
+                                </a>
+                                <?php if ($canEdit): ?>
+                                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                                        <i class="fas fa-save"></i> <?= $existingReport ? 'อัปเดตข้อมูล' : 'บันทึกข้อมูล' ?>
+                                    </button>
+                                <?php else: ?>
+                                    <button type="button" class="btn btn-secondary" disabled>
+                                        <i class="fas fa-lock"></i> ไม่มีสิทธิ์แก้ไข
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </main>
@@ -1839,220 +1417,117 @@ $statusIcon = getStatusIcon($currentStatus);
 
     <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
     <script>
-        // ===== Sidebar Toggle =====
+        // Sidebar Toggle
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-        function openSidebar() {
-            sidebar.classList.add('open');
-            sidebarOverlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeSidebar() {
-            sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
-        });
-
+        function openSidebar() { sidebar.classList.add('open'); sidebarOverlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
+        function closeSidebar() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('active'); document.body.style.overflow = ''; }
+        menuToggle.addEventListener('click', () => { sidebar.classList.contains('open') ? closeSidebar() : openSidebar(); });
         sidebarOverlay.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar(); });
+        window.addEventListener('resize', () => { if (window.innerWidth > 768 && sidebar.classList.contains('open')) closeSidebar(); });
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
-        });
-
-        window.addEventListener('resize', () => {
-            if (window.innerWidth > 768 && sidebar.classList.contains('open')) closeSidebar();
-        });
-
-        // ===== Logout =====
+        // Logout
         document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
             e.preventDefault();
             Swal.fire({
-                title: 'ออกจากระบบ?',
-                html: '<p style="color:#475569;">คุณต้องการออกจากระบบใช่หรือไม่</p>',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: '<i class="fas fa-sign-out-alt" style="margin-right:0.25rem;"></i> ออกจากระบบ',
-                cancelButtonText: '<i class="fas fa-times" style="margin-right:0.25rem;"></i> ยกเลิก',
-                reverseButtons: true,
-                customClass: { popup: 'rounded-xl' }
+                title: 'ออกจากระบบ?', html: '<p style="color:#475569;">คุณต้องการออกจากระบบใช่หรือไม่</p>',
+                icon: 'question', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="fas fa-sign-out-alt"></i> ออกจากระบบ', cancelButtonText: 'ยกเลิก',
+                reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'กำลังออกจากระบบ...',
-                        allowOutsideClick: false,
-                        showConfirmButton: false,
-                        didOpen: () => Swal.showLoading()
-                    });
+                    Swal.fire({ title: 'กำลังออกจากระบบ...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
                     setTimeout(() => { window.location.href = 'logout.php'; }, 600);
                 }
             });
         });
 
-        // ===== Fancybox =====
+        // Fancybox
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof Fancybox !== 'undefined') {
-                Fancybox.bind("[data-fancybox]", {
-                    Thumbs: { autoStart: true },
-                    Toolbar: { display: ["zoom", "slideshow", "fullscreen", "download", "thumbs", "close"] }
-                });
+                Fancybox.bind("[data-fancybox]", { Thumbs: { autoStart: true }, Toolbar: { display: ["zoom", "slideshow", "fullscreen", "download", "thumbs", "close"] } });
             }
         });
 
-        // ===== SweetAlert2 Flash Message =====
+        // Flash Message
         document.addEventListener('DOMContentLoaded', function() {
             <?php if ($flash): ?>
                 Swal.fire({
                     icon: '<?= $flash['type'] ?? 'info' ?>',
                     title: '<?= addslashes($flash['title'] ?? '') ?>',
                     html: '<?= addslashes($flash['message'] ?? '') ?>',
-                    confirmButtonColor: '#2563eb',
-                    confirmButtonText: 'ตกลง',
-                    <?php if (($flash['type'] ?? '') === 'success'): ?>
-                        timer: 3000,
-                        timerProgressBar: true,
-                    <?php endif; ?>
-                    customClass: { popup: 'rounded-xl' }
+                    confirmButtonColor: '#2563eb', confirmButtonText: 'ตกลง',
+                    <?php if (($flash['type'] ?? '') === 'success'): ?>timer: 3000, timerProgressBar: true,<?php endif; ?>
                 });
             <?php endif; ?>
         });
 
-        // ===== File Upload =====
+        // File Upload
         function handleFileSelect(input) {
-            const pa = document.getElementById('file-preview-area'),
-                fn = document.getElementById('selected-file-name'),
-                fs = document.getElementById('selected-file-size');
+            const pa = document.getElementById('file-preview-area'), fn = document.getElementById('selected-file-name'), fs = document.getElementById('selected-file-size');
             if (input.files && input.files[0]) {
                 const f = input.files[0];
                 if (pa) pa.style.display = 'inline-flex';
                 if (fn) fn.textContent = f.name;
-                if (fs) {
-                    let s = f.size;
-                    if (s < 1024) fs.textContent = ' (' + s + ' B)';
-                    else if (s < 1048576) fs.textContent = ' (' + (s / 1024).toFixed(1) + ' KB)';
-                    else fs.textContent = ' (' + (s / 1048576).toFixed(1) + ' MB)';
-                }
+                if (fs) { let s = f.size; if (s < 1024) fs.textContent = ' (' + s + ' B)'; else if (s < 1048576) fs.textContent = ' (' + (s / 1024).toFixed(1) + ' KB)'; else fs.textContent = ' (' + (s / 1048576).toFixed(1) + ' MB)'; }
             }
         }
 
         function removeSelectedFile(e) {
-            e.stopPropagation();
-            e.preventDefault();
-            const fi = document.getElementById('report_file'),
-                pa = document.getElementById('file-preview-area');
+            e.stopPropagation(); e.preventDefault();
+            const fi = document.getElementById('report_file'), pa = document.getElementById('file-preview-area');
             if (fi) fi.value = '';
             if (pa) pa.style.display = 'none';
         }
 
-        // ===== Drag & Drop =====
+        // Drag & Drop
         const uploadArea = document.querySelector('.upload-area:not(.disabled)');
         if (uploadArea) {
-            uploadArea.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                this.style.borderColor = '#2563eb';
-                this.style.background = '#eff6ff';
-            });
-            uploadArea.addEventListener('dragleave', function(e) {
-                e.preventDefault();
-                this.style.borderColor = '#cbd5e1';
-                this.style.background = '#fafbfc';
-            });
+            uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); this.style.borderColor = '#2563eb'; this.style.background = '#eff6ff'; });
+            uploadArea.addEventListener('dragleave', function(e) { e.preventDefault(); this.style.borderColor = '#cbd5e1'; this.style.background = '#fafbfc'; });
             uploadArea.addEventListener('drop', function(e) {
-                e.preventDefault();
-                this.style.borderColor = '#cbd5e1';
-                this.style.background = '#fafbfc';
-                const files = e.dataTransfer.files,
-                    fi = document.getElementById('report_file');
-                if (files.length > 0 && fi) {
-                    const dt = new DataTransfer();
-                    dt.items.add(files[0]);
-                    fi.files = dt.files;
-                    handleFileSelect(fi);
-                }
+                e.preventDefault(); this.style.borderColor = '#cbd5e1'; this.style.background = '#fafbfc';
+                const files = e.dataTransfer.files, fi = document.getElementById('report_file');
+                if (files.length > 0 && fi) { const dt = new DataTransfer(); dt.items.add(files[0]); fi.files = dt.files; handleFileSelect(fi); }
             });
         }
 
-        // ===== Submit Handler =====
+        // Submit Handler
         function handleSubmit() {
             const isUpdate = <?= $existingReport ? 'true' : 'false' ?>;
             const canEdit = <?= $canEdit ? 'true' : 'false' ?>;
-
             if (!canEdit) return;
 
             Swal.fire({
                 title: isUpdate ? 'ยืนยันการอัปเดต?' : 'ยืนยันการบันทึก?',
-                html: (isUpdate ?
-                        'คุณต้องการอัปเดตสรุปผลการรายงานนี้ใช่หรือไม่?' :
-                        'คุณต้องการบันทึกสรุปผลการรายงานนี้ใช่หรือไม่?') +
-                    '<br><small>สถานะจะถูกเปลี่ยนเป็น "ดำเนินการแล้ว" โดยอัตโนมัติ</small>',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#059669',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: '<i class="fas fa-save" style="margin-right:0.25rem;"></i> ' + (isUpdate ? 'อัปเดต' : 'บันทึก'),
-                cancelButtonText: 'ยกเลิก',
-                reverseButtons: true,
-                customClass: { popup: 'rounded-xl' }
+                html: (isUpdate ? 'คุณต้องการอัปเดตสรุปผลการรายงานนี้ใช่หรือไม่?' : 'คุณต้องการบันทึกสรุปผลการรายงานนี้ใช่หรือไม่?') + '<br><small>สถานะจะถูกเปลี่ยนเป็น "ดำเนินการแล้ว" โดยอัตโนมัติ</small>',
+                icon: 'question', showCancelButton: true, confirmButtonColor: '#059669', cancelButtonColor: '#6b7280',
+                confirmButtonText: '<i class="fas fa-save"></i> ' + (isUpdate ? 'อัปเดต' : 'บันทึก'), cancelButtonText: 'ยกเลิก', reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'กำลังบันทึก...',
-                        html: 'กรุณารอสักครู่',
-                        allowOutsideClick: false,
-                        showConfirmButton: false,
-                        willOpen: () => Swal.showLoading()
-                    });
-
-                    const submitBtn = document.getElementById('submitBtn');
-                    const mobileBtn = document.getElementById('mobileSubmitBtn');
-
-                    if (submitBtn) {
-                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
-                        submitBtn.disabled = true;
-                    }
-                    if (mobileBtn) {
-                        mobileBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
-                        mobileBtn.disabled = true;
-                    }
-
+                    Swal.fire({ title: 'กำลังบันทึก...', html: 'กรุณารอสักครู่', allowOutsideClick: false, showConfirmButton: false, willOpen: () => Swal.showLoading() });
+                    const submitBtn = document.getElementById('submitBtn'), mobileBtn = document.getElementById('mobileSubmitBtn');
+                    if (submitBtn) { submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...'; submitBtn.disabled = true; }
+                    if (mobileBtn) { mobileBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...'; mobileBtn.disabled = true; }
                     document.getElementById('reportForm').submit();
                 }
             });
         }
 
-        // Desktop submit
-        document.getElementById('reportForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            handleSubmit();
-        });
+        document.getElementById('reportForm')?.addEventListener('submit', function(e) { e.preventDefault(); handleSubmit(); });
+        document.getElementById('mobileSubmitBtn')?.addEventListener('click', function(e) { e.preventDefault(); handleSubmit(); });
 
-        // Mobile submit
-        document.getElementById('mobileSubmitBtn')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            handleSubmit();
-        });
-
-        // ===== Mobile Bottom Bar Scroll =====
+        // Mobile Bottom Bar Scroll
         let lastScrollY = window.scrollY;
         const mobileBottomBar = document.getElementById('mobileBottomBar');
-
         if (mobileBottomBar && window.innerWidth <= 768) {
             window.addEventListener('scroll', function() {
                 const currentScrollY = window.scrollY;
-                if (currentScrollY > lastScrollY && currentScrollY > 100) {
-                    mobileBottomBar.style.transform = 'translateY(100%)';
-                    mobileBottomBar.style.transition = 'transform 0.3s ease';
-                } else {
-                    mobileBottomBar.style.transform = 'translateY(0)';
-                }
+                if (currentScrollY > lastScrollY && currentScrollY > 100) { mobileBottomBar.style.transform = 'translateY(100%)'; mobileBottomBar.style.transition = 'transform 0.3s ease'; }
+                else { mobileBottomBar.style.transform = 'translateY(0)'; }
                 lastScrollY = currentScrollY;
             });
         }
