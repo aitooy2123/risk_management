@@ -1,4 +1,5 @@
 <?php
+
 /**
  * ฟอร์มเพิ่ม/แก้ไขข้อมูลความเสี่ยง (Card Layout) - UI สวยงาม
  * - ไล่สีตามระดับความรุนแรง
@@ -390,9 +391,11 @@ if ($id) {
         color: #94a3b8;
         transition: color 0.3s;
     }
+
     .char-counter.warning {
         color: #f59e0b;
     }
+
     .char-counter.danger {
         color: #ef4444;
     }
@@ -462,16 +465,14 @@ if ($id) {
         position: relative;
     }
 
-    <?php foreach ($severityOptions as $key => $opt): ?>
-    .severity-card.severity-<?= strtolower($key) ?>:hover {
+    <?php foreach ($severityOptions as $key => $opt): ?>.severity-card.severity-<?= strtolower($key) ?>:hover {
         border-color: <?= $opt['color'] ?> !important;
         background: <?= $opt['hover_bg'] ?> !important;
         transform: translateY(-4px);
         box-shadow: 0 8px 25px <?= $opt['color'] ?>30 !important;
     }
-    <?php endforeach; ?>
 
-    .severity-card:has(input:checked) {
+    <?php endforeach; ?>.severity-card:has(input:checked) {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
     }
@@ -523,21 +524,26 @@ if ($id) {
         gap: 0.75rem;
         animation: slideUp 0.3s ease;
     }
+
     #severity-preview.visible {
         display: flex;
     }
+
     #severity-preview .preview-icon {
         font-size: 1.3rem;
         flex-shrink: 0;
     }
+
     #severity-preview .preview-text {
         display: flex;
         flex-direction: column;
     }
+
     #severity-preview .preview-letter {
         font-weight: 700;
         font-size: 1.1rem;
     }
+
     #severity-preview .preview-desc {
         font-size: 0.85rem;
         color: #64748b;
@@ -752,14 +758,14 @@ if ($id) {
         grid-template-columns: 1fr;
     }
 
-    .space-y-4 > * + * {
+    .space-y-4>*+* {
         margin-top: 1rem;
     }
 
     .mt-2 {
         margin-top: 0.5rem;
     }
-    
+
     .mt-3 {
         margin-top: 0.75rem;
     }
@@ -767,7 +773,7 @@ if ($id) {
     .pt-2 {
         padding-top: 0.5rem;
     }
-    
+
     .pb-8 {
         padding-bottom: 2rem;
     }
@@ -775,7 +781,7 @@ if ($id) {
     .mr-2 {
         margin-right: 0.5rem;
     }
-    
+
     .ml-auto {
         margin-left: auto;
     }
@@ -783,7 +789,7 @@ if ($id) {
     .text-xs {
         font-size: 0.75rem;
     }
-    
+
     .text-sm {
         font-size: 0.875rem;
     }
@@ -791,7 +797,7 @@ if ($id) {
     .text-gray-400 {
         color: #94a3b8;
     }
-    
+
     .text-gray-500 {
         color: #64748b;
     }
@@ -807,27 +813,27 @@ if ($id) {
     .flex {
         display: flex;
     }
-    
+
     .flex-wrap {
         flex-wrap: wrap;
     }
-    
+
     .items-center {
         align-items: center;
     }
-    
+
     .justify-end {
         justify-content: flex-end;
     }
-    
+
     .gap-2 {
         gap: 0.5rem;
     }
-    
+
     .gap-3 {
         gap: 0.75rem;
     }
-    
+
     .gap-4 {
         gap: 1rem;
     }
@@ -838,6 +844,7 @@ if ($id) {
             opacity: 0;
             transform: translateY(15px);
         }
+
         to {
             opacity: 1;
             transform: translateY(0);
@@ -848,14 +855,37 @@ if ($id) {
         animation: slideUp 0.4s ease forwards;
     }
 
-    .animate-in:nth-child(1) { animation-delay: 0s; }
-    .animate-in:nth-child(2) { animation-delay: 0.04s; }
-    .animate-in:nth-child(3) { animation-delay: 0.08s; }
-    .animate-in:nth-child(4) { animation-delay: 0.12s; }
-    .animate-in:nth-child(5) { animation-delay: 0.16s; }
-    .animate-in:nth-child(6) { animation-delay: 0.2s; }
-    .animate-in:nth-child(7) { animation-delay: 0.24s; }
-    .animate-in:nth-child(8) { animation-delay: 0.28s; }
+    .animate-in:nth-child(1) {
+        animation-delay: 0s;
+    }
+
+    .animate-in:nth-child(2) {
+        animation-delay: 0.04s;
+    }
+
+    .animate-in:nth-child(3) {
+        animation-delay: 0.08s;
+    }
+
+    .animate-in:nth-child(4) {
+        animation-delay: 0.12s;
+    }
+
+    .animate-in:nth-child(5) {
+        animation-delay: 0.16s;
+    }
+
+    .animate-in:nth-child(6) {
+        animation-delay: 0.2s;
+    }
+
+    .animate-in:nth-child(7) {
+        animation-delay: 0.24s;
+    }
+
+    .animate-in:nth-child(8) {
+        animation-delay: 0.28s;
+    }
 
     /* Status Preview */
     #status-preview {
@@ -882,15 +912,15 @@ if ($id) {
         .grid-cols-1 {
             grid-template-columns: 1fr;
         }
-        
+
         .md\:grid-cols-2 {
             grid-template-columns: repeat(2, 1fr);
         }
-        
+
         .md\:inline {
             display: inline !important;
         }
-        
+
         .md\:p-6 {
             padding: 1.5rem;
         }
@@ -1089,49 +1119,59 @@ if ($id) {
 
     /* Print */
     @media print {
-        .sidebar, 
-        .form-header, 
-        .objective-box, 
-        .btn-submit, 
-        .btn-cancel, 
+
+        .sidebar,
+        .form-header,
+        .objective-box,
+        .btn-submit,
+        .btn-cancel,
         .btn-back,
-        #auto-save-indicator, 
-        .locked-overlay, 
+        #auto-save-indicator,
+        .locked-overlay,
         .card-header-badge,
         .mobile-menu-btn {
             display: none !important;
         }
+
         body {
             background: white !important;
         }
+
         .content-area {
             padding: 0 !important;
             height: auto !important;
             overflow: visible !important;
         }
+
         .form-card {
             border: 1px solid #ddd !important;
             box-shadow: none !important;
             break-inside: avoid;
             margin-bottom: 0.5rem !important;
         }
+
         .form-container {
             max-width: 100% !important;
         }
-        .form-input, 
+
+        .form-input,
         .status-select {
             border: 1px solid #ccc !important;
             background: white !important;
         }
+
         .severity-card:has(input:checked) {
             border: 2px solid #000 !important;
         }
+
         .severity-card {
             border: 1px solid #ccc !important;
         }
+
         #severity-preview {
             border: 1px solid #ccc !important;
         }
+
         .radio-card:has(input:checked) {
             border: 1px solid #000 !important;
         }
@@ -1284,13 +1324,13 @@ if ($id) {
                         <div class="grid grid-cols-1 md:grid-cols-2">
                             <div>
                                 <label class="form-label">📅 วันที่เกิดเหตุการณ์ <span class="required">*</span></label>
-                                <input type="datetime-local" id="event_datetime" name="event_datetime" 
+                                <input type="datetime-local" id="event_datetime" name="event_datetime"
                                     value="<?= $event_datetime ?>"
                                     class="form-input" required <?= !$is_editable ? 'disabled' : '' ?>>
                             </div>
                             <div>
                                 <label class="form-label">📅 วันที่รายงาน <span class="required">*</span></label>
-                                <input type="datetime-local" id="report_datetime" name="report_datetime" 
+                                <input type="datetime-local" id="report_datetime" name="report_datetime"
                                     value="<?= $report_datetime ?>"
                                     class="form-input" required <?= !$is_editable ? 'disabled' : '' ?>>
                                 <small style="font-size: 0.7rem; color: #94a3b8;">วันที่รายงานต้องไม่ก่อนวันที่เกิดเหตุการณ์</small>
@@ -1444,73 +1484,85 @@ if ($id) {
 </div>
 
 <script>
-// Mobile Sidebar Toggle
-function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-        sidebar.classList.toggle('open');
+    // Mobile Sidebar Toggle
+    function toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.classList.toggle('open');
+        }
     }
-}
 
-// Show shortcut hint on desktop
-if (window.innerWidth >= 768) {
-    const hint = document.getElementById('shortcut-hint');
-    if (hint) {
-        hint.style.display = 'inline';
+    // Show shortcut hint on desktop
+    if (window.innerWidth >= 768) {
+        const hint = document.getElementById('shortcut-hint');
+        if (hint) {
+            hint.style.display = 'inline';
+        }
     }
-}
 
-function fillDefaultTexts() {
-    var detail = document.getElementById('detail');
-    var solution = document.getElementById('initial_solution');
-    var suggestion = document.getElementById('suggestion');
-    var btn = document.getElementById('fillDefaultBtn');
-    
-    if (!detail || !solution || !suggestion) {
-        alert('ไม่พบช่องกรอกข้อมูล');
-        return;
+    function fillDefaultTexts() {
+        var detail = document.getElementById('detail');
+        var solution = document.getElementById('initial_solution');
+        var suggestion = document.getElementById('suggestion');
+        var btn = document.getElementById('fillDefaultBtn');
+
+        if (!detail || !solution || !suggestion) {
+            alert('ไม่พบช่องกรอกข้อมูล');
+            return;
+        }
+
+        var hasFilled = false;
+
+        if (detail.value.trim() === '') {
+            detail.value = 'ไม่มีรายละเอียดเพิ่มเติม';
+            detail.dispatchEvent(new Event('input', {
+                bubbles: true
+            }));
+            detail.dispatchEvent(new Event('change', {
+                bubbles: true
+            }));
+            hasFilled = true;
+        }
+
+        if (solution.value.trim() === '') {
+            solution.value = 'ไม่มีการแก้ไขเบื้องต้น';
+            solution.dispatchEvent(new Event('input', {
+                bubbles: true
+            }));
+            solution.dispatchEvent(new Event('change', {
+                bubbles: true
+            }));
+            hasFilled = true;
+        }
+
+        if (suggestion.value.trim() === '') {
+            suggestion.value = 'ไม่มีข้อเสนอแนะเพิ่มเติม';
+            suggestion.dispatchEvent(new Event('input', {
+                bubbles: true
+            }));
+            suggestion.dispatchEvent(new Event('change', {
+                bubbles: true
+            }));
+            hasFilled = true;
+        }
+
+        if (btn && hasFilled) {
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
+            btn.classList.add('filled');
+            btn.disabled = true;
+        }
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'เติมข้อมูลเรียบร้อย',
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        }
     }
-    
-    var hasFilled = false;
-    
-    if (detail.value.trim() === '') {
-        detail.value = 'ไม่มีรายละเอียดเพิ่มเติม';
-        detail.dispatchEvent(new Event('input', { bubbles: true }));
-        detail.dispatchEvent(new Event('change', { bubbles: true }));
-        hasFilled = true;
-    }
-    
-    if (solution.value.trim() === '') {
-        solution.value = 'ไม่มีการแก้ไขเบื้องต้น';
-        solution.dispatchEvent(new Event('input', { bubbles: true }));
-        solution.dispatchEvent(new Event('change', { bubbles: true }));
-        hasFilled = true;
-    }
-    
-    if (suggestion.value.trim() === '') {
-        suggestion.value = 'ไม่มีข้อเสนอแนะเพิ่มเติม';
-        suggestion.dispatchEvent(new Event('input', { bubbles: true }));
-        suggestion.dispatchEvent(new Event('change', { bubbles: true }));
-        hasFilled = true;
-    }
-    
-    if (btn && hasFilled) {
-        btn.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
-        btn.classList.add('filled');
-        btn.disabled = true;
-    }
-    
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            icon: 'success',
-            title: 'เติมข้อมูลเรียบร้อย',
-            timer: 2000,
-            showConfirmButton: false,
-            toast: true,
-            position: 'top-end'
-        });
-    }
-}
 </script>
 
 <script>
@@ -1534,26 +1586,26 @@ function fillDefaultTexts() {
 
         if (eventDatetimeInput && reportDatetimeInput) {
             const now = new Date();
-            const todayStr = now.getFullYear() + '-' + 
-                             String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                             String(now.getDate()).padStart(2, '0') + 'T' +
-                             String(now.getHours()).padStart(2, '0') + ':' + 
-                             String(now.getMinutes()).padStart(2, '0');
-            
+            const todayStr = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + 'T' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0');
+
             eventDatetimeInput.max = todayStr;
             reportDatetimeInput.max = todayStr;
-            
+
             if (eventDatetimeInput.value) {
                 reportDatetimeInput.min = eventDatetimeInput.value;
                 if (reportDatetimeInput.value && reportDatetimeInput.value < eventDatetimeInput.value) {
                     reportDatetimeInput.value = eventDatetimeInput.value;
                 }
             }
-            
+
             eventDatetimeInput.addEventListener('change', function() {
                 if (this.value) {
                     reportDatetimeInput.min = this.value;
-                    
+
                     if (reportDatetimeInput.value && reportDatetimeInput.value < this.value) {
                         reportDatetimeInput.value = this.value;
                         Swal.fire({
@@ -1566,17 +1618,17 @@ function fillDefaultTexts() {
                             position: 'top-end'
                         });
                     }
-                    
+
                     if (!reportDatetimeInput.value) {
                         reportDatetimeInput.value = this.value;
                     }
                 }
             });
-            
+
             reportDatetimeInput.addEventListener('change', function() {
                 const eventDate = eventDatetimeInput.value;
                 const reportDate = this.value;
-                
+
                 if (eventDate && reportDate && reportDate < eventDate) {
                     Swal.fire({
                         icon: 'warning',
@@ -1587,7 +1639,7 @@ function fillDefaultTexts() {
                     this.value = eventDate;
                 }
             });
-            
+
             console.log('✅ Date Validation พร้อมใช้งาน');
         }
 
@@ -1605,7 +1657,7 @@ function fillDefaultTexts() {
                 inp.disabled = true;
             }
         }
-        
+
         ['unit', 'risk_type'].forEach(name => {
             const radios = document.querySelectorAll(`input[name="${name}"]`);
             radios.forEach(r => r.addEventListener('change', function() {
@@ -1711,17 +1763,33 @@ function fillDefaultTexts() {
                 statusPreview.id = 'status-preview';
                 statusSelect.parentNode.appendChild(statusPreview);
             }
-            
+
             const statusColors = {
-                'ยังไม่ดำเนินการ': { color: '#6b7280', bg: '#f3f4f6', icon: 'fa-clock' },
-                'กำลังดำเนินการ': { color: '#3b82f6', bg: '#eff6ff', icon: 'fa-spinner' },
-                'ดำเนินการแล้ว': { color: '#22c55e', bg: '#f0fdf4', icon: 'fa-check-circle' },
-                'ยุติ': { color: '#ef4444', bg: '#fef2f2', icon: 'fa-ban' }
+                'ยังไม่ดำเนินการ': {
+                    color: '#6b7280',
+                    bg: '#f3f4f6',
+                    icon: 'fa-clock'
+                },
+                'กำลังดำเนินการ': {
+                    color: '#3b82f6',
+                    bg: '#eff6ff',
+                    icon: 'fa-spinner'
+                },
+                'ดำเนินการแล้ว': {
+                    color: '#22c55e',
+                    bg: '#f0fdf4',
+                    icon: 'fa-check-circle'
+                },
+                'ยุติ': {
+                    color: '#ef4444',
+                    bg: '#fef2f2',
+                    icon: 'fa-ban'
+                }
             };
-            
+
             statusSelect.addEventListener('change', function() {
                 const selectedValue = this.value;
-                
+
                 if (selectedValue && statusColors[selectedValue]) {
                     const status = statusColors[selectedValue];
                     statusPreview.innerHTML = `
@@ -1736,7 +1804,7 @@ function fillDefaultTexts() {
                     statusPreview.classList.remove('visible');
                 }
             });
-            
+
             if (statusSelect.value) {
                 statusSelect.dispatchEvent(new Event('change'));
             }
@@ -1753,19 +1821,19 @@ function fillDefaultTexts() {
             formData.append('auto_save', '1');
 
             fetch('action.php?action=save_risk_draft', {
-                method: 'POST',
-                body: formData
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    autoSaveIndicator.style.display = 'flex';
-                    setTimeout(() => {
-                        autoSaveIndicator.style.display = 'none';
-                    }, 3000);
-                }
-            })
-            .catch(() => {});
+                    method: 'POST',
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        autoSaveIndicator.style.display = 'flex';
+                        setTimeout(() => {
+                            autoSaveIndicator.style.display = 'none';
+                        }, 3000);
+                    }
+                })
+                .catch(() => {});
         }
 
         form.addEventListener('input', function() {
@@ -1799,7 +1867,10 @@ function fillDefaultTexts() {
             el.addEventListener('invalid', function(e) {
                 e.preventDefault();
                 this.classList.add('error');
-                this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                this.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
 
                 const msg = document.createElement('div');
                 msg.className = 'text-red-500 text-xs mt-2 animate-in';
@@ -1815,8 +1886,12 @@ function fillDefaultTexts() {
 
         // Leave Warning
         let formChanged = false;
-        form.addEventListener('input', () => { formChanged = true; });
-        form.addEventListener('change', () => { formChanged = true; });
+        form.addEventListener('input', () => {
+            formChanged = true;
+        });
+        form.addEventListener('change', () => {
+            formChanged = true;
+        });
 
         window.addEventListener('beforeunload', function(e) {
             if (formChanged && isEditable) {
@@ -1838,7 +1913,7 @@ function fillDefaultTexts() {
 
             const eventDate = document.getElementById('event_datetime').value;
             const reportDate = document.getElementById('report_datetime').value;
-            
+
             if (eventDate && reportDate && reportDate < eventDate) {
                 Swal.fire({
                     icon: 'warning',
@@ -1867,7 +1942,10 @@ function fillDefaultTexts() {
                     if (inp && !inp.value.trim()) {
                         otherEmpty = true;
                         inp.classList.add('error');
-                        inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        inp.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
                         setTimeout(() => inp.classList.remove('error'), 3000);
                     }
                 }
@@ -1901,43 +1979,43 @@ function fillDefaultTexts() {
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
 
                 fetch('action.php?action=save_risk', {
-                    method: 'POST',
-                    body: new FormData(form)
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'บันทึกสำเร็จ',
-                            text: data.message,
-                            confirmButtonColor: '#2563eb'
-                        }).then(() => {
-                            window.location.href = 'risks.php';
-                        });
-                    } else {
+                        method: 'POST',
+                        body: new FormData(form)
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'บันทึกสำเร็จ',
+                                text: data.message,
+                                confirmButtonColor: '#2563eb'
+                            }).then(() => {
+                                window.location.href = 'risks.php';
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'ผิดพลาด',
+                                text: data.message || 'เกิดข้อผิดพลาดในการบันทึก',
+                                confirmButtonColor: '#2563eb'
+                            });
+                            submitting = false;
+                            btn.disabled = false;
+                            btn.innerHTML = orig;
+                        }
+                    })
+                    .catch(() => {
                         Swal.fire({
                             icon: 'error',
-                            title: 'ผิดพลาด',
-                            text: data.message || 'เกิดข้อผิดพลาดในการบันทึก',
+                            title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์',
+                            text: 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต',
                             confirmButtonColor: '#2563eb'
                         });
                         submitting = false;
                         btn.disabled = false;
                         btn.innerHTML = orig;
-                    }
-                })
-                .catch(() => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์',
-                        text: 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต',
-                        confirmButtonColor: '#2563eb'
                     });
-                    submitting = false;
-                    btn.disabled = false;
-                    btn.innerHTML = orig;
-                });
             });
         });
 
