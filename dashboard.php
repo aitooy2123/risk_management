@@ -1,80 +1,27 @@
 <?php
+/**
+ * Dashboard - Risk Management System
+ * Full Page Layout with Organized Structure
+ * Version: 2.0
+ */
+
+// =============================================
+// 1. INITIALIZATION & SECURITY
+// =============================================
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
 require_once 'includes/functions.php';
-if (!isLoggedIn()) redirect('index.php');
 
-// รับค่าช่วงวันที่
-$date_from = $_GET['date_from'] ?? '';
-$date_to   = $_GET['date_to'] ?? '';
-$status_filter = $_GET['status_filter'] ?? '';
-$type_filter = $_GET['type_filter'] ?? '';
-
-if ($date_from && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from)) $date_from = '';
-if ($date_to && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) $date_to = '';
-
-// CSRF Token สำหรับ refresh
-$csrf_token = generateCsrfToken();
-
-// สร้าง WHERE clause แบบปลอดภัย
-$where_clause = '';
-$where_params = [];
-
-if ($date_from && $date_to) {
-    $where_clause = "WHERE r.created_at BETWEEN :date_from AND :date_to";
-    $where_params = [
-        ':date_from' => $date_from . ' 00:00:00',
-        ':date_to' => $date_to . ' 23:59:59'
-    ];
-} elseif ($date_from) {
-    $where_clause = "WHERE r.created_at >= :date_from";
-    $where_params = [
-        ':date_from' => $date_from . ' 00:00:00'
-    ];
-} elseif ($date_to) {
-    $where_clause = "WHERE r.created_at <= :date_to";
-    $where_params = [
-        ':date_to' => $date_to . ' 23:59:59'
-    ];
+if (!isLoggedIn()) {
+    redirect('index.php');
 }
 
-// เพิ่มตัวกรองสถานะ
-if ($status_filter) {
-    if ($where_clause) {
-        $where_clause .= " AND r.status = :status";
-    } else {
-        $where_clause = "WHERE r.status = :status";
-    }
-    $where_params[':status'] = $status_filter;
-}
+// =============================================
+// 2. CONFIGURATION & CONSTANTS
+// =============================================
+define('DATE_REGEX', '/^\d{4}-\d{2}-\d{2}$/');
 
-// เพิ่มตัวกรองประเภท
-if ($type_filter) {
-    if ($where_clause) {
-        $where_clause .= " AND r.risk_type = :risk_type";
-    } else {
-        $where_clause = "WHERE r.risk_type = :risk_type";
-    }
-    $where_params[':risk_type'] = $type_filter;
-}
-
-// ฟังก์ชันสำหรับ execute query
-function executeQuery($pdo, $sql, $params = []) {
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt;
-}
-
-function fetchAll($pdo, $sql, $params = []) {
-    return executeQuery($pdo, $sql, $params)->fetchAll();
-}
-
-function fetchColumn($pdo, $sql, $params = []) {
-    return executeQuery($pdo, $sql, $params)->fetchColumn();
-}
-
-// ===== ลำดับกลุ่มงานที่ต้องการ =====
-$unitOrderList = [
+$UNIT_ORDER = [
     'กลุ่มผู้บริหาร',
     'กลุ่มอำนวยการ',
     'กลุ่มขับเคลื่อนยุทธศาสตร์และพัฒนากำลังคน',
@@ -85,24 +32,19 @@ $unitOrderList = [
     'กลุ่มพัฒนาการส่งเสริมสุขภาพวัยสูงอายุ',
     'กลุ่มพัฒนาอนามัยและสิ่งแวดล้อม'
 ];
-$unitOrderString = "'" . implode("','", $unitOrderList) . "'";
 
-// ===== สถิติรวม =====
-$totalRisks = fetchColumn($pdo, "SELECT COUNT(*) FROM risks r " . $where_clause, $where_params);
-$totalUsers = fetchColumn($pdo, "SELECT COUNT(*) FROM users");
+$RISK_TYPES = [
+    'ความเสี่ยงทางด้านกลยุทธ์',
+    'ความเสี่ยงทางด้านการเงิน',
+    'ความเสี่ยงทางด้านการปฏิบัติงาน',
+    'ความเสี่ยงทางด้านกฎหมาย',
+    'ความเสี่ยงด้านสิ่งแวดล้อม',
+    'ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข'
+];
 
-// ===== จำนวนความเสี่ยงตามระดับ - Doughnut Chart =====
-$severityData = fetchAll($pdo, 
-    "SELECT severity, COUNT(*) as count FROM risks r " . $where_clause . " 
-     GROUP BY severity 
-     ORDER BY CASE severity 
-        WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 
-        WHEN 'D' THEN 4 WHEN 'F' THEN 5 WHEN 'E' THEN 6 
-     END",
-    $where_params
-);
+$STATUS_LIST = ['ยังไม่ดำเนินการ', 'กำลังดำเนินการ', 'ดำเนินการแล้ว', 'ยุติ'];
 
-$severityFullMap = [
+$SEVERITY_MAP = [
     'A' => 'ระดับ A : มีโอกาสเกิดความเสี่ยงแต่ยังไม่เกิดขึ้น',
     'B' => 'ระดับ B : เกิดความเสี่ยง ยังไม่ถึงตัวบุคคล ไม่เกิดผลกระทบต่องาน',
     'C' => 'ระดับ C : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับเบื้องต้น สามารถแก้ไขได้ด้วยตนเอง',
@@ -111,234 +53,386 @@ $severityFullMap = [
     'E' => 'ระดับ E : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงสุดไม่สามารถแก้ไขได้ รายงานผู้บริหาร'
 ];
 
-$severityFullLabels = [];
-$severityFullCounts = [];
-foreach ($severityData as $item) {
-    $severityFullLabels[] = $severityFullMap[$item['severity']] ?? $item['severity'];
-    $severityFullCounts[] = $item['count'];
+$CHART_COLORS = [
+    'doughnut' => ['#3b82f6', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'],
+    'group' => ['#3b82f6', '#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'],
+    'groupBorder' => ['#2563eb', '#4f46e5', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626', '#db2777', '#0d9488']
+];
+
+// =============================================
+// 3. INPUT VALIDATION & SANITIZATION
+// =============================================
+$filters = [
+    'date_from'     => isset($_GET['date_from']) ? trim($_GET['date_from']) : '',
+    'date_to'       => isset($_GET['date_to']) ? trim($_GET['date_to']) : '',
+    'status_filter' => isset($_GET['status_filter']) ? trim($_GET['status_filter']) : '',
+    'type_filter'   => isset($_GET['type_filter']) ? trim($_GET['type_filter']) : ''
+];
+
+// Validate date format
+foreach (['date_from', 'date_to'] as $field) {
+    if (!empty($filters[$field]) && !preg_match(DATE_REGEX, $filters[$field])) {
+        $filters[$field] = '';
+    }
 }
 
-// ===== ประเภทความเสี่ยง - Polar Area =====
-$riskTypes = fetchAll($pdo, 
-    "SELECT risk_type, COUNT(*) as count FROM risks r " . $where_clause . " 
-     GROUP BY risk_type ORDER BY count DESC",
-    $where_params
-);
+// Generate CSRF token
+$csrf_token = generateCsrfToken();
 
-// ===== รายการล่าสุด =====
-$recent = fetchAll($pdo, 
-    "SELECT r.unit, r.risk_type, r.severity, r.status, r.created_at 
-    FROM risks r " . $where_clause . " 
-    ORDER BY r.created_at DESC LIMIT 7",
-    $where_params
-);
-
-// ===== สรุปกลุ่มงาน - เรียงตามลำดับที่กำหนด =====
-$groupSummary = fetchAll($pdo, 
-    "SELECT r.unit, COUNT(*) as total
-    FROM risks r " . $where_clause . " 
-    GROUP BY r.unit 
-    ORDER BY FIELD(r.unit, $unitOrderString), total DESC",
-    $where_params
-);
-
-// หา top type สำหรับแต่ละกลุ่ม
-$groupTopTypes = [];
-foreach ($groupSummary as $group) {
-    $unit = $group['unit'];
-    
-    // สร้าง WHERE clause สำหรับ query ย่อย
-    $unitWhere = "WHERE unit = :unit_name";
-    $unitParams = [':unit_name' => $unit];
-    
-    // เพิ่มเงื่อนไขวันที่ถ้ามี
-    if ($date_from && $date_to) {
-        $unitWhere .= " AND created_at BETWEEN :unit_date_from AND :unit_date_to";
-        $unitParams[':unit_date_from'] = $date_from . ' 00:00:00';
-        $unitParams[':unit_date_to'] = $date_to . ' 23:59:59';
-    } elseif ($date_from) {
-        $unitWhere .= " AND created_at >= :unit_date_from";
-        $unitParams[':unit_date_from'] = $date_from . ' 00:00:00';
-    } elseif ($date_to) {
-        $unitWhere .= " AND created_at <= :unit_date_to";
-        $unitParams[':unit_date_to'] = $date_to . ' 23:59:59';
+// =============================================
+// 4. DATABASE HELPER FUNCTIONS
+// =============================================
+function dbFetchAll($pdo, $sql, $params = []) {
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Database Error: " . $e->getMessage());
+        return [];
     }
-    
-    // เพิ่มตัวกรองสถานะ
-    if ($status_filter) {
-        $unitWhere .= " AND status = :unit_status";
-        $unitParams[':unit_status'] = $status_filter;
-    }
-    
-    // เพิ่มตัวกรองประเภท
-    if ($type_filter) {
-        $unitWhere .= " AND risk_type = :unit_risk_type";
-        $unitParams[':unit_risk_type'] = $type_filter;
-    }
-    
-    $topTypeSql = "SELECT risk_type FROM risks " . $unitWhere . 
-                  " GROUP BY risk_type ORDER BY COUNT(*) DESC LIMIT 1";
-    
-    $topTypeResult = fetchAll($pdo, $topTypeSql, $unitParams);
-    $groupTopTypes[$unit] = !empty($topTypeResult) ? $topTypeResult[0]['risk_type'] : '-';
 }
 
-// ===== สรุปสถานะ - เรียงตามลำดับที่กำหนด =====
-$statusSummary = fetchAll($pdo, 
-    "SELECT unit,
-        SUM(CASE WHEN status='ยังไม่ดำเนินการ' OR status IS NULL OR status='' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status='กำลังดำเนินการ' THEN 1 ELSE 0 END) as in_progress,
-        SUM(CASE WHEN status='ดำเนินการแล้ว' THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN status='ยุติ' THEN 1 ELSE 0 END) as terminated_count,
-        COUNT(*) as total
-    FROM risks r " . $where_clause . " 
-    GROUP BY unit 
-    ORDER BY FIELD(unit, $unitOrderString), total DESC",
-    $where_params
-);
+function dbFetchColumn($pdo, $sql, $params = []) {
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        error_log("Database Error: " . $e->getMessage());
+        return 0;
+    }
+}
 
-// ===== จำนวนผู้ใช้ตามบทบาท =====
-$totalAdmins = fetchColumn($pdo, "SELECT COUNT(*) FROM users WHERE role = 'admin'");
-$totalNormalUsers = fetchColumn($pdo, "SELECT COUNT(*) FROM users WHERE role = 'user'");
+// =============================================
+// 5. QUERY BUILDER
+// =============================================
+function buildWhereClause($filters) {
+    $conditions = [];
+    $params = [];
+    
+    // Date range filter
+    if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+        $conditions[] = "r.created_at BETWEEN :date_from AND :date_to";
+        $params[':date_from'] = $filters['date_from'] . ' 00:00:00';
+        $params[':date_to'] = $filters['date_to'] . ' 23:59:59';
+    } elseif (!empty($filters['date_from'])) {
+        $conditions[] = "r.created_at >= :date_from";
+        $params[':date_from'] = $filters['date_from'] . ' 00:00:00';
+    } elseif (!empty($filters['date_to'])) {
+        $conditions[] = "r.created_at <= :date_to";
+        $params[':date_to'] = $filters['date_to'] . ' 23:59:59';
+    }
+    
+    // Status filter
+    if (!empty($filters['status_filter'])) {
+        $conditions[] = "r.status = :status";
+        $params[':status'] = $filters['status_filter'];
+    }
+    
+    // Type filter
+    if (!empty($filters['type_filter'])) {
+        $conditions[] = "r.risk_type = :risk_type";
+        $params[':risk_type'] = $filters['type_filter'];
+    }
+    
+    $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
+    return [$whereClause, $params];
+}
 
-// ===== ผู้ใช้ที่รายงานมากที่สุด =====
-$topReporters = fetchAll($pdo, 
-    "SELECT u.username, u.avatar, COUNT(*) as report_count 
-    FROM risks r 
-    LEFT JOIN users u ON r.user_id = u.id 
-    " . $where_clause . " 
-    GROUP BY r.user_id, u.username, u.avatar 
-    ORDER BY report_count DESC LIMIT 5",
-    $where_params
-);
+// Build main WHERE clause
+list($where_clause, $where_params) = buildWhereClause($filters);
 
-// ===== จำนวนความเสี่ยงวันนี้ =====
-$todayRisks = fetchColumn($pdo, "SELECT COUNT(*) FROM risks WHERE DATE(created_at) = CURDATE()");
+// =============================================
+// 6. DATA FETCHING - Main Statistics
+// =============================================
+$data = [];
 
-// ===== จำนวนความเสี่ยงที่ดำเนินการแล้ว =====
+// 6.1 Total counts
+$data['totalRisks'] = dbFetchColumn($pdo, "SELECT COUNT(*) FROM risks r $where_clause", $where_params);
+$data['totalUsers'] = dbFetchColumn($pdo, "SELECT COUNT(*) FROM users");
+$data['totalAdmins'] = dbFetchColumn($pdo, "SELECT COUNT(*) FROM users WHERE role = 'admin'");
+$data['totalNormalUsers'] = $data['totalUsers'] - $data['totalAdmins'];
+$data['todayRisks'] = dbFetchColumn($pdo, "SELECT COUNT(*) FROM risks WHERE DATE(created_at) = CURDATE()");
+
+// 6.2 Completed risks with date filter
 $completedSql = "SELECT COUNT(*) FROM risks r WHERE r.status = 'ดำเนินการแล้ว'";
 $completedParams = [];
-
-// เพิ่มเงื่อนไขวันที่ถ้ามี
-if ($date_from && $date_to) {
-    $completedSql .= " AND r.created_at BETWEEN :comp_date_from AND :comp_date_to";
-    $completedParams[':comp_date_from'] = $date_from . ' 00:00:00';
-    $completedParams[':comp_date_to'] = $date_to . ' 23:59:59';
-} elseif ($date_from) {
-    $completedSql .= " AND r.created_at >= :comp_date_from";
-    $completedParams[':comp_date_from'] = $date_from . ' 00:00:00';
-} elseif ($date_to) {
-    $completedSql .= " AND r.created_at <= :comp_date_to";
-    $completedParams[':comp_date_to'] = $date_to . ' 23:59:59';
+if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+    $completedSql .= " AND r.created_at BETWEEN :c_from AND :c_to";
+    $completedParams = [
+        ':c_from' => $filters['date_from'] . ' 00:00:00',
+        ':c_to' => $filters['date_to'] . ' 23:59:59'
+    ];
+} elseif (!empty($filters['date_from'])) {
+    $completedSql .= " AND r.created_at >= :c_from";
+    $completedParams = [':c_from' => $filters['date_from'] . ' 00:00:00'];
+} elseif (!empty($filters['date_to'])) {
+    $completedSql .= " AND r.created_at <= :c_to";
+    $completedParams = [':c_to' => $filters['date_to'] . ' 23:59:59'];
 }
+$data['completedRisks'] = dbFetchColumn($pdo, $completedSql, $completedParams);
 
-$completedRisks = fetchColumn($pdo, $completedSql, $completedParams);
+// 6.3 Completion percentage
+$data['completionPercentage'] = $data['totalRisks'] > 0 
+    ? round(($data['completedRisks'] / $data['totalRisks']) * 100, 1) 
+    : 0;
 
-// ===== สถานะแยกตามประเภท =====
-$statusCounts = [
-    'ยังไม่ดำเนินการ' => 0,
-    'กำลังดำเนินการ' => 0,
-    'ดำเนินการแล้ว' => 0,
-    'ยุติ' => 0
-];
+// =============================================
+// 7. DATA FETCHING - Chart Data
+// =============================================
 
-// นับจำนวนแต่ละสถานะ
-$statusConditions = [
-    'ยังไม่ดำเนินการ' => "(r.status = 'ยังไม่ดำเนินการ' OR r.status IS NULL OR r.status = '')",
-    'กำลังดำเนินการ' => "r.status = 'กำลังดำเนินการ'",
-    'ดำเนินการแล้ว' => "r.status = 'ดำเนินการแล้ว'",
-    'ยุติ' => "r.status = 'ยุติ'"
-];
+// 7.1 Severity distribution
+$data['severityData'] = dbFetchAll($pdo, 
+    "SELECT severity, COUNT(*) as count 
+     FROM risks r $where_clause 
+     GROUP BY severity 
+     ORDER BY FIELD(severity, 'A','B','C','D','F','E')",
+    $where_params
+);
 
-foreach ($statusConditions as $statusName => $statusCondition) {
-    $countSql = "SELECT COUNT(*) FROM risks r WHERE " . $statusCondition;
-    $countParams = [];
-    
-    // เพิ่มเงื่อนไขวันที่ถ้ามี
-    if ($date_from && $date_to) {
-        $countSql .= " AND r.created_at BETWEEN :count_date_from AND :count_date_to";
-        $countParams[':count_date_from'] = $date_from . ' 00:00:00';
-        $countParams[':count_date_to'] = $date_to . ' 23:59:59';
-    } elseif ($date_from) {
-        $countSql .= " AND r.created_at >= :count_date_from";
-        $countParams[':count_date_from'] = $date_from . ' 00:00:00';
-    } elseif ($date_to) {
-        $countSql .= " AND r.created_at <= :count_date_to";
-        $countParams[':count_date_to'] = $date_to . ' 23:59:59';
+// 7.2 Risk type distribution
+$data['riskTypes'] = dbFetchAll($pdo, 
+    "SELECT risk_type, COUNT(*) as count 
+     FROM risks r $where_clause 
+     GROUP BY risk_type 
+     ORDER BY count DESC",
+    $where_params
+);
+
+// 7.3 Recent entries
+$data['recentRisks'] = dbFetchAll($pdo, 
+    "SELECT unit, risk_type, severity, status, created_at 
+     FROM risks r $where_clause 
+     ORDER BY created_at DESC 
+     LIMIT 7",
+    $where_params
+);
+
+// 7.4 Group summary
+$unitOrderString = "'" . implode("','", $UNIT_ORDER) . "'";
+$data['groupSummary'] = dbFetchAll($pdo, 
+    "SELECT unit, COUNT(*) as total 
+     FROM risks r $where_clause 
+     GROUP BY unit 
+     ORDER BY FIELD(unit, $unitOrderString), total DESC",
+    $where_params
+);
+
+// 7.5 Status summary by group
+$data['statusSummary'] = dbFetchAll($pdo, 
+    "SELECT unit,
+        SUM(CASE WHEN status = 'ยังไม่ดำเนินการ' OR status IS NULL OR status = '' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'กำลังดำเนินการ' THEN 1 ELSE 0 END) as in_progress,
+        SUM(CASE WHEN status = 'ดำเนินการแล้ว' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'ยุติ' THEN 1 ELSE 0 END) as terminated_count,
+        COUNT(*) as total
+     FROM risks r $where_clause 
+     GROUP BY unit 
+     ORDER BY FIELD(unit, $unitOrderString), total DESC",
+    $where_params
+);
+
+// 7.6 Top reporters
+$data['topReporters'] = dbFetchAll($pdo, 
+    "SELECT u.username, u.avatar, COUNT(*) as report_count 
+     FROM risks r 
+     LEFT JOIN users u ON r.user_id = u.id 
+     $where_clause 
+     GROUP BY r.user_id, u.username, u.avatar 
+     ORDER BY report_count DESC 
+     LIMIT 5",
+    $where_params
+);
+
+// 7.7 Status counts
+$data['statusCounts'] = [];
+foreach ($STATUS_LIST as $status) {
+    if ($status === 'ยังไม่ดำเนินการ') {
+        $statusCondition = "(r.status = :s OR r.status IS NULL OR r.status = '')";
+    } else {
+        $statusCondition = "r.status = :s";
     }
     
-    $statusCounts[$statusName] = fetchColumn($pdo, $countSql, $countParams);
+    $countSql = "SELECT COUNT(*) FROM risks r WHERE $statusCondition";
+    $countParams = [':s' => $status];
+    
+    // Add date filter to status count
+    if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+        $countSql .= " AND r.created_at BETWEEN :sd_from AND :sd_to";
+        $countParams[':sd_from'] = $filters['date_from'] . ' 00:00:00';
+        $countParams[':sd_to'] = $filters['date_to'] . ' 23:59:59';
+    } elseif (!empty($filters['date_from'])) {
+        $countSql .= " AND r.created_at >= :sd_from";
+        $countParams[':sd_from'] = $filters['date_from'] . ' 00:00:00';
+    } elseif (!empty($filters['date_to'])) {
+        $countSql .= " AND r.created_at <= :sd_to";
+        $countParams[':sd_to'] = $filters['date_to'] . ' 23:59:59';
+    }
+    
+    $data['statusCounts'][$status] = dbFetchColumn($pdo, $countSql, $countParams);
 }
 
-// ===== เตรียมข้อมูลกราฟ =====
-$severityLabels = array_column($severityData, 'severity');
-$severityCounts = array_column($severityData, 'count');
-$doughnutColors = ['#3b82f6', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'];
-
-$riskLabels = array_column($riskTypes, 'risk_type');
-$riskCounts = array_column($riskTypes, 'count');
-
-$groupUnits = array_column($groupSummary, 'unit');
-$groupTotals = array_column($groupSummary, 'total');
-$groupTopTypesArray = [];
-foreach ($groupUnits as $unit) {
-    $groupTopTypesArray[] = $groupTopTypes[$unit] ?? '-';
+// =============================================
+// 8. DATA PROCESSING - Top Types per Group
+// =============================================
+$data['groupTopTypes'] = [];
+foreach ($data['groupSummary'] as $group) {
+    $unit = $group['unit'];
+    
+    // Build sub-query conditions
+    $subConditions = ["unit = :u"];
+    $subParams = [':u' => $unit];
+    
+    if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+        $subConditions[] = "created_at BETWEEN :ud_from AND :ud_to";
+        $subParams[':ud_from'] = $filters['date_from'] . ' 00:00:00';
+        $subParams[':ud_to'] = $filters['date_to'] . ' 23:59:59';
+    } elseif (!empty($filters['date_from'])) {
+        $subConditions[] = "created_at >= :ud_from";
+        $subParams[':ud_from'] = $filters['date_from'] . ' 00:00:00';
+    } elseif (!empty($filters['date_to'])) {
+        $subConditions[] = "created_at <= :ud_to";
+        $subParams[':ud_to'] = $filters['date_to'] . ' 23:59:59';
+    }
+    
+    if (!empty($filters['status_filter'])) {
+        $subConditions[] = "status = :us";
+        $subParams[':us'] = $filters['status_filter'];
+    }
+    
+    if (!empty($filters['type_filter'])) {
+        $subConditions[] = "risk_type = :ut";
+        $subParams[':ut'] = $filters['type_filter'];
+    }
+    
+    $subWhere = 'WHERE ' . implode(' AND ', $subConditions);
+    $result = dbFetchAll($pdo, 
+        "SELECT risk_type FROM risks $subWhere 
+         GROUP BY risk_type 
+         ORDER BY COUNT(*) DESC 
+         LIMIT 1", 
+        $subParams
+    );
+    
+    $data['groupTopTypes'][$unit] = !empty($result) ? $result[0]['risk_type'] : '-';
 }
 
-$statusUnits = array_column($statusSummary, 'unit');
-$statusPending = array_column($statusSummary, 'pending');
-$statusInProgress = array_column($statusSummary, 'in_progress');
-$statusCompleted = array_column($statusSummary, 'completed');
-$statusTerminated = array_column($statusSummary, 'terminated_count');
-
-// สีสำหรับกราฟกลุ่มงาน (กลุ่มละสี)
-$groupColors = [
-    '#3b82f6', '#6366f1', '#8b5cf6', '#06b6d4',
-    '#10b981', '#f59e0b', '#ef4444', '#ec4899',
-    '#14b8a6', '#f97316', '#84cc16', '#a855f7'
+// =============================================
+// 9. PREPARE CHART DATA ARRAYS
+// =============================================
+$chartData = [
+    'severityLabels' => [],
+    'severityCounts' => [],
+    'severityFullLabels' => [],
+    'severityFullCounts' => [],
+    'riskTypeLabels' => [],
+    'riskTypeCounts' => [],
+    'groupUnits' => [],
+    'groupTotals' => [],
+    'groupTopTypesArray' => [],
+    'statusUnits' => [],
+    'statusPending' => [],
+    'statusInProgress' => [],
+    'statusCompleted' => [],
+    'statusTerminated' => []
 ];
-$groupBorderColors = [
-    '#2563eb', '#4f46e5', '#7c3aed', '#0891b2',
-    '#059669', '#d97706', '#dc2626', '#db2777',
-    '#0d9488', '#ea580c', '#65a30d', '#9333ea'
-];
 
-// ===== ฟังก์ชั่นช่วย =====
-function getStatusClass($status)
-{
-    if ($status == 'ดำเนินการแล้ว') return 'bg-green-100 text-green-700';
-    if ($status == 'กำลังดำเนินการ') return 'bg-blue-100 text-blue-700';
-    if ($status == 'ยุติ') return 'bg-gray-100 text-gray-500';
-    return 'bg-yellow-100 text-yellow-700';
+// Process severity data
+foreach ($data['severityData'] as $item) {
+    $chartData['severityLabels'][] = $item['severity'];
+    $chartData['severityCounts'][] = (int)$item['count'];
+    
+    $label = isset($SEVERITY_MAP[$item['severity']]) 
+        ? $SEVERITY_MAP[$item['severity']] 
+        : $item['severity'];
+    $chartData['severityFullLabels'][] = $label;
+    $chartData['severityFullCounts'][] = (int)$item['count'];
 }
 
-function getSeverityClass($severity)
-{
-    if ($severity == 'A') return 'bg-blue-100 text-blue-700';
-    if ($severity == 'B') return 'bg-green-100 text-green-700';
-    if ($severity == 'C') return 'bg-lime-100 text-lime-700';
-    if ($severity == 'D') return 'bg-yellow-100 text-yellow-700';
-    if ($severity == 'F') return 'bg-orange-100 text-orange-700';
-    if ($severity == 'E') return 'bg-red-100 text-red-700';
-    return 'bg-gray-100 text-gray-600';
+// Process risk type data
+foreach ($data['riskTypes'] as $item) {
+    $chartData['riskTypeLabels'][] = $item['risk_type'];
+    $chartData['riskTypeCounts'][] = (int)$item['count'];
 }
 
+// Process group summary data
+foreach ($data['groupSummary'] as $item) {
+    $chartData['groupUnits'][] = $item['unit'];
+    $chartData['groupTotals'][] = (int)$item['total'];
+    $chartData['groupTopTypesArray'][] = isset($data['groupTopTypes'][$item['unit']]) 
+        ? $data['groupTopTypes'][$item['unit']] 
+        : '-';
+}
+
+// Process status summary data
+foreach ($data['statusSummary'] as $item) {
+    $chartData['statusUnits'][] = $item['unit'];
+    $chartData['statusPending'][] = (int)$item['pending'];
+    $chartData['statusInProgress'][] = (int)$item['in_progress'];
+    $chartData['statusCompleted'][] = (int)$item['completed'];
+    $chartData['statusTerminated'][] = (int)$item['terminated_count'];
+}
+
+// Calculate total reports for top reporters
+$data['totalTopReports'] = array_sum(array_column($data['topReporters'], 'report_count'));
+
+// =============================================
+// 10. HELPER FUNCTIONS
+// =============================================
+
+/**
+ * Get CSS class for risk status badge
+ */
+function getStatusBadgeClass($status) {
+    $classes = [
+        'ดำเนินการแล้ว' => 'badge-success',
+        'กำลังดำเนินการ' => 'badge-info',
+        'ยุติ' => 'badge-secondary',
+    ];
+    return isset($classes[$status]) ? $classes[$status] : 'badge-warning';
+}
+
+/**
+ * Get CSS class for severity badge
+ */
+function getSeverityBadgeClass($severity) {
+    $classes = [
+        'A' => 'badge-info',
+        'B' => 'badge-success',
+        'C' => 'badge-lime',
+        'D' => 'badge-warning',
+        'F' => 'badge-orange',
+        'E' => 'badge-danger',
+    ];
+    return isset($classes[$severity]) ? $classes[$severity] : 'badge-secondary';
+}
+
+/**
+ * Get CSS class for status color
+ */
 function getStatusColorClass($status) {
-    if ($status == 'ยังไม่ดำเนินการ') return 'status-pending';
-    if ($status == 'กำลังดำเนินการ') return 'status-progress';
-    if ($status == 'ดำเนินการแล้ว') return 'status-completed';
-    if ($status == 'ยุติ') return 'status-terminated';
-    return 'status-pending';
+    $classes = [
+        'ยังไม่ดำเนินการ' => 'status-pending',
+        'กำลังดำเนินการ' => 'status-progress',
+        'ดำเนินการแล้ว' => 'status-completed',
+        'ยุติ' => 'status-terminated',
+    ];
+    return isset($classes[$status]) ? $classes[$status] : 'status-pending';
 }
 
-// ===== ฟังก์ชันแปลงวันที่เป็น พ.ศ. พร้อมชื่อเดือนภาษาไทย =====
+/**
+ * Convert date to Thai Buddhist calendar format
+ */
 function dateToThai($date, $format = 'full') {
-    if (empty($date)) return '-';
+    if (empty($date)) {
+        return '-';
+    }
     
     $timestamp = strtotime($date);
-    $day = date('j', $timestamp);
-    $month = date('n', $timestamp);
-    $year = date('Y', $timestamp) + 543;
+    $day = (int)date('j', $timestamp);
+    $month = (int)date('n', $timestamp);
+    $year = (int)date('Y', $timestamp) + 543;
     
     $thaiMonths = [
         1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
@@ -364,562 +458,1709 @@ function dateToThai($date, $format = 'full') {
     }
 }
 
-// วันที่ปัจจุบันในรูปแบบ พ.ศ.
+/**
+ * Check if any filter is active
+ */
+function hasActiveFilters($filters) {
+    return !empty($filters['date_from']) || 
+           !empty($filters['date_to']) || 
+           !empty($filters['status_filter']) || 
+           !empty($filters['type_filter']);
+}
+
+// Prepare display variables
 $currentThaiDate = dateToThai(date('Y-m-d'), 'full');
 $currentThaiDateShort = dateToThai(date('Y-m-d'), 'short');
+$activeFilters = hasActiveFilters($filters);
 
-// ประเภทความเสี่ยงทั้งหมดสำหรับตัวกรอง
-$types = [
-    'ความเสี่ยงทางด้านกลยุทธ์',
-    'ความเสี่ยงทางด้านการเงิน',
-    'ความเสี่ยงทางด้านการปฏิบัติงาน',
-    'ความเสี่ยงทางด้านกฎหมาย',
-    'ความเสี่ยงด้านสิ่งแวดล้อม',
-    'ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข'
-];
+// =============================================
+// 11. INCLUDE HEADER & START HTML
+// =============================================
+include 'includes/header.php';
 ?>
-<?php include 'includes/header.php'; ?>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - ระบบจัดการความเสี่ยง ศูนย์อนามัยที่ 8</title>
     
-    * {
-        font-family: 'Sarabun', sans-serif;
-    }
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    body {
-        background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 30%, #ede9fe 60%, #fce7f3 100%);
-        min-height: 100vh;
-        position: relative;
-    }
-    body::before {
-        content: '';
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: 
-            radial-gradient(circle at 20% 50%, rgba(59,130,246,0.05) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(139,92,246,0.05) 0%, transparent 50%),
-            radial-gradient(circle at 50% 80%, rgba(236,72,153,0.05) 0%, transparent 50%);
-        pointer-events: none; z-index: 0;
-    }
-
-    .dashboard-container { max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
-
-    .floating-shapes { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-    .floating-shapes .shape { position: absolute; border-radius: 50%; opacity: 0.3; }
-    .floating-shapes .shape:nth-child(1) { width: 300px; height: 300px; background: radial-gradient(circle, rgba(59,130,246,0.1), transparent); top: -100px; right: -100px; animation: float 20s ease-in-out infinite; }
-    .floating-shapes .shape:nth-child(2) { width: 200px; height: 200px; background: radial-gradient(circle, rgba(139,92,246,0.1), transparent); bottom: 50px; left: -50px; animation: float 25s ease-in-out infinite reverse; }
-    .floating-shapes .shape:nth-child(3) { width: 150px; height: 150px; background: radial-gradient(circle, rgba(236,72,153,0.1), transparent); top: 50%; left: 50%; transform: translate(-50%, -50%); animation: float 30s ease-in-out infinite; }
-    @keyframes float { 0%,100% { transform: translate(0,0) scale(1); } 25% { transform: translate(30px,-30px) scale(1.1); } 50% { transform: translate(-20px,20px) scale(0.9); } 75% { transform: translate(20px,-10px) scale(1.05); } }
-
-    .dash-header {
-        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #2563eb 100%);
-        border-radius: 1.5rem; padding: 1.75rem 2.25rem; margin-bottom: 1.5rem;
-        color: white; position: relative; overflow: hidden;
-        box-shadow: 0 10px 40px rgba(37,99,235,0.3);
-    }
-    .dash-header::before { content: ''; position: absolute; top: -50%; right: -10%; width: 400px; height: 400px; background: rgba(255,255,255,0.03); border-radius: 50%; }
-    .dash-header h1 { font-size: 1.6rem; font-weight: 700; position: relative; z-index: 1; }
-    .dash-header p { color: rgba(255,255,255,0.7); font-size: 0.85rem; position: relative; z-index: 1; }
-
-    .header-actions {
-        display: flex; gap: 0.5rem; margin-left: auto; position: relative; z-index: 1;
-        flex-wrap: wrap;
-    }
-
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-    .stat-card {
-        background: rgba(255,255,255,0.9); backdrop-filter: blur(20px);
-        border-radius: 1rem; padding: 1.25rem;
-        border: 1px solid rgba(255,255,255,0.5);
-        transition: all 0.3s; box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-        position: relative; overflow: hidden;
-    }
-    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 48px rgba(0,0,0,0.12); }
-    .stat-card::after { content: ''; position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; border-radius: 50%; opacity: 0.08; }
-    .stat-card.blue::after { background: #3b82f6; }
-    .stat-card.green::after { background: #22c55e; }
-    .stat-card.purple::after { background: #8b5cf6; }
-    .stat-card.orange::after { background: #f97316; }
-
-    .stat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
-    .stat-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-    .stat-trend { font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 9999px; }
-    .stat-trend.up { background: #f0fdf4; color: #166534; }
-    .stat-trend.info { background: #eff6ff; color: #1e40af; }
-    .stat-value { font-size: 1.8rem; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 0.25rem; }
-    .stat-label { font-size: 0.75rem; color: #64748b; font-weight: 500; }
-    .stat-sub { font-size: 0.7rem; color: #94a3b8; margin-top: 0.35rem; }
-
-    .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
-    .card {
-        background: rgba(255,255,255,0.9); backdrop-filter: blur(20px);
-        border-radius: 1rem; border: 1px solid rgba(255,255,255,0.5);
-        box-shadow: 0 8px 32px rgba(0,0,0,0.08); overflow: hidden; transition: all 0.3s;
-    }
-    .card:hover { box-shadow: 0 12px 48px rgba(0,0,0,0.12); }
-    .card-header {
-        padding: 1rem 1.25rem; border-bottom: 1px solid rgba(248,250,252,0.8);
-        display: flex; align-items: center; gap: 0.65rem; background: rgba(250,251,252,0.5);
-    }
-    .card-header-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
-    .card-header-title { font-weight: 700; color: #1e293b; font-size: 0.95rem; }
-    .card-body { padding: 1.25rem; background: rgba(255,255,255,0.3); }
-
-    .table-compact { width: 100%; border-collapse: collapse; }
-    .table-compact th { text-align: left; padding: 0.45rem 0.6rem; font-size: 0.62rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; background: rgba(250,251,252,0.5); border-bottom: 1.5px solid rgba(226,232,240,0.5); }
-    .table-compact td { padding: 0.5rem 0.6rem; border-bottom: 1px solid rgba(248,250,252,0.8); font-size: 0.78rem; color: #334155; }
-    .table-compact tr:last-child td { border-bottom: none; }
-    .table-compact tr:hover td { background: rgba(250,251,252,0.5); }
-    .badge-xs { display: inline-flex; align-items: center; padding: 0.08rem 0.4rem; border-radius: 9999px; font-size: 0.62rem; font-weight: 600; white-space: nowrap; }
-
-    .filter-bar {
-        background: rgba(255,255,255,0.9); backdrop-filter: blur(20px);
-        border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.5);
-        padding: 0.85rem 1.25rem; margin-bottom: 1.5rem;
-        display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.06);
-    }
-    .filter-input { padding: 0.45rem 0.65rem; border: 1px solid rgba(226,232,240,0.8); border-radius: 0.4rem; font-size: 0.8rem; outline: none; font-family: 'Sarabun', sans-serif; background: rgba(250,251,252,0.8); transition: all 0.2s; }
-    .filter-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-    .filter-input:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-filter { padding: 0.45rem 0.85rem; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; font-family: 'Sarabun', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; }
-    .btn-filter.primary { background: #dbeafe; color: #1e40af; }
-    .btn-filter.primary:hover { background: #bfdbfe; }
-    .btn-filter.danger { background: #fee2e2; color: #dc2626; }
-    .btn-filter.danger:hover { background: #fecaca; }
-    .btn-filter.success { background: #d1fae5; color: #065f46; }
-    .btn-filter.success:hover { background: #a7f3d0; }
-    .btn-filter.warning { background: #fef3c7; color: #92400e; }
-    .btn-filter.warning:hover { background: #fde68a; }
-
-    .top-reporter-card {
-        text-align: center; padding: 1.25rem 0.75rem; background: rgba(250,251,252,0.5);
-        border-radius: 0.75rem; min-width: 110px; transition: all 0.3s; flex: 1;
-        border: 1px solid rgba(226,232,240,0.3);
-    }
-    .top-reporter-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.06); background: rgba(255,255,255,0.9); }
-    .top-reporter-card .medal { font-size: 1.5rem; margin-bottom: 0.35rem; }
-    .top-reporter-card .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(226,232,240,0.8); margin-bottom: 0.35rem; }
-    .top-reporter-card .name { font-weight: 600; color: #1e293b; font-size: 0.8rem; }
-    .top-reporter-card .count { font-size: 1.5rem; font-weight: 700; color: #3b82f6; }
-    .top-reporter-card .label { font-size: 0.65rem; color: #94a3b8; }
-
-    .date-warning { font-size: 0.7rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
-    .date-warning i { color: #f59e0b; }
-
-    .status-pending { background: #fef3c7; color: #92400e; }
-    .status-progress { background: #dbeafe; color: #1e40af; }
-    .status-completed { background: #d1fae5; color: #065f46; }
-    .status-terminated { background: #f1f5f9; color: #475569; }
-
-    .status-summary-box { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-    .status-summary-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; border: 1px solid rgba(226,232,240,0.5); }
-    .status-summary-item .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .status-summary-item .count { font-weight: 700; margin-left: 0.2rem; }
-    .dot-pending { background: #fbbf24; }
-    .dot-progress { background: #60a5fa; }
-    .dot-completed { background: #34d399; }
-    .dot-terminated { background: #94a3b8; }
-
-    .text-center { text-align: center; }
-    .py-10 { padding-top: 2.5rem; padding-bottom: 2.5rem; }
-    .text-gray-400 { color: #9ca3af; }
-    .text-2xl { font-size: 1.5rem; }
-    .mb-1 { margin-bottom: 0.25rem; }
-    .mr-1 { margin-right: 0.25rem; }
-    .text-xs { font-size: 0.75rem; }
-
-    /* Notification Toast */
-    #notification-toast {
-        position: fixed; top: 1.5rem; right: 1.5rem;
-        padding: 0.75rem 1.25rem; border-radius: 0.75rem; border: 1px solid;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.12); z-index: 1000;
-        display: none; align-items: center; gap: 0.75rem;
-        font-family: 'Sarabun', sans-serif; max-width: 400px;
-        animation: slideDown 0.3s ease;
-    }
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Refresh Indicator */
-    #refresh-indicator {
-        font-size: 0.7rem; color: rgba(255,255,255,0.5);
-        display: flex; align-items: center; gap: 0.3rem;
-        margin-top: 0.25rem; position: relative; z-index: 1;
-    }
-    #refresh-indicator .spinning { animation: spin 1s linear infinite; }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-
-    @media (max-width: 1024px) { 
-        .stats-grid { grid-template-columns: repeat(2, 1fr); } 
-        .content-grid { grid-template-columns: 1fr; } 
-    }
-    @media (max-width: 640px) { 
-        .stats-grid { grid-template-columns: 1fr; } 
-        .status-summary-box { flex-direction: column; align-items: flex-start; }
-        .dash-header { padding: 1rem 1.25rem; }
-        .dash-header h1 { font-size: 1.2rem; }
-        .filter-bar { flex-direction: column; align-items: stretch; }
-        .filter-bar .filter-input { width: 100%; }
-        .stat-card { padding: 0.75rem; }
-        .stat-value { font-size: 1.4rem; }
-        .top-reporter-card { min-width: 80px; }
-        .top-reporter-card .count { font-size: 1.2rem; }
-        .header-actions { width: 100%; justify-content: flex-start; }
-        .header-actions .btn-filter { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
-    }
-    @media print { 
-        .sidebar, .filter-bar, .floating-shapes, .header-actions, 
-        #notification-toast, #refresh-indicator { display: none !important; }
-        .dash-header { background: #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .stat-card, .card { background: white !important; border: 1px solid #ddd !important; box-shadow: none !important; }
-        body { background: white !important; }
-    }
-</style>
-
-<div class="flex h-screen" style="position:relative;z-index:1;">
-    <?php include 'includes/sidebar.php'; ?>
-    <div class="flex-1 p-4 md:p-5 overflow-y-auto">
-        <div class="floating-shapes"><div class="shape"></div><div class="shape"></div><div class="shape"></div></div>
+    <style>
+        /* ============================================= */
+        /* 12. CSS - DESIGN SYSTEM */
+        /* ============================================= */
         
-        <div class="dashboard-container">
-
-            <!-- ส่วนหัว -->
-            <div class="dash-header">
-                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-                    <h1>📊 ภาพรวมระบบความเสี่ยง</h1>
-                    <div class="header-actions">
-                        <button onclick="exportDashboard('pdf')" class="btn-filter primary" style="background:#fef2f2;color:#dc2626;">
-                            <i class="fas fa-file-pdf"></i> PDF
-                        </button>
-                        <button onclick="exportDashboard('png')" class="btn-filter primary" style="background:#eff6ff;color:#2563eb;">
-                            <i class="fas fa-image"></i> รูปภาพ
-                        </button>
-                        <button onclick="window.print()" class="btn-filter primary" style="background:#f0fdf4;color:#16a34a;">
-                            <i class="fas fa-print"></i> พิมพ์
-                        </button>
-                        <button onclick="refreshDashboard()" class="btn-filter primary" style="background:#fffbeb;color:#92400e;" id="refreshBtn">
-                            <i class="fas fa-sync-alt"></i> รีเฟรช
-                        </button>
-                    </div>
-                </div>
-                <p>ข้อมูล ณ วันที่ <?= $currentThaiDate ?> | ศูนย์อนามัยที่ 8 อุดรธานี</p>
-                <div id="refresh-indicator">
-                    <i class="fas fa-clock"></i> 
-                    <span id="lastRefreshTime">อัปเดตล่าสุด: <?= date('H:i:s') ?></span>
-                    <span style="margin-left:0.5rem;" id="autoRefreshStatus">● อัตโนมัติ</span>
-                </div>
-            </div>
-
-            <!-- แถบกรองวันที่ -->
-            <form method="GET" id="filterForm" class="filter-bar">
-                <span style="font-weight:600;color:#64748b;font-size:0.8rem;"><i class="fas fa-filter mr-1"></i> กรองข้อมูล:</span>
-                <input type="date" name="date_from" id="dateFrom" value="<?= htmlspecialchars($date_from) ?>" class="filter-input auto-submit" max="<?= date('Y-m-d') ?>">
-                <span style="color:#94a3b8;font-size:0.8rem;">ถึง</span>
-                <input type="date" name="date_to" id="dateTo" value="<?= htmlspecialchars($date_to) ?>" class="filter-input auto-submit" max="<?= date('Y-m-d') ?>">
-                
-                <span style="font-size:0.75rem;color:#64748b;font-weight:500;margin-left:0.25rem;">สถานะ:</span>
-                <select name="status_filter" class="filter-input auto-submit" style="min-width:120px;">
-                    <option value="">ทั้งหมด</option>
-                    <option value="ยังไม่ดำเนินการ" <?= ($status_filter ?? '') == 'ยังไม่ดำเนินการ' ? 'selected' : '' ?>>ยังไม่ดำเนินการ</option>
-                    <option value="กำลังดำเนินการ" <?= ($status_filter ?? '') == 'กำลังดำเนินการ' ? 'selected' : '' ?>>กำลังดำเนินการ</option>
-                    <option value="ดำเนินการแล้ว" <?= ($status_filter ?? '') == 'ดำเนินการแล้ว' ? 'selected' : '' ?>>ดำเนินการแล้ว</option>
-                    <option value="ยุติ" <?= ($status_filter ?? '') == 'ยุติ' ? 'selected' : '' ?>>ยุติ</option>
-                </select>
-                
-                <span style="font-size:0.75rem;color:#64748b;font-weight:500;">ประเภท:</span>
-                <select name="type_filter" class="filter-input auto-submit" style="min-width:150px;">
-                    <option value="">ทั้งหมด</option>
-                    <?php foreach ($types as $t): ?>
-                        <option value="<?= htmlspecialchars($t) ?>" <?= ($type_filter ?? '') == $t ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($t) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                
-                <span class="date-warning"><i class="fas fa-info-circle"></i> ไม่สามารถเลือกวันที่ในอนาคตได้</span>
-                
-                <?php if ($date_from || $date_to || $status_filter || $type_filter): ?>
-                    <a href="dashboard.php" class="btn-filter danger"><i class="fas fa-times"></i> รีเซ็ต</a>
-                <?php endif; ?>
-            </form>
-
-            <!-- แสดงช่วงวันที่ที่กรอง -->
-            <?php if ($date_from || $date_to || $status_filter || $type_filter): ?>
-            <div style="background: rgba(219, 234, 254, 0.5); border: 1px solid #93c5fd; border-radius: 0.5rem; padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.8rem; color: #1e40af; display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
-                <i class="fas fa-calendar-alt mr-1"></i>
-                แสดงข้อมูลระหว่างวันที่ 
-                <strong><?= $date_from ? dateToThai($date_from, 'short') : 'ไม่จำกัดเริ่มต้น' ?></strong>
-                ถึง 
-                <strong><?= $date_to ? dateToThai($date_to, 'short') : 'ปัจจุบัน' ?></strong>
-                <?php if ($status_filter): ?>
-                    <span class="badge-xs status-pending" style="font-size:0.7rem;padding:0.15rem 0.6rem;"><?= htmlspecialchars($status_filter) ?></span>
-                <?php endif; ?>
-                <?php if ($type_filter): ?>
-                    <span class="badge-xs" style="background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:0.15rem 0.6rem;"><?= htmlspecialchars(mb_substr($type_filter, 0, 20)) ?></span>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-
-            <!-- สรุปสถานะ -->
-            <div class="status-summary-box">
-                <div class="status-summary-item" style="background:rgba(254,243,199,0.5);border-color:#fcd34d;">
-                    <span class="dot dot-pending"></span> ยังไม่ดำเนินการ <span class="count"><?= number_format($statusCounts['ยังไม่ดำเนินการ']) ?></span>
-                </div>
-                <div class="status-summary-item" style="background:rgba(219,234,254,0.5);border-color:#93c5fd;">
-                    <span class="dot dot-progress"></span> กำลังดำเนินการ <span class="count"><?= number_format($statusCounts['กำลังดำเนินการ']) ?></span>
-                </div>
-                <div class="status-summary-item" style="background:rgba(209,250,229,0.5);border-color:#6ee7b7;">
-                    <span class="dot dot-completed"></span> ดำเนินการแล้ว <span class="count"><?= number_format($statusCounts['ดำเนินการแล้ว']) ?></span>
-                </div>
-                <div class="status-summary-item" style="background:rgba(241,245,249,0.5);border-color:#cbd5e1;">
-                    <span class="dot dot-terminated"></span> ยุติ <span class="count"><?= number_format($statusCounts['ยุติ']) ?></span>
-                </div>
-            </div>
-
-            <!-- สถิติหลัก 4 กล่อง -->
-            <div class="stats-grid">
-                <div class="stat-card blue">
-                    <div class="stat-header">
-                        <div class="stat-icon bg-blue-50 text-blue-600"><i class="fas fa-exclamation-triangle"></i></div>
-                        <span class="stat-trend up"><i class="fas fa-arrow-up text-xs"></i> +<?= number_format($todayRisks) ?> วันนี้</span>
-                    </div>
-                    <div class="stat-value" id="statTotalRisks"><?= number_format($totalRisks) ?></div>
-                    <div class="stat-label">ความเสี่ยงทั้งหมด</div>
-                    <div class="stat-sub">ดำเนินการแล้ว <?= number_format($completedRisks) ?> รายการ</div>
-                </div>
-                <div class="stat-card purple">
-                    <div class="stat-header">
-                        <div class="stat-icon bg-purple-50 text-purple-600"><i class="fas fa-users"></i></div>
-                        <span class="stat-trend info"><i class="fas fa-user-shield text-xs"></i> <?= $totalAdmins ?> ผู้ดูแล</span>
-                    </div>
-                    <div class="stat-value" id="statTotalUsers"><?= number_format($totalUsers) ?></div>
-                    <div class="stat-label">ผู้ใช้งานทั้งหมด</div>
-                    <div class="stat-sub"><?= number_format($totalNormalUsers) ?> ผู้ใช้ทั่วไป</div>
-                </div>
-                <div class="stat-card green">
-                    <div class="stat-header"><div class="stat-icon bg-green-50 text-green-600"><i class="fas fa-calendar-day"></i></div></div>
-                    <div class="stat-value" id="statTodayRisks"><?= number_format($todayRisks) ?></div>
-                    <div class="stat-label">รายงานวันนี้</div>
-                    <div class="stat-sub"><?= $currentThaiDateShort ?></div>
-                </div>
-                <div class="stat-card orange">
-                    <div class="stat-header"><div class="stat-icon bg-orange-50 text-orange-600"><i class="fas fa-check-double"></i></div></div>
-                    <div class="stat-value" id="statCompletedRisks"><?= number_format($completedRisks) ?></div>
-                    <div class="stat-label">ดำเนินการแล้ว</div>
-                    <div class="stat-sub"><?= $totalRisks > 0 ? number_format(($completedRisks / $totalRisks) * 100, 1) . '%' : '0%' ?> ของทั้งหมด</div>
-                </div>
-            </div>
-
-            <!-- กราฟแถวที่ 1: ระดับความรุนแรง + ประเภทความเสี่ยง -->
-            <div class="content-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-icon bg-orange-50 text-orange-600"><i class="fas fa-chart-pie"></i></div>
-                        <h3 class="card-header-title">ระดับความรุนแรงของความเสี่ยง</h3>
-                    </div>
-                    <div class="card-body"><div style="height: 320px;position:relative;"><canvas id="severityDoughnut"></canvas></div></div>
-                </div>
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-icon bg-cyan-50 text-cyan-600"><i class="fas fa-chart-pie"></i></div>
-                        <h3 class="card-header-title">ประเภทความเสี่ยง</h3>
-                    </div>
-                    <div class="card-body"><div style="height: 320px;position:relative;"><canvas id="riskTypePolar"></canvas></div></div>
-                </div>
-            </div>
-
-            <!-- กราฟแถวที่ 2: จำนวนเคสตามกลุ่มงาน + สถานะการดำเนินการ -->
-            <div class="content-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-icon bg-indigo-50 text-indigo-600"><i class="fas fa-chart-bar"></i></div>
-                        <h3 class="card-header-title">จำนวนเคสตามกลุ่มงาน</h3>
-                    </div>
-                    <div class="card-body"><div style="height: 320px;position:relative;"><canvas id="groupChart"></canvas></div></div>
-                </div>
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-icon bg-blue-50 text-blue-600"><i class="fas fa-tasks"></i></div>
-                        <h3 class="card-header-title">สถานะการดำเนินการแยกตามกลุ่มงาน</h3>
-                    </div>
-                    <div class="card-body"><div style="height: 320px;position:relative;"><canvas id="statusChart"></canvas></div></div>
-                </div>
-            </div>
-
-            <!-- แถวที่ 3: รายการล่าสุด + ผู้รายงานสูงสุด -->
-            <div class="content-grid">
-                <!-- รายการล่าสุด -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-icon bg-emerald-50 text-emerald-600"><i class="fas fa-clock"></i></div>
-                        <h3 class="card-header-title">📋 รายการล่าสุด</h3>
-                        <a href="risks.php" style="margin-left:auto;font-size:0.7rem;color:#3b82f6;text-decoration:none;font-weight:500;">ดูทั้งหมด →</a>
-                    </div>
-                    <div class="card-body" style="padding: 0;">
-                        <?php if (empty($recent)): ?>
-                            <div class="text-center py-10 text-gray-400">
-                                <i class="fas fa-inbox text-2xl mb-1"></i>
-                                <p style="font-size:0.8rem;">ยังไม่มีข้อมูลในช่วงวันที่เลือก</p>
-                            </div>
-                        <?php else: ?>
-                            <table class="table-compact">
-                                <thead>
-                                    <tr>
-                                        <th>กลุ่มงาน</th>
-                                        <th>ประเภท</th>
-                                        <th>ระดับ</th>
-                                        <th>สถานะ</th>
-                                        <th style="text-align:right;">วันที่บันทึก</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($recent as $row): 
-                                        $sevClass = getSeverityClass($row['severity']);
-                                        $status = $row['status'] ?: 'ยังไม่ดำเนินการ';
-                                        $statusColor = getStatusColorClass($status);
-                                    ?>
-                                        <tr>
-                                            <td style="color:#94a3b8;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?= htmlspecialchars($row['unit'] ?? '-') ?>">
-                                                <?= htmlspecialchars(mb_substr($row['unit'] ?? '-', 0, 15)) ?>
-                                            </td>
-                                            <td style="font-weight:500;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?= htmlspecialchars($row['risk_type'] ?? '-') ?>">
-                                                <?= htmlspecialchars(mb_substr($row['risk_type'] ?? '-', 0, 20)) ?>
-                                            </td>
-                                            <td><span class="badge-xs <?= $sevClass ?>"><?= htmlspecialchars($row['severity'] ?? '-') ?></span></td>
-                                            <td><span class="badge-xs <?= $statusColor ?>"><?= htmlspecialchars(mb_substr($status, 0, 10)) ?></span></td>
-                                            <td style="text-align:right;color:#94a3b8;font-size:0.72rem;"><?= dateToThai($row['created_at'], 'short') ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <!-- ผู้รายงานสูงสุด -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-icon bg-amber-50 text-amber-600"><i class="fas fa-trophy"></i></div>
-                        <h3 class="card-header-title">🏆 ผู้รายงานสูงสุด</h3>
-                    </div>
-                    <div class="card-body">
-                        <?php if (empty($topReporters)): ?>
-                            <div class="text-center py-10 text-gray-400">
-                                <i class="fas fa-inbox text-2xl mb-1"></i>
-                                <p style="font-size:0.8rem;">ยังไม่มีข้อมูลในช่วงวันที่เลือก</p>
-                            </div>
-                        <?php else: ?>
-                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; justify-content:center;">
-                                <?php foreach ($topReporters as $index => $reporter): 
-                                    $medal = $index == 0 ? '🥇' : ($index == 1 ? '🥈' : ($index == 2 ? '🥉' : '⭐'));
-                                ?>
-                                    <div class="top-reporter-card">
-                                        <div class="medal"><?= $medal ?></div>
-                                        <img src="avatars/<?= htmlspecialchars($reporter['avatar'] ?: 'default.png') ?>" 
-                                             class="avatar" 
-                                             onerror="this.src='avatars/default.png'"
-                                             alt="<?= htmlspecialchars($reporter['username']) ?>">
-                                        <div class="name"><?= htmlspecialchars($reporter['username']) ?></div>
-                                        <div class="count"><?= number_format($reporter['report_count']) ?></div>
-                                        <div class="label">รายการ</div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-<!-- Notification Toast -->
-<div id="notification-toast"></div>
-
-<script>
-    // ============================================================
-    // 1. AUTO SUBMIT FILTER
-    // ============================================================
-    document.querySelectorAll('.auto-submit').forEach(el => { 
-        el.addEventListener('change', function() { 
-            document.getElementById('filterForm').submit(); 
-        }); 
-    });
-
-    // ============================================================
-    // 2. DATE VALIDATION
-    // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
-        const today = new Date().toISOString().split('T')[0];
-        const dateFrom = document.getElementById('dateFrom');
-        const dateTo = document.getElementById('dateTo');
+        /* 12.1 Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
         
-        if (dateFrom) dateFrom.setAttribute('max', today);
-        if (dateTo) dateTo.setAttribute('max', today);
-        
-        if (dateFrom && dateTo) {
-            dateFrom.addEventListener('change', function() { 
-                if (dateTo.value && this.value > dateTo.value) { 
-                    alert('⚠️ วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด'); 
-                    this.value = dateTo.value; 
-                } 
-            });
-            dateTo.addEventListener('change', function() { 
-                if (dateFrom.value && this.value < dateFrom.value) { 
-                    alert('⚠️ วันที่สิ้นสุดต้องไม่น้อยกว่าวันที่เริ่มต้น'); 
-                    this.value = dateFrom.value; 
-                } 
-            });
+        /* 12.2 CSS Variables */
+        :root {
+            /* Colors */
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #dbeafe;
+            --success: #22c55e;
+            --success-light: #d1fae5;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --info: #6366f1;
+            --info-light: #e0e7ff;
+            
+            /* Neutrals */
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            
+            /* Effects */
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+            
+            /* Border Radius */
+            --radius-sm: 0.375rem;
+            --radius: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            --radius-xl: 1.5rem;
+            
+            /* Glass Effect */
+            --glass-bg: rgba(255,255,255,0.85);
+            --glass-border: rgba(255,255,255,0.3);
+            --glass-blur: blur(20px);
+            
+            /* Layout */
+            --sidebar-width: 260px;
+            --header-height: auto;
         }
-    });
-
-    // ============================================================
-    // 3. CREATE CHARTS
-    // ============================================================
-    let severityChart, riskTypeChart, groupChart, statusChart;
-
-    document.addEventListener('DOMContentLoaded', function() {
         
-        // ----- 3.1 Doughnut Chart - ระดับความรุนแรง -----
-        var ctxSeverity = document.getElementById('severityDoughnut');
-        if (ctxSeverity) {
-            severityChart = new Chart(ctxSeverity, {
+        /* 12.3 Reset & Base */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 30%, #ede9fe 60%, #fce7f3 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: var(--gray-800);
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* 12.4 Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(139,92,246,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 50% 80%, rgba(236,72,153,0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* 12.5 Layout */
+        .app-wrapper {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .content-area {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+        
+        .dashboard-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        /* 12.6 Floating Animation */
+        .bg-animation {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .bg-animation .orb {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.4;
+            filter: blur(60px);
+        }
+        
+        .bg-animation .orb:nth-child(1) {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(59,130,246,0.15), transparent);
+            top: -150px; right: -100px;
+            animation: float1 20s ease-in-out infinite;
+        }
+        
+        .bg-animation .orb:nth-child(2) {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(139,92,246,0.15), transparent);
+            bottom: -100px; left: -100px;
+            animation: float2 25s ease-in-out infinite reverse;
+        }
+        
+        .bg-animation .orb:nth-child(3) {
+            width: 250px; height: 250px;
+            background: radial-gradient(circle, rgba(236,72,153,0.15), transparent);
+            top: 40%; left: 50%;
+            animation: float3 30s ease-in-out infinite;
+        }
+        
+        @keyframes float1 {
+            0%,100% { transform: translate(0,0) scale(1); }
+            33% { transform: translate(50px,-30px) scale(1.1); }
+            66% { transform: translate(-30px,50px) scale(0.9); }
+        }
+        
+        @keyframes float2 {
+            0%,100% { transform: translate(0,0) scale(1); }
+            33% { transform: translate(-40px,40px) scale(1.1); }
+            66% { transform: translate(40px,-20px) scale(0.9); }
+        }
+        
+        @keyframes float3 {
+            0%,100% { transform: translate(-50%,-50%) scale(1); }
+            33% { transform: translate(-40%,-60%) scale(1.15); }
+            66% { transform: translate(-60%,-40%) scale(0.85); }
+        }
+        
+        /* 12.7 Header */
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--gray-900) 0%, #1e3a8a 40%, var(--primary) 100%);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .dashboard-header::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            right: -5%;
+            width: 500px;
+            height: 500px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 50%;
+        }
+        
+        .dashboard-header::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: 10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 50%;
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .header-title-section h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header-title-section p {
+            color: rgba(255,255,255,0.75);
+            font-size: 0.9rem;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .refresh-indicator {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* 12.8 Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.75rem;
+        }
+        
+        .btn-xs {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.7rem;
+            border-radius: var(--radius-sm);
+        }
+        
+        .btn-red { background: var(--danger-light); color: var(--danger); }
+        .btn-blue { background: var(--primary-light); color: var(--primary-dark); }
+        .btn-green { background: var(--success-light); color: #065f46; }
+        .btn-yellow { background: var(--warning-light); color: #92400e; }
+        .btn-gray { background: var(--gray-100); color: var(--gray-600); }
+        
+        .btn-red:hover { background: #fecaca; }
+        .btn-blue:hover { background: #bfdbfe; }
+        .btn-green:hover { background: #a7f3d0; }
+        .btn-yellow:hover { background: #fde68a; }
+        .btn-gray:hover { background: var(--gray-200); }
+        
+        /* 12.9 Filter Bar */
+        .filter-section {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+        }
+        
+        .filter-form {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-label {
+            font-weight: 600;
+            color: var(--gray-600);
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        
+        .filter-input {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            outline: none;
+            background: white;
+            transition: all 0.2s;
+            font-family: 'Sarabun', sans-serif;
+            min-width: 120px;
+        }
+        
+        .filter-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        
+        .filter-separator {
+            color: var(--gray-400);
+            font-size: 0.85rem;
+        }
+        
+        /* 12.10 Active Filters Info */
+        .active-filters-info {
+            background: var(--primary-light);
+            border: 1px solid #93c5fd;
+            border-radius: var(--radius);
+            padding: 0.6rem 1rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.85rem;
+            color: var(--primary-dark);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        /* 12.11 Status Summary Bar */
+        .status-summary-bar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: var(--radius);
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .status-count {
+            font-weight: 700;
+            margin-left: 0.15rem;
+        }
+        
+        /* Status Colors */
+        .status-pending { background: rgba(254,243,199,0.6); border-color: #fcd34d; }
+        .status-progress { background: rgba(219,234,254,0.6); border-color: #93c5fd; }
+        .status-completed { background: rgba(209,250,229,0.6); border-color: #6ee7b7; }
+        .status-terminated { background: rgba(241,245,249,0.6); border-color: #cbd5e1; }
+        .dot-pending { background: #fbbf24; }
+        .dot-progress { background: #60a5fa; }
+        .dot-completed { background: #34d399; }
+        .dot-terminated { background: #94a3b8; }
+        
+        /* 12.12 Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            opacity: 0.06;
+        }
+        
+        .stat-card.blue::after { background: #3b82f6; }
+        .stat-card.purple::after { background: #8b5cf6; }
+        .stat-card.green::after { background: #22c55e; }
+        .stat-card.orange::after { background: #f97316; }
+        
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+        
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+        
+        .stat-trend {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            white-space: nowrap;
+        }
+        
+        .stat-trend.up { background: #f0fdf4; color: #166534; }
+        .stat-trend.info { background: #eff6ff; color: #1e40af; }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            line-height: 1.1;
+            margin-bottom: 0.3rem;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+        
+        .stat-sub {
+            font-size: 0.75rem;
+            color: var(--gray-400);
+            margin-top: 0.4rem;
+        }
+        
+        /* 12.13 Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .content-grid.single-col {
+            grid-template-columns: 1fr;
+        }
+        
+        /* 12.14 Cards */
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(226,232,240,0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(250,251,252,0.5);
+        }
+        
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        
+        .card-title {
+            font-weight: 700;
+            color: var(--gray-800);
+            font-size: 1rem;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .card-body.no-padding {
+            padding: 0;
+        }
+        
+        /* 12.15 Chart Container */
+        .chart-wrapper {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+        
+        .chart-wrapper canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        /* 12.16 Table */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .data-table thead th {
+            text-align: left;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: rgba(250,251,252,0.5);
+            border-bottom: 2px solid rgba(226,232,240,0.5);
+            white-space: nowrap;
+        }
+        
+        .data-table thead th:first-child {
+            text-align: center;
+        }
+        
+        .data-table tbody td {
+            padding: 0.65rem 0.75rem;
+            border-bottom: 1px solid rgba(226,232,240,0.3);
+            font-size: 0.85rem;
+            color: var(--gray-700);
+        }
+        
+        .data-table tbody td:first-child {
+            text-align: center;
+        }
+        
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .data-table tbody tr:hover td {
+            background: rgba(250,251,252,0.5);
+        }
+        
+        /* 12.17 Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-secondary { background: #f1f5f9; color: #475569; }
+        .badge-orange { background: #ffedd5; color: #9a3412; }
+        .badge-lime { background: #ecfccb; color: #3f6212; }
+        
+        /* 12.18 Text Utilities */
+        .text-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: block;
+        }
+        
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-muted { color: var(--gray-400); }
+        .text-sm { font-size: 0.85rem; }
+        .text-xs { font-size: 0.75rem; }
+        
+        /* 12.19 Spacing Utilities */
+        .py-10 { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+        .mb-1 { margin-bottom: 0.25rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .block { display: block; }
+        
+        /* 12.20 Top Reporters */
+        .reporters-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        
+        .reporter-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem;
+            background: white;
+            border-radius: 14px;
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .reporter-item:hover {
+            transform: translateX(6px);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+            border-color: #93c5fd;
+        }
+        
+        .reporter-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            transition: all 0.3s;
+        }
+        
+        .reporter-item.rank-1::before { background: linear-gradient(to bottom, #fbbf24, #f59e0b); }
+        .reporter-item.rank-2::before { background: linear-gradient(to bottom, #94a3b8, #64748b); }
+        .reporter-item.rank-3::before { background: linear-gradient(to bottom, #fb923c, #f97316); }
+        .reporter-item.rank-4::before { background: linear-gradient(to bottom, #60a5fa, #3b82f6); }
+        .reporter-item.rank-5::before { background: linear-gradient(to bottom, #34d399, #10b981); }
+        
+        .reporter-item:hover::before {
+            width: 6px;
+        }
+        
+        .rank-display {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .rank-medal {
+            font-size: 1.6rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+        
+        .rank-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gray-200), var(--gray-300));
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border: 2px solid var(--gray-300);
+        }
+        
+        .avatar-container {
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .avatar-ring {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            padding: 3px;
+            border: 3px solid;
+            background: white;
+            transition: all 0.3s;
+        }
+        
+        .reporter-item:hover .avatar-ring {
+            transform: scale(1.1);
+        }
+        
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+        }
+        
+        .crown-icon {
+            position: absolute;
+            top: -14px;
+            right: -8px;
+            font-size: 1.4rem;
+            animation: crownBounce 2s ease-in-out infinite;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        
+        @keyframes crownBounce {
+            0%,100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(5deg); }
+        }
+        
+        .reporter-details {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .reporter-name {
+            font-weight: 600;
+            color: var(--gray-800);
+            font-size: 0.9rem;
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        
+        .top-badge {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: white;
+            padding: 0.1rem 0.45rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        .reporter-stats {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .progress-bar-mini {
+            flex: 1;
+            height: 6px;
+            background: var(--gray-100);
+            border-radius: 9999px;
+            overflow: hidden;
+            max-width: 100px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.6s ease;
+        }
+        
+        .report-count {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .percentage-badge {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            color: #1e40af;
+            padding: 0.25rem 0.65rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid #93c5fd;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+        
+        .reporter-item:hover .percentage-badge {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            transform: scale(1.05);
+        }
+        
+        .reporters-footer {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .footer-stat {
+            flex: 1;
+            background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
+            border-radius: 8px;
+            padding: 0.6rem 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+        
+        .footer-stat i {
+            font-size: 0.85rem;
+            color: var(--gray-400);
+            margin-bottom: 0.1rem;
+        }
+        
+        .footer-stat span {
+            font-size: 0.7rem;
+            color: var(--gray-400);
+            font-weight: 500;
+        }
+        
+        .footer-stat strong {
+            font-size: 0.9rem;
+            color: var(--gray-800);
+            font-weight: 700;
+        }
+        
+        /* 12.21 Toast Notification */
+        .toast-notification {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            padding: 0.85rem 1.25rem;
+            border-radius: var(--radius-md);
+            border: 1px solid;
+            box-shadow: var(--shadow-xl);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            max-width: 450px;
+            animation: slideInRight 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 12.22 Mobile Menu */
+        .menu-toggle {
+            display: none;
+            background: var(--gray-800);
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+            z-index: 50;
+        }
+        
+        /* 12.23 Responsive Design */
+        @media (max-width: 1400px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .content-area {
+                padding: 1rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            html {
+                font-size: 14px;
+            }
+            
+            .app-wrapper {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .sidebar.open {
+                display: block;
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                z-index: 100;
+                width: 280px;
+                box-shadow: var(--shadow-xl);
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+            
+            .dashboard-header {
+                padding: 1.25rem;
+                border-radius: var(--radius-lg);
+            }
+            
+            .header-content {
+                flex-direction: column;
+            }
+            
+            .header-actions {
+                width: 100%;
+            }
+            
+            .filter-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-input {
+                width: 100%;
+            }
+            
+            .chart-wrapper {
+                height: 280px;
+            }
+            
+            .status-summary-bar {
+                gap: 0.5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            html {
+                font-size: 13px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-header {
+                padding: 1rem;
+            }
+            
+            .dashboard-header h1 {
+                font-size: 1.25rem;
+            }
+            
+            .stat-card {
+                padding: 1rem;
+            }
+            
+            .stat-value {
+                font-size: 1.6rem;
+            }
+            
+            .reporter-item {
+                padding: 0.65rem;
+                gap: 0.5rem;
+            }
+            
+            .avatar-ring {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .reporters-footer {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+        
+        /* 12.24 Print Styles */
+        @media print {
+            .sidebar,
+            .filter-section,
+            .bg-animation,
+            .header-actions,
+            .toast-notification,
+            .refresh-indicator,
+            .menu-toggle {
+                display: none !important;
+            }
+            
+            .dashboard-header {
+                background: var(--gray-900) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .stat-card,
+            .card {
+                background: white !important;
+                border: 1px solid #ddd !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+            }
+            
+            body {
+                background: white !important;
+            }
+            
+            .content-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Animation -->
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <?php include 'includes/sidebar.php'; ?>
+        
+        <!-- Main Content Area -->
+        <main class="main-area">
+            <div class="content-area">
+                <!-- Mobile Menu Toggle -->
+                <button class="menu-toggle" onclick="toggleSidebar()" aria-label="เปิดเมนู">
+                    <i class="fas fa-bars"></i>
+                </button>
+                
+                <div class="dashboard-container">
+                    
+                    <!-- ============================================= -->
+                    <!-- HEADER SECTION -->
+                    <!-- ============================================= -->
+                    <header class="dashboard-header">
+                        <div class="header-content">
+                            <div class="header-title-section">
+                                <h1>
+                                    <i class="fas fa-chart-line"></i> 
+                                    ภาพรวมระบบความเสี่ยง
+                                </h1>
+                                <p>
+                                    <i class="fas fa-calendar-alt"></i> 
+                                    ข้อมูล ณ วันที่ <?= $currentThaiDate ?> | ศูนย์อนามัยที่ 8 อุดรธานี
+                                </p>
+                            </div>
+                            
+                            <div class="header-actions">
+                                <button onclick="exportDashboard('pdf')" class="btn btn-red btn-sm">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button>
+                                <button onclick="exportDashboard('png')" class="btn btn-blue btn-sm">
+                                    <i class="fas fa-image"></i> รูปภาพ
+                                </button>
+                                <button onclick="window.print()" class="btn btn-green btn-sm">
+                                    <i class="fas fa-print"></i> พิมพ์
+                                </button>
+                                <button onclick="refreshDashboard()" class="btn btn-yellow btn-sm" id="refreshBtn">
+                                    <i class="fas fa-sync-alt"></i> รีเฟรช
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="refresh-indicator">
+                            <i class="fas fa-clock"></i>
+                            <span id="lastRefreshTime">อัปเดตล่าสุด: <?= date('H:i:s') ?></span>
+                            <span id="autoRefreshStatus">● อัปเดตอัตโนมัติทุก 60 วินาที</span>
+                        </div>
+                    </header>
+                    
+                    <!-- ============================================= -->
+                    <!-- FILTER SECTION -->
+                    <!-- ============================================= -->
+                    <section class="filter-section">
+                        <form method="GET" id="filterForm" class="filter-form">
+                            <span class="filter-label">
+                                <i class="fas fa-filter"></i> ตัวกรอง:
+                            </span>
+                            
+                            <input type="date" 
+                                   name="date_from" 
+                                   value="<?= htmlspecialchars($filters['date_from']) ?>" 
+                                   class="filter-input auto-submit" 
+                                   max="<?= date('Y-m-d') ?>"
+                                   aria-label="วันที่เริ่มต้น">
+                            
+                            <span class="filter-separator">ถึง</span>
+                            
+                            <input type="date" 
+                                   name="date_to" 
+                                   value="<?= htmlspecialchars($filters['date_to']) ?>" 
+                                   class="filter-input auto-submit" 
+                                   max="<?= date('Y-m-d') ?>"
+                                   aria-label="วันที่สิ้นสุด">
+                            
+                            <select name="status_filter" class="filter-input auto-submit" aria-label="กรองตามสถานะ">
+                                <option value="">📋 สถานะ: ทั้งหมด</option>
+                                <?php foreach ($STATUS_LIST as $status): ?>
+                                    <option value="<?= $status ?>" <?= $filters['status_filter'] === $status ? 'selected' : '' ?>>
+                                        <?= $status ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            
+                            <select name="type_filter" class="filter-input auto-submit" aria-label="กรองตามประเภท">
+                                <option value="">📂 ประเภท: ทั้งหมด</option>
+                                <?php foreach ($RISK_TYPES as $type): ?>
+                                    <option value="<?= htmlspecialchars($type) ?>" <?= $filters['type_filter'] === $type ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($type) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            
+                            <?php if ($activeFilters): ?>
+                                <a href="dashboard.php" class="btn btn-red btn-sm">
+                                    <i class="fas fa-times"></i> รีเซ็ตตัวกรอง
+                                </a>
+                            <?php endif; ?>
+                        </form>
+                    </section>
+                    
+                    <!-- ============================================= -->
+                    <!-- ACTIVE FILTERS INFO -->
+                    <!-- ============================================= -->
+                    <?php if ($activeFilters): ?>
+                    <div class="active-filters-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>กำลังแสดงข้อมูล:</span>
+                        <strong>
+                            <?= !empty($filters['date_from']) ? dateToThai($filters['date_from'], 'short') : 'ไม่จำกัดเริ่มต้น' ?>
+                        </strong>
+                        <span>ถึง</span>
+                        <strong>
+                            <?= !empty($filters['date_to']) ? dateToThai($filters['date_to'], 'short') : 'ปัจจุบัน' ?>
+                        </strong>
+                        <?php if (!empty($filters['status_filter'])): ?>
+                            <span class="badge badge-warning"><?= htmlspecialchars($filters['status_filter']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($filters['type_filter'])): ?>
+                            <span class="badge badge-info"><?= htmlspecialchars(mb_substr($filters['type_filter'], 0, 25)) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <!-- ============================================= -->
+                    <!-- STATUS SUMMARY BAR -->
+                    <!-- ============================================= -->
+                    <div class="status-summary-bar">
+                        <?php 
+                        $statusConfig = [
+                            'ยังไม่ดำเนินการ' => ['class' => 'status-pending', 'dot' => 'dot-pending', 'icon' => 'fa-clock'],
+                            'กำลังดำเนินการ' => ['class' => 'status-progress', 'dot' => 'dot-progress', 'icon' => 'fa-spinner'],
+                            'ดำเนินการแล้ว' => ['class' => 'status-completed', 'dot' => 'dot-completed', 'icon' => 'fa-check-circle'],
+                            'ยุติ' => ['class' => 'status-terminated', 'dot' => 'dot-terminated', 'icon' => 'fa-stop-circle']
+                        ];
+                        foreach ($statusConfig as $name => $cfg): 
+                        ?>
+                        <div class="status-item <?= $cfg['class'] ?>">
+                            <span class="status-dot <?= $cfg['dot'] ?>"></span>
+                            <i class="fas <?= $cfg['icon'] ?> text-xs"></i>
+                            <span><?= $name ?></span>
+                            <span class="status-count"><?= number_format($data['statusCounts'][$name]) ?></span>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <!-- ============================================= -->
+                    <!-- STATISTICS CARDS -->
+                    <!-- ============================================= -->
+                    <div class="stats-grid">
+                        <!-- Total Risks -->
+                        <div class="stat-card blue">
+                            <div class="stat-header">
+                                <div class="stat-icon" style="background:#eff6ff;color:#3b82f6;">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <span class="stat-trend up">
+                                    <i class="fas fa-arrow-up"></i> +<?= number_format($data['todayRisks']) ?> วันนี้
+                                </span>
+                            </div>
+                            <div class="stat-value" id="statTotalRisks"><?= number_format($data['totalRisks']) ?></div>
+                            <div class="stat-label">ความเสี่ยงทั้งหมด</div>
+                            <div class="stat-sub">ดำเนินการแล้ว <?= number_format($data['completedRisks']) ?> รายการ</div>
+                        </div>
+                        
+                        <!-- Total Users -->
+                        <div class="stat-card purple">
+                            <div class="stat-header">
+                                <div class="stat-icon" style="background:#f3e8ff;color:#8b5cf6;">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <span class="stat-trend info">
+                                    <i class="fas fa-user-shield"></i> <?= number_format($data['totalAdmins']) ?> ผู้ดูแล
+                                </span>
+                            </div>
+                            <div class="stat-value" id="statTotalUsers"><?= number_format($data['totalUsers']) ?></div>
+                            <div class="stat-label">ผู้ใช้งานทั้งหมด</div>
+                            <div class="stat-sub"><?= number_format($data['totalNormalUsers']) ?> ผู้ใช้ทั่วไป</div>
+                        </div>
+                        
+                        <!-- Today's Reports -->
+                        <div class="stat-card green">
+                            <div class="stat-header">
+                                <div class="stat-icon" style="background:#f0fdf4;color:#22c55e;">
+                                    <i class="fas fa-calendar-day"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="statTodayRisks"><?= number_format($data['todayRisks']) ?></div>
+                            <div class="stat-label">รายงานวันนี้</div>
+                            <div class="stat-sub"><?= $currentThaiDateShort ?></div>
+                        </div>
+                        
+                        <!-- Completed -->
+                        <div class="stat-card orange">
+                            <div class="stat-header">
+                                <div class="stat-icon" style="background:#fff7ed;color:#f97316;">
+                                    <i class="fas fa-check-double"></i>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="statCompletedRisks"><?= number_format($data['completedRisks']) ?></div>
+                            <div class="stat-label">ดำเนินการแล้ว</div>
+                            <div class="stat-sub"><?= $data['completionPercentage'] ?>% ของทั้งหมด</div>
+                        </div>
+                    </div>
+                    
+                    <!-- ============================================= -->
+                    <!-- CHARTS ROW 1: Severity + Risk Types -->
+                    <!-- ============================================= -->
+                    <div class="content-grid">
+                        <!-- Severity Doughnut Chart -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon" style="background:#fff7ed;color:#f97316;">
+                                    <i class="fas fa-chart-pie"></i>
+                                </div>
+                                <h3 class="card-title">ระดับความรุนแรงของความเสี่ยง</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-wrapper">
+                                    <canvas id="severityChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Risk Type Polar Chart -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon" style="background:#ecfeff;color:#06b6d4;">
+                                    <i class="fas fa-chart-pie"></i>
+                                </div>
+                                <h3 class="card-title">ประเภทความเสี่ยง</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-wrapper">
+                                    <canvas id="riskTypeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ============================================= -->
+                    <!-- CHARTS ROW 2: Group + Status -->
+                    <!-- ============================================= -->
+                    <div class="content-grid">
+                        <!-- Group Bar Chart -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon" style="background:#eef2ff;color:#6366f1;">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <h3 class="card-title">จำนวนเคสตามกลุ่มงาน</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-wrapper">
+                                    <canvas id="groupChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Status Stacked Bar Chart -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon" style="background:#eff6ff;color:#3b82f6;">
+                                    <i class="fas fa-tasks"></i>
+                                </div>
+                                <h3 class="card-title">สถานะการดำเนินการแยกตามกลุ่มงาน</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-wrapper">
+                                    <canvas id="statusChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ============================================= -->
+                    <!-- BOTTOM ROW: Recent + Top Reporters -->
+                    <!-- ============================================= -->
+                    <div class="content-grid">
+                        <!-- Recent Risks Table -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon" style="background:#ecfdf5;color:#10b981;">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <h3 class="card-title">📋 รายการล่าสุด</h3>
+                                <a href="risks.php" style="margin-left:auto;font-size:0.8rem;color:var(--primary);text-decoration:none;font-weight:600;">
+                                    ดูทั้งหมด <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                            <div class="card-body no-padding">
+                                <?php if (empty($data['recentRisks'])): ?>
+                                    <div class="text-center py-10 text-muted">
+                                        <i class="fas fa-inbox text-2xl mb-2 block"></i>
+                                        <p class="text-sm">ยังไม่มีข้อมูลในช่วงวันที่เลือก</p>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="table-responsive">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width:60px;text-align:center;">#</th>
+                                                    <th>กลุ่มงาน</th>
+                                                    <th>ประเภท</th>
+                                                    <th>ระดับ</th>
+                                                    <th>สถานะ</th>
+                                                    <th class="text-right">วันที่บันทึก</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php 
+                                                $rowNumber = 1;
+                                                foreach ($data['recentRisks'] as $row): 
+                                                    $status = !empty($row['status']) ? $row['status'] : 'ยังไม่ดำเนินการ';
+                                                    $unitDisplay = mb_substr($row['unit'] ?? '-', 0, 18);
+                                                    $typeDisplay = mb_substr($row['risk_type'] ?? '-', 0, 22);
+                                                ?>
+                                                <tr>
+                                                    <td style="font-weight:600;color:var(--gray-400);">
+                                                        <?= $rowNumber++ ?>
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-truncate" style="max-width:140px;" title="<?= htmlspecialchars($row['unit'] ?? '') ?>">
+                                                            <?= htmlspecialchars($unitDisplay) ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-truncate" style="max-width:150px;" title="<?= htmlspecialchars($row['risk_type'] ?? '') ?>">
+                                                            <?= htmlspecialchars($typeDisplay) ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge <?= getSeverityBadgeClass($row['severity']) ?>">
+                                                            <?= htmlspecialchars($row['severity'] ?? '-') ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge <?= getStatusBadgeClass($status) ?>">
+                                                            <?= htmlspecialchars(mb_substr($status, 0, 12)) ?>
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-right text-muted text-xs">
+                                                        <?= dateToThai($row['created_at'], 'short') ?>
+                                                    </td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        
+                        <!-- Top Reporters -->
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon" style="background:#fffbeb;color:#f59e0b;">
+                                    <i class="fas fa-trophy"></i>
+                                </div>
+                                <h3 class="card-title">🏆 ผู้รายงานสูงสุด</h3>
+                                <span style="margin-left:auto;font-size:0.75rem;color:var(--gray-400);font-weight:600;">
+                                    <i class="fas fa-ranking-star"></i> Top 5
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <?php if (empty($data['topReporters'])): ?>
+                                    <div class="text-center py-10 text-muted">
+                                        <i class="fas fa-users text-2xl mb-2 block"></i>
+                                        <p class="text-sm">ยังไม่มีข้อมูลผู้รายงาน</p>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="reporters-list">
+                                        <?php 
+                                        $medals = ['🥇', '🥈', '🥉', '⭐', '🌟'];
+                                        $borderColors = ['#fbbf24', '#94a3b8', '#fb923c', '#60a5fa', '#34d399'];
+                                        $fillColors = ['#fbbf24', '#94a3b8', '#fb923c', '#60a5fa', '#34d399'];
+                                        $maxCount = max(1, $data['topReporters'][0]['report_count']);
+                                        
+                                        foreach ($data['topReporters'] as $index => $reporter): 
+                                            $rank = $index + 1;
+                                            $percentage = $data['totalTopReports'] > 0 
+                                                ? round(($reporter['report_count'] / $data['totalTopReports']) * 100, 1) 
+                                                : 0;
+                                            $barWidth = min(100, ($reporter['report_count'] / $maxCount) * 100);
+                                        ?>
+                                        <div class="reporter-item rank-<?= $rank ?>" 
+                                             style="animation: slideInRight <?= 0.3 + $index * 0.1 ?>s ease-out;">
+                                            
+                                            <!-- Rank -->
+                                            <div class="rank-display">
+                                                <?php if ($index < 3): ?>
+                                                    <span class="rank-medal"><?= $medals[$index] ?></span>
+                                                <?php else: ?>
+                                                    <span class="rank-circle"><?= $rank ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            
+                                            <!-- Avatar -->
+                                            <div class="avatar-container">
+                                                <div class="avatar-ring" style="border-color: <?= $borderColors[$index] ?>;">
+                                                    <img src="avatars/<?= htmlspecialchars(!empty($reporter['avatar']) ? $reporter['avatar'] : 'default.png') ?>" 
+                                                         class="avatar-img" 
+                                                         onerror="this.src='avatars/default.png'"
+                                                         alt="<?= htmlspecialchars($reporter['username']) ?>"
+                                                         loading="lazy">
+                                                </div>
+                                                <?php if ($index === 0): ?>
+                                                    <span class="crown-icon">👑</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            
+                                            <!-- Info -->
+                                            <div class="reporter-details">
+                                                <div class="reporter-name">
+                                                    <?= htmlspecialchars($reporter['username']) ?>
+                                                    <?php if ($index === 0): ?>
+                                                        <span class="top-badge">#1</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="reporter-stats">
+                                                    <div class="progress-bar-mini">
+                                                        <div class="progress-fill" 
+                                                             style="width: <?= $barWidth ?>%; background: <?= $fillColors[$index] ?>;"></div>
+                                                    </div>
+                                                    <span class="report-count">
+                                                        <i class="fas fa-file-alt"></i> 
+                                                        <?= number_format($reporter['report_count']) ?> รายการ
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Percentage -->
+                                            <span class="percentage-badge"><?= $percentage ?>%</span>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    
+                                    <!-- Footer Stats -->
+                                    <div class="reporters-footer">
+                                        <div class="footer-stat">
+                                            <i class="fas fa-users"></i>
+                                            <span>รวมการรายงานทั้งหมด</span>
+                                            <strong><?= number_format($data['totalTopReports']) ?> รายการ</strong>
+                                        </div>
+                                        <div class="footer-stat">
+                                            <i class="fas fa-trophy"></i>
+                                            <span>ผู้รายงานอันดับ 1</span>
+                                            <strong><?= htmlspecialchars($data['topReporters'][0]['username']) ?></strong>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div><!-- /dashboard-container -->
+            </div><!-- /content-area -->
+        </main>
+    </div><!-- /app-wrapper -->
+    
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-notification"></div>
+    
+    <!-- ============================================= -->
+    <!-- JAVASCRIPT -->
+    <!-- ============================================= -->
+    <script>
+    /**
+     * Dashboard JavaScript
+     * Handles charts, filters, refresh, export and notifications
+     */
+    
+    // =============================================
+    // DATA FROM PHP
+    // =============================================
+    var DASHBOARD_DATA = {
+        // Severity Chart
+        severityLabels: <?= json_encode($chartData['severityFullLabels'], JSON_UNESCAPED_UNICODE) ?>,
+        severityCounts: <?= json_encode($chartData['severityFullCounts']) ?>,
+        doughnutColors: <?= json_encode($CHART_COLORS['doughnut']) ?>,
+        
+        // Risk Type Chart
+        riskTypeLabels: <?= json_encode($chartData['riskTypeLabels'], JSON_UNESCAPED_UNICODE) ?>,
+        riskTypeCounts: <?= json_encode($chartData['riskTypeCounts']) ?>,
+        
+        // Group Chart
+        groupUnits: <?= json_encode($chartData['groupUnits'], JSON_UNESCAPED_UNICODE) ?>,
+        groupTotals: <?= json_encode($chartData['groupTotals']) ?>,
+        groupTopTypes: <?= json_encode($chartData['groupTopTypesArray'], JSON_UNESCAPED_UNICODE) ?>,
+        groupColors: <?= json_encode($CHART_COLORS['group']) ?>,
+        groupBorderColors: <?= json_encode($CHART_COLORS['groupBorder']) ?>,
+        
+        // Status Chart
+        statusUnits: <?= json_encode($chartData['statusUnits'], JSON_UNESCAPED_UNICODE) ?>,
+        statusPending: <?= json_encode($chartData['statusPending']) ?>,
+        statusInProgress: <?= json_encode($chartData['statusInProgress']) ?>,
+        statusCompleted: <?= json_encode($chartData['statusCompleted']) ?>,
+        statusTerminated: <?= json_encode($chartData['statusTerminated']) ?>,
+        
+        // Security
+        csrfToken: '<?= $csrf_token ?>'
+    };
+    
+    // =============================================
+    // UTILITY FUNCTIONS
+    // =============================================
+    
+    /**
+     * Query selector shortcut
+     */
+    function qs(selector) {
+        return document.querySelector(selector);
+    }
+    
+    /**
+     * Query selector all shortcut
+     */
+    function qsa(selector) {
+        return document.querySelectorAll(selector);
+    }
+    
+    /**
+     * Toggle mobile sidebar
+     */
+    function toggleSidebar() {
+        var sidebar = qs('.sidebar');
+        if (sidebar) {
+            sidebar.classList.toggle('open');
+        }
+    }
+    
+    /**
+     * Format number with commas
+     */
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    
+    // =============================================
+    // FILTER AUTO-SUBMIT
+    // =============================================
+    qsa('.auto-submit').forEach(function(el) {
+        el.addEventListener('change', function() {
+            qs('#filterForm').submit();
+        });
+    });
+    
+    // =============================================
+    // CHART INITIALIZATION
+    // =============================================
+    var charts = {};
+    
+    function initializeCharts() {
+        // ---- Severity Doughnut Chart ----
+        var severityCanvas = qs('#severityChart');
+        if (severityCanvas) {
+            charts.severity = new Chart(severityCanvas, {
                 type: 'doughnut',
                 data: {
-                    labels: <?= json_encode($severityFullLabels, JSON_UNESCAPED_UNICODE) ?>,
-                    datasets: [{ 
-                        data: <?= json_encode($severityFullCounts) ?>, 
-                        backgroundColor: <?= json_encode($doughnutColors) ?>, 
-                        borderWidth: 3, 
-                        borderColor: '#fff',
-                        hoverBorderColor: '#e2e8f0',
-                        hoverBorderWidth: 2
+                    labels: DASHBOARD_DATA.severityLabels,
+                    datasets: [{
+                        data: DASHBOARD_DATA.severityCounts,
+                        backgroundColor: DASHBOARD_DATA.doughnutColors,
+                        borderWidth: 3,
+                        borderColor: '#ffffff',
+                        hoverBorderWidth: 4,
+                        hoverBorderColor: '#e2e8f0'
                     }]
                 },
                 options: {
-                    responsive: true, 
-                    maintainAspectRatio: false, 
+                    responsive: true,
+                    maintainAspectRatio: false,
                     cutout: '65%',
                     plugins: {
-                        legend: { 
-                            position: 'right', 
-                            labels: { 
-                                usePointStyle: true, 
-                                padding: 15, 
-                                font: { size: 10, family: 'Sarabun' }, 
-                                boxWidth: 12, 
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 16,
+                                font: { size: 11, family: 'Sarabun' },
+                                boxWidth: 12,
                                 boxHeight: 12,
                                 generateLabels: function(chart) {
                                     var data = chart.data;
                                     return data.labels.map(function(label, i) {
                                         return {
-                                            text: label.length > 35 ? label.substring(0, 35) + '...' : label,
+                                            text: label.length > 40 ? label.substring(0, 40) + '...' : label,
                                             fillStyle: data.datasets[0].backgroundColor[i],
                                             strokeStyle: data.datasets[0].backgroundColor[i],
                                             lineWidth: 0,
@@ -930,544 +2171,474 @@ $types = [
                                         };
                                     });
                                 }
-                            } 
+                            }
                         },
-                        tooltip: { 
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            titleFont: { size: 12, family: 'Sarabun', weight: 'bold' },
-                            bodyFont: { size: 11, family: 'Sarabun' },
-                            padding: 12,
-                            cornerRadius: 8,
-                            callbacks: { 
-                                label: function(ctx) { 
-                                    var v = ctx.parsed || 0; 
-                                    var t = ctx.dataset.data.reduce((a,b) => a+b, 0); 
-                                    var p = t > 0 ? ((v/t)*100).toFixed(1) : 0; 
-                                    return ' จำนวน: ' + v + ' รายการ (' + p + '%)'; 
-                                } 
-                            } 
+                        tooltip: {
+                            backgroundColor: 'rgba(15,23,42,0.95)',
+                            titleFont: { size: 13, family: 'Sarabun', weight: 'bold' },
+                            bodyFont: { size: 12, family: 'Sarabun' },
+                            padding: 14,
+                            cornerRadius: 10,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    var value = context.parsed;
+                                    var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                    var percent = ((value / total) * 100).toFixed(1);
+                                    return '  จำนวน: ' + value + ' รายการ (' + percent + '%)';
+                                }
+                            }
                         }
                     }
                 }
             });
         }
-
-        // ----- 3.2 Polar Area Chart - ประเภทความเสี่ยง -----
-        var ctxPolar = document.getElementById('riskTypePolar');
-        if (ctxPolar) {
-            riskTypeChart = new Chart(ctxPolar, {
+        
+        // ---- Risk Type Polar Area Chart ----
+        var riskTypeCanvas = qs('#riskTypeChart');
+        if (riskTypeCanvas) {
+            charts.riskType = new Chart(riskTypeCanvas, {
                 type: 'polarArea',
                 data: {
-                    labels: <?= json_encode($riskLabels, JSON_UNESCAPED_UNICODE) ?>,
-                    datasets: [{ 
-                        data: <?= json_encode($riskCounts) ?>, 
+                    labels: DASHBOARD_DATA.riskTypeLabels,
+                    datasets: [{
+                        data: DASHBOARD_DATA.riskTypeCounts,
                         backgroundColor: [
-                            'rgba(99,102,241,0.7)',
-                            'rgba(59,130,246,0.7)',
-                            'rgba(34,197,94,0.7)',
-                            'rgba(234,179,8,0.7)',
-                            'rgba(249,115,22,0.7)',
-                            'rgba(239,68,68,0.7)',
-                            'rgba(139,92,246,0.7)',
-                            'rgba(20,184,166,0.7)'
-                        ], 
-                        borderWidth: 2, 
-                        borderColor: '#fff' 
+                            'rgba(99,102,241,0.75)',
+                            'rgba(59,130,246,0.75)',
+                            'rgba(34,197,94,0.75)',
+                            'rgba(234,179,8,0.75)',
+                            'rgba(249,115,22,0.75)',
+                            'rgba(239,68,68,0.75)',
+                            'rgba(139,92,246,0.75)',
+                            'rgba(20,184,166,0.75)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
                     }]
                 },
                 options: {
-                    responsive: true, 
+                    responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { 
-                            position: 'bottom', 
-                            labels: { 
-                                usePointStyle: true, 
-                                padding: 15, 
-                                font: { size: 10, family: 'Sarabun' } 
-                            } 
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 18,
+                                font: { size: 11, family: 'Sarabun' },
+                                boxWidth: 10,
+                                boxHeight: 10
+                            }
                         },
-                        tooltip: { 
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            titleFont: { size: 12, family: 'Sarabun', weight: 'bold' },
-                            bodyFont: { size: 11, family: 'Sarabun' },
-                            padding: 12,
-                            cornerRadius: 8,
-                            callbacks: { 
-                                label: function(ctx) { 
-                                    var v = ctx.raw || 0; 
-                                    var t = ctx.dataset.data.reduce((a,b) => a+b, 0); 
-                                    var p = t > 0 ? ((v/t)*100).toFixed(1) : 0; 
-                                    return ' จำนวน: ' + v + ' รายการ (' + p + '%)'; 
-                                } 
-                            } 
+                        tooltip: {
+                            backgroundColor: 'rgba(15,23,42,0.95)',
+                            titleFont: { size: 13, family: 'Sarabun', weight: 'bold' },
+                            bodyFont: { size: 12, family: 'Sarabun' },
+                            padding: 14,
+                            cornerRadius: 10,
+                            callbacks: {
+                                label: function(context) {
+                                    var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                    var percent = ((context.raw / total) * 100).toFixed(1);
+                                    return '  ' + context.label + ': ' + context.raw + ' รายการ (' + percent + '%)';
+                                }
+                            }
                         }
                     },
-                    scales: { r: { ticks: { display: false } } }
+                    scales: {
+                        r: {
+                            ticks: { display: false },
+                            grid: { color: 'rgba(226,232,240,0.5)' }
+                        }
+                    }
                 }
             });
         }
-
-        // ----- 3.3 Horizontal Bar Chart - จำนวนเคสตามกลุ่มงาน -----
-        var ctxGroup = document.getElementById('groupChart');
-        if (ctxGroup) {
-            groupChart = new Chart(ctxGroup, {
+        
+        // ---- Group Bar Chart ----
+        var groupCanvas = qs('#groupChart');
+        if (groupCanvas) {
+            charts.group = new Chart(groupCanvas, {
                 type: 'bar',
                 data: {
-                    labels: <?= json_encode($groupUnits, JSON_UNESCAPED_UNICODE) ?>,
+                    labels: DASHBOARD_DATA.groupUnits,
                     datasets: [{
                         label: 'จำนวนเคส',
-                        data: <?= json_encode($groupTotals) ?>,
-                        backgroundColor: <?= json_encode($groupColors) ?>,
-                        borderColor: <?= json_encode($groupBorderColors) ?>,
-                        borderWidth: 2, 
-                        borderRadius: 8, 
+                        data: DASHBOARD_DATA.groupTotals,
+                        backgroundColor: DASHBOARD_DATA.groupColors,
+                        borderColor: DASHBOARD_DATA.groupBorderColors,
+                        borderWidth: 2,
+                        borderRadius: 8,
                         borderSkipped: false
                     }]
                 },
                 options: {
-                    indexAxis: 'y', 
-                    responsive: true, 
+                    indexAxis: 'y',
+                    responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            titleFont: { size: 12, family: 'Sarabun', weight: 'bold' },
-                            bodyFont: { size: 11, family: 'Sarabun' },
-                            padding: 12, 
-                            cornerRadius: 8,
+                            backgroundColor: 'rgba(15,23,42,0.95)',
+                            titleFont: { size: 13, family: 'Sarabun', weight: 'bold' },
+                            bodyFont: { size: 12, family: 'Sarabun' },
+                            padding: 14,
+                            cornerRadius: 10,
                             callbacks: {
-                                label: function(ctx) { 
-                                    return ' จำนวน: ' + (ctx.raw || 0) + ' รายการ'; 
+                                label: function(context) {
+                                    return '  จำนวน: ' + context.raw + ' รายการ';
                                 },
-                                afterLabel: function(ctx) { 
-                                    return 'ประเภทที่พบบ่อย: ' + <?= json_encode($groupTopTypesArray, JSON_UNESCAPED_UNICODE) ?>[ctx.dataIndex]; 
+                                afterLabel: function(context) {
+                                    return '  ประเภทที่พบบ่อย: ' + DASHBOARD_DATA.groupTopTypes[context.dataIndex];
                                 }
                             }
                         }
                     },
                     scales: {
-                        x: { 
-                            beginAtZero: true, 
-                            ticks: { 
-                                stepSize: 1, 
-                                callback: function(v) { return Math.floor(v) === v ? v : ''; },
-                                font: { family: 'Sarabun', size: 10 }
-                            }, 
-                            grid: { color: 'rgba(241,245,249,0.5)' }, 
-                            title: { 
-                                display: true, 
-                                text: 'จำนวนรายการ', 
-                                color: '#94a3b8', 
-                                font: { size: 10, family: 'Sarabun' } 
-                            } 
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(value) {
+                                    return Math.floor(value) === value ? value : '';
+                                },
+                                font: { family: 'Sarabun', size: 11 }
+                            },
+                            grid: { color: 'rgba(241,245,249,0.5)' },
+                            title: {
+                                display: true,
+                                text: 'จำนวนรายการ',
+                                color: '#94a3b8',
+                                font: { size: 11, family: 'Sarabun' }
+                            }
                         },
-                        y: { 
-                            grid: { display: false }, 
-                            ticks: { 
-                                font: { size: 10, family: 'Sarabun' }, 
-                                color: '#475569' 
-                            } 
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 11, family: 'Sarabun' },
+                                color: '#475569'
+                            }
                         }
                     }
                 }
             });
         }
-
-        // ----- 3.4 Stacked Bar Chart - สถานะการดำเนินการ -----
-        var ctxStatus = document.getElementById('statusChart');
-        if (ctxStatus) {
-            statusChart = new Chart(ctxStatus, {
+        
+        // ---- Status Stacked Bar Chart ----
+        var statusCanvas = qs('#statusChart');
+        if (statusCanvas) {
+            charts.status = new Chart(statusCanvas, {
                 type: 'bar',
                 data: {
-                    labels: <?= json_encode($statusUnits, JSON_UNESCAPED_UNICODE) ?>,
+                    labels: DASHBOARD_DATA.statusUnits,
                     datasets: [
-                        { 
-                            label: 'ยังไม่ดำเนินการ', 
-                            data: <?= json_encode($statusPending) ?>, 
-                            backgroundColor: '#fbbf24', 
-                            borderRadius: 4, 
-                            borderSkipped: false 
+                        {
+                            label: 'ยังไม่ดำเนินการ',
+                            data: DASHBOARD_DATA.statusPending,
+                            backgroundColor: '#fbbf24',
+                            borderRadius: 5,
+                            borderSkipped: false
                         },
-                        { 
-                            label: 'กำลังดำเนินการ', 
-                            data: <?= json_encode($statusInProgress) ?>, 
-                            backgroundColor: '#60a5fa', 
-                            borderRadius: 4, 
-                            borderSkipped: false 
+                        {
+                            label: 'กำลังดำเนินการ',
+                            data: DASHBOARD_DATA.statusInProgress,
+                            backgroundColor: '#60a5fa',
+                            borderRadius: 5,
+                            borderSkipped: false
                         },
-                        { 
-                            label: 'ดำเนินการแล้ว', 
-                            data: <?= json_encode($statusCompleted) ?>, 
-                            backgroundColor: '#34d399', 
-                            borderRadius: 4, 
-                            borderSkipped: false 
+                        {
+                            label: 'ดำเนินการแล้ว',
+                            data: DASHBOARD_DATA.statusCompleted,
+                            backgroundColor: '#34d399',
+                            borderRadius: 5,
+                            borderSkipped: false
                         },
-                        { 
-                            label: 'ยุติ', 
-                            data: <?= json_encode($statusTerminated) ?>, 
-                            backgroundColor: '#94a3b8', 
-                            borderRadius: 4, 
-                            borderSkipped: false 
+                        {
+                            label: 'ยุติ',
+                            data: DASHBOARD_DATA.statusTerminated,
+                            backgroundColor: '#94a3b8',
+                            borderRadius: 5,
+                            borderSkipped: false
                         }
                     ]
                 },
                 options: {
-                    indexAxis: 'y', 
-                    responsive: true, 
+                    indexAxis: 'y',
+                    responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'bottom', 
-                            labels: { 
-                                usePointStyle: true, 
-                                padding: 16, 
-                                font: { size: 10, family: 'Sarabun' },
-                                generateLabels: function(chart) { 
-                                    return chart.data.datasets.map(function(ds, i) { 
-                                        return { 
-                                            text: ds.label, 
-                                            fillStyle: ds.backgroundColor, 
-                                            strokeStyle: ds.backgroundColor, 
-                                            lineWidth: 0, 
-                                            hidden: false, 
-                                            index: i, 
-                                            pointStyle: 'rectRounded', 
-                                            pointStyleWidth: 12 
-                                        }; 
-                                    }); 
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: { size: 11, family: 'Sarabun' },
+                                pointStyleWidth: 12,
+                                generateLabels: function(chart) {
+                                    return chart.data.datasets.map(function(dataset, i) {
+                                        return {
+                                            text: dataset.label,
+                                            fillStyle: dataset.backgroundColor,
+                                            strokeStyle: dataset.backgroundColor,
+                                            lineWidth: 0,
+                                            hidden: false,
+                                            index: i,
+                                            pointStyle: 'rectRounded',
+                                            pointStyleWidth: 14
+                                        };
+                                    });
                                 }
                             }
                         },
                         tooltip: {
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            titleFont: { size: 12, family: 'Sarabun', weight: 'bold' },
-                            bodyFont: { size: 11, family: 'Sarabun' },
-                            padding: 12,
-                            cornerRadius: 8,
+                            backgroundColor: 'rgba(15,23,42,0.95)',
+                            titleFont: { size: 13, family: 'Sarabun', weight: 'bold' },
+                            bodyFont: { size: 12, family: 'Sarabun' },
+                            padding: 14,
+                            cornerRadius: 10,
                             callbacks: {
-                                label: function(ctx) { 
-                                    return ' ' + ctx.dataset.label + ': ' + (ctx.raw || 0) + ' รายการ'; 
+                                label: function(context) {
+                                    return '  ' + context.dataset.label + ': ' + context.raw + ' รายการ';
                                 },
-                                footer: function(items) { 
-                                    var t = 0; 
-                                    items.forEach(function(i) { t += i.raw || 0; }); 
-                                    return 'รวมทั้งหมด: ' + t + ' รายการ'; 
+                                footer: function(tooltipItems) {
+                                    var sum = 0;
+                                    tooltipItems.forEach(function(item) { sum += item.raw; });
+                                    return 'รวมทั้งหมด: ' + sum + ' รายการ';
                                 }
                             }
                         }
                     },
                     scales: {
-                        x: { 
-                            stacked: true, 
-                            beginAtZero: true, 
-                            ticks: { 
-                                stepSize: 1, 
-                                callback: function(v) { return Math.floor(v) === v ? v : ''; },
-                                font: { family: 'Sarabun', size: 10 }
-                            }, 
-                            grid: { color: 'rgba(241,245,249,0.5)' }, 
-                            title: { 
-                                display: true, 
-                                text: 'จำนวนรายการ', 
-                                color: '#94a3b8', 
-                                font: { size: 10, family: 'Sarabun' } 
-                            } 
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(value) {
+                                    return Math.floor(value) === value ? value : '';
+                                },
+                                font: { family: 'Sarabun', size: 11 }
+                            },
+                            grid: { color: 'rgba(241,245,249,0.5)' },
+                            title: {
+                                display: true,
+                                text: 'จำนวนรายการ',
+                                color: '#94a3b8',
+                                font: { size: 11, family: 'Sarabun' }
+                            }
                         },
-                        y: { 
-                            stacked: true, 
-                            grid: { display: false }, 
-                            ticks: { 
-                                font: { size: 10, family: 'Sarabun' } 
-                            } 
+                        y: {
+                            stacked: true,
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 11, family: 'Sarabun' }
+                            }
                         }
                     }
                 }
             });
         }
-
-    });
-
-    // ============================================================
-    // 4. EXPORT DASHBOARD
-    // ============================================================
+    }
+    
+    // =============================================
+    // EXPORT FUNCTION
+    // =============================================
     function exportDashboard(format) {
         Swal.fire({
             title: 'กำลังส่งออกข้อมูล...',
             text: 'กรุณารอสักครู่',
             allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
+            didOpen: function() {
+                Swal.showLoading();
+            }
         });
         
-        const dateFrom = document.getElementById('dateFrom')?.value || '';
-        const dateTo = document.getElementById('dateTo')?.value || '';
-        const statusFilter = document.querySelector('[name="status_filter"]')?.value || '';
-        const typeFilter = document.querySelector('[name="type_filter"]')?.value || '';
+        var params = new URLSearchParams({
+            action: 'export_dashboard',
+            format: format,
+            date_from: qs('[name="date_from"]') ? qs('[name="date_from"]').value : '',
+            date_to: qs('[name="date_to"]') ? qs('[name="date_to"]').value : '',
+            status_filter: qs('[name="status_filter"]') ? qs('[name="status_filter"]').value : '',
+            type_filter: qs('[name="type_filter"]') ? qs('[name="type_filter"]').value : '',
+            csrf_token: DASHBOARD_DATA.csrfToken
+        });
         
-        fetch('action.php?action=export_dashboard&format=' + format + 
-            '&date_from=' + encodeURIComponent(dateFrom) + 
-            '&date_to=' + encodeURIComponent(dateTo) +
-            '&status_filter=' + encodeURIComponent(statusFilter) +
-            '&type_filter=' + encodeURIComponent(typeFilter) +
-            '&csrf_token=<?= $csrf_token ?>')
-            .then(response => response.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'dashboard_risk_management_' + new Date().toISOString().slice(0,10) + 
-                    '.' + (format === 'pdf' ? 'pdf' : 'png');
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
+        fetch('action.php?' + params.toString())
+            .then(function(response) { return response.blob(); })
+            .then(function(blob) {
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'dashboard_report_' + new Date().toISOString().slice(0,10) + '.' + format;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
                 
-                Swal.close();
                 Swal.fire({
                     icon: 'success',
-                    title: 'ส่งออกสำเร็จ',
+                    title: 'ส่งออกสำเร็จ!',
                     text: 'ไฟล์ถูกดาวน์โหลดเรียบร้อยแล้ว',
-                    confirmButtonColor: '#2563eb',
-                    timer: 2000,
-                    timerProgressBar: true
+                    timer: 2500,
+                    timerProgressBar: true,
+                    confirmButtonColor: '#2563eb'
                 });
             })
-            .catch(() => {
-                Swal.close();
+            .catch(function() {
                 Swal.fire({
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถส่งออกข้อมูลได้',
+                    text: 'ไม่สามารถส่งออกข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
                     confirmButtonColor: '#2563eb'
                 });
             });
     }
-
-    // ============================================================
-    // 5. REFRESH DASHBOARD
-    // ============================================================
-    let isRefreshing = false;
-    let refreshInterval = null;
-
+    
+    // =============================================
+    // REFRESH FUNCTION
+    // =============================================
+    var isRefreshing = false;
+    
     function refreshDashboard() {
         if (isRefreshing) return;
         isRefreshing = true;
         
-        const btn = document.getElementById('refreshBtn');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังโหลด...';
+        var refreshBtn = qs('#refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> กำลังโหลด...';
         }
         
-        const dateFrom = document.getElementById('dateFrom')?.value || '';
-        const dateTo = document.getElementById('dateTo')?.value || '';
-        const statusFilter = document.querySelector('[name="status_filter"]')?.value || '';
-        const typeFilter = document.querySelector('[name="type_filter"]')?.value || '';
+        var params = new URLSearchParams({
+            action: 'dashboard_data',
+            date_from: qs('[name="date_from"]') ? qs('[name="date_from"]').value : '',
+            date_to: qs('[name="date_to"]') ? qs('[name="date_to"]').value : '',
+            status_filter: qs('[name="status_filter"]') ? qs('[name="status_filter"]').value : '',
+            type_filter: qs('[name="type_filter"]') ? qs('[name="type_filter"]').value : '',
+            csrf_token: DASHBOARD_DATA.csrfToken
+        });
         
-        fetch('action.php?action=dashboard_data' + 
-            '&date_from=' + encodeURIComponent(dateFrom) + 
-            '&date_to=' + encodeURIComponent(dateTo) +
-            '&status_filter=' + encodeURIComponent(statusFilter) +
-            '&type_filter=' + encodeURIComponent(typeFilter) +
-            '&csrf_token=<?= $csrf_token ?>')
-            .then(response => response.json())
-            .then(data => {
+        fetch('action.php?' + params.toString())
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
                 if (data.success) {
-                    updateDashboardStats(data);
-                    updateCharts(data);
-                    updateLastRefreshTime();
-                    showNotification('🔄 อัปเดตข้อมูลสำเร็จ', 'success');
-                }
-                isRefreshing = false;
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sync-alt"></i> รีเฟรช';
+                    showToast('🔄 อัปเดตข้อมูลเรียบร้อย', 'success');
                 }
             })
-            .catch(() => {
+            .catch(function() {
+                showToast('⚠️ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์', 'warning');
+            })
+            .finally(function() {
                 isRefreshing = false;
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sync-alt"></i> รีเฟรช';
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> รีเฟรช';
                 }
-                showNotification('⚠️ ไม่สามารถอัปเดตข้อมูลได้', 'warning');
+                updateRefreshTime();
             });
     }
-
-    function updateDashboardStats(data) {
-        const elTotal = document.getElementById('statTotalRisks');
-        const elUsers = document.getElementById('statTotalUsers');
-        const elToday = document.getElementById('statTodayRisks');
-        const elCompleted = document.getElementById('statCompletedRisks');
+    
+    function updateRefreshTime() {
+        var now = new Date();
+        var timeStr = 
+            String(now.getHours()).padStart(2, '0') + ':' +
+            String(now.getMinutes()).padStart(2, '0') + ':' +
+            String(now.getSeconds()).padStart(2, '0');
         
-        if (elTotal) elTotal.textContent = formatNumber(data.totalRisks);
-        if (elUsers) elUsers.textContent = formatNumber(data.totalUsers);
-        if (elToday) elToday.textContent = formatNumber(data.todayRisks);
-        if (elCompleted) elCompleted.textContent = formatNumber(data.completedRisks);
-    }
-
-    function updateCharts(data) {
-        if (severityChart && data.severityLabels && data.severityCounts) {
-            severityChart.data.labels = data.severityLabels;
-            severityChart.data.datasets[0].data = data.severityCounts;
-            severityChart.update();
-        }
-        if (riskTypeChart && data.riskLabels && data.riskCounts) {
-            riskTypeChart.data.labels = data.riskLabels;
-            riskTypeChart.data.datasets[0].data = data.riskCounts;
-            riskTypeChart.update();
-        }
-        if (groupChart && data.groupUnits && data.groupTotals) {
-            groupChart.data.labels = data.groupUnits;
-            groupChart.data.datasets[0].data = data.groupTotals;
-            groupChart.update();
-        }
-        if (statusChart && data.statusData) {
-            statusChart.data.datasets.forEach((ds, i) => {
-                if (data.statusData[i]) {
-                    ds.data = data.statusData[i];
-                }
-            });
-            statusChart.update();
+        var timeEl = qs('#lastRefreshTime');
+        if (timeEl) {
+            timeEl.textContent = 'อัปเดตล่าสุด: ' + timeStr;
         }
     }
-
-    function updateLastRefreshTime() {
-        const el = document.getElementById('lastRefreshTime');
-        if (el) {
-            const now = new Date();
-            el.textContent = 'อัปเดตล่าสุด: ' + 
-                String(now.getHours()).padStart(2,'0') + ':' + 
-                String(now.getMinutes()).padStart(2,'0') + ':' + 
-                String(now.getSeconds()).padStart(2,'0');
-        }
-    }
-
-    function formatNumber(num) {
-        if (num === undefined || num === null) return '0';
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    }
-
-    // ============================================================
-    // 6. AUTO REFRESH
-    // ============================================================
-    function startAutoRefresh(interval = 60000) {
-        if (refreshInterval) clearInterval(refreshInterval);
-        refreshInterval = setInterval(function() {
-            refreshDashboard();
-        }, interval);
-    }
-
-    function stopAutoRefresh() {
-        if (refreshInterval) {
-            clearInterval(refreshInterval);
-            refreshInterval = null;
-        }
-    }
-
-    // เริ่ม auto-refresh ทุก 60 วินาที
-    startAutoRefresh(60000);
-
-    // หยุด auto-refresh เมื่อออกจากหน้า
-    window.addEventListener('beforeunload', function() {
-        stopAutoRefresh();
-    });
-
-    // ============================================================
-    // 7. NOTIFICATION SYSTEM
-    // ============================================================
-    function showNotification(message, type = 'info') {
-        const colors = {
+    
+    // =============================================
+    // TOAST NOTIFICATION
+    // =============================================
+    function showToast(message, type) {
+        type = type || 'info';
+        
+        var styles = {
             info: { bg: '#eff6ff', border: '#93c5fd', color: '#1e40af', icon: 'fa-info-circle' },
             success: { bg: '#f0fdf4', border: '#86efac', color: '#16a34a', icon: 'fa-check-circle' },
             warning: { bg: '#fffbeb', border: '#fcd34d', color: '#92400e', icon: 'fa-exclamation-triangle' },
             error: { bg: '#fef2f2', border: '#fca5a5', color: '#dc2626', icon: 'fa-times-circle' }
         };
-        const style = colors[type] || colors.info;
         
-        let el = document.getElementById('notification-toast');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'notification-toast';
-            document.body.appendChild(el);
+        var style = styles[type] || styles.info;
+        var toast = qs('#toastNotification');
+        
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toastNotification';
+            toast.className = 'toast-notification';
+            document.body.appendChild(toast);
         }
-        el.style.cssText = `
-            position: fixed; top: 1.5rem; right: 1.5rem;
-            padding: 0.75rem 1.25rem; border-radius: 0.75rem; border: 1px solid ${style.border};
-            background: ${style.bg}; color: ${style.color};
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12); z-index: 1000;
-            display: flex; align-items: center; gap: 0.75rem;
-            font-family: 'Sarabun', sans-serif; max-width: 400px;
-            animation: slideDown 0.3s ease;
-        `;
-        el.innerHTML = `<i class="fas ${style.icon}"></i> ${message}`;
-        el.style.display = 'flex';
         
-        setTimeout(() => {
-            el.style.display = 'none';
+        toast.style.background = style.bg;
+        toast.style.borderColor = style.border;
+        toast.style.color = style.color;
+        toast.style.display = 'flex';
+        toast.innerHTML = '<i class="fas ' + style.icon + '"></i> ' + message;
+        
+        setTimeout(function() {
+            toast.style.display = 'none';
         }, 4000);
     }
-
-    // ============================================================
-    // 8. CHECK NEW RISKS (Real-time Notification)
-    // ============================================================
-    function checkNewRisks() {
-        const lastCheck = localStorage.getItem('lastDashboardCheck') || '';
-        const dateFrom = document.getElementById('dateFrom')?.value || '';
-        const dateTo = document.getElementById('dateTo')?.value || '';
-        const statusFilter = document.querySelector('[name="status_filter"]')?.value || '';
-        const typeFilter = document.querySelector('[name="type_filter"]')?.value || '';
+    
+    // =============================================
+    // INITIALIZATION
+    // =============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize charts
+        initializeCharts();
         
-        fetch('action.php?action=check_new_risks' +
-            '&last_check=' + encodeURIComponent(lastCheck) + 
-            '&date_from=' + encodeURIComponent(dateFrom) + 
-            '&date_to=' + encodeURIComponent(dateTo) +
-            '&status_filter=' + encodeURIComponent(statusFilter) +
-            '&type_filter=' + encodeURIComponent(typeFilter) +
-            '&csrf_token=<?= $csrf_token ?>')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.new_count > 0) {
-                    showNotification('🔔 มีรายงานความเสี่ยงใหม่ ' + data.new_count + ' รายการ', 'info');
-                    localStorage.setItem('lastDashboardCheck', data.current_time);
-                }
-            })
-            .catch(() => {});
-    }
-
-    // ตรวจสอบข้อมูลใหม่ทุก 2 นาที
-    setInterval(checkNewRisks, 120000);
-    // ตรวจสอบครั้งแรกหลังจากโหลดหน้า 5 วินาที
-    setTimeout(checkNewRisks, 5000);
-
-    // ============================================================
-    // 9. KEYBOARD SHORTCUTS
-    // ============================================================
-    document.addEventListener('keydown', function(e) {
-        // Ctrl+R = Refresh
-        if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-            if (!e.target.closest('input, textarea, select')) {
-                e.preventDefault();
-                refreshDashboard();
+        // Set max date for date inputs
+        var today = new Date().toISOString().split('T')[0];
+        qsa('input[type="date"]').forEach(function(input) {
+            input.setAttribute('max', today);
+        });
+        
+        // Auto refresh every 60 seconds
+        setInterval(refreshDashboard, 60000);
+        
+        // Close sidebar when clicking outside (mobile)
+        document.addEventListener('click', function(event) {
+            var sidebar = qs('.sidebar');
+            var menuToggle = qs('.menu-toggle');
+            
+            if (sidebar && sidebar.classList.contains('open') && 
+                !sidebar.contains(event.target) && 
+                menuToggle && !menuToggle.contains(event.target)) {
+                sidebar.classList.remove('open');
             }
-        }
-        // Escape = Clear filters
-        if (e.key === 'Escape') {
-            const resetBtn = document.querySelector('.btn-filter.danger');
-            if (resetBtn) {
-                const href = resetBtn.getAttribute('href');
-                if (href && href !== '#') {
-                    window.location.href = href;
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            // Ctrl+R or Cmd+R = Refresh dashboard
+            if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+                if (!event.target.closest('input, textarea, select')) {
+                    event.preventDefault();
+                    refreshDashboard();
                 }
             }
-        }
+            
+            // Escape = Reset filters
+            if (event.key === 'Escape') {
+                var resetLink = qs('a[href="dashboard.php"]');
+                if (resetLink && resetLink.classList.contains('btn-red')) {
+                    window.location.href = resetLink.href;
+                }
+            }
+        });
+        
+        // Log success
+        console.log('✅ Dashboard initialized successfully');
+        console.log('📊 Data loaded: ' + DASHBOARD_DATA.severityCounts.reduce(function(a,b) { return a+b; }, 0) + ' total severity records');
+        console.log('🔄 Auto-refresh enabled (every 60 seconds)');
     });
-
-    console.log('✅ Dashboard loaded successfully!');
-    console.log('📊 Data period:', '<?= $date_from ? $date_from : "all" ?> - <?= $date_to ? $date_to : "now" ?>');
-    console.log('📈 Total risks:', <?= $totalRisks ?>);
-    console.log('🔄 Auto-refresh enabled');
-</script>
-
+    </script>
+</body>
+</html>
 <?php include 'includes/footer.php'; ?>

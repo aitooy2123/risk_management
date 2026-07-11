@@ -15,6 +15,7 @@
  * - ปุ่มเติมข้อมูลอัตโนมัติสำหรับรายละเอียด
  * - Full Page Size Responsive Design - Single Column (col-12)
  * - Summernote Editor สำหรับรายละเอียดและแนวทางแก้ไข
+ * - เพิ่มฟิลด์การรายงานผล (เฉพาะ Admin, แก้ไขได้แม้สถานะยุติ)
  */
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -44,9 +45,10 @@ if ($id) {
         redirect('risks.php');
     }
 
+    // ล็อกเฉพาะฟิลด์ทั่วไป ไม่ล็อก report_result
     $locked_statuses = ['ดำเนินการแล้ว', 'ยุติ'];
     if (isset($risk['status']) && in_array($risk['status'], $locked_statuses)) {
-        $is_editable = false;
+        $is_editable = false; // ยังคงล็อกฟิลด์ทั่วไป
     }
 }
 
@@ -325,6 +327,11 @@ if ($id) {
     .card-header-badge.admin-only {
         background: #fef3c7;
         color: #92400e;
+    }
+
+    .card-header-badge.report-result {
+        background: #fef9c3;
+        color: #a16207;
     }
 
     .card-body {
@@ -985,6 +992,21 @@ if ($id) {
         font-family: 'Sarabun', sans-serif !important;
     }
 
+    /* Report Result - Special styling */
+    .report-result-editor .note-editor.note-frame {
+        border-color: #fcd34d !important;
+        border-width: 2px !important;
+    }
+
+    .report-result-editor .note-editor.note-frame:hover {
+        border-color: #f59e0b !important;
+    }
+
+    .report-result-editor .note-editor.note-frame .note-toolbar {
+        background: #fffbeb !important;
+        border-bottom-color: #fde68a !important;
+    }
+
     /* ============================================ */
     /* RESPONSIVE DESIGN - SINGLE COLUMN (col-12) */
     /* ============================================ */
@@ -1283,7 +1305,7 @@ if ($id) {
             <!-- Locked Warning -->
             <?php if (!$is_editable): ?>
                 <div class="locked-overlay">
-                    <i class="fas fa-lock mr-2"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นหรือยุติแล้ว ไม่สามารถแก้ไขได้
+                    <i class="fas fa-lock mr-2"></i> รายการนี้ถูกดำเนินการเสร็จสิ้นหรือยุติแล้ว ไม่สามารถแก้ไขข้อมูลทั่วไปได้ (ยกเว้นการรายงานผล)
                 </div>
             <?php endif; ?>
 
@@ -1439,21 +1461,21 @@ if ($id) {
                                 <label class="form-label">📝 รายละเอียดเหตุการณ์ <span class="required">*</span></label>
                                 <div class="summernote-editor-wrapper">
                                     <textarea name="detail" id="detail" class="summernote-editor"
-                                        placeholder="อธิบายรายละเอียดเหตุการณ์ที่เกิดขึ้น..."><?= htmlspecialchars($risk['detail'] ?? '') ?></textarea>
+                                        placeholder="อธิบายรายละเอียดเหตุการณ์ที่เกิดขึ้น..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['detail'] ?? '') ?></textarea>
                                 </div>
                             </div>
                             <div>
                                 <label class="form-label">🔧 การแก้ไขเบื้องต้น <span class="required">*</span></label>
                                 <div class="summernote-editor-wrapper">
                                     <textarea name="initial_solution" id="initial_solution" class="summernote-editor"
-                                        placeholder="ระบุการแก้ไขเบื้องต้นที่ได้ดำเนินการ..."><?= htmlspecialchars($risk['initial_solution'] ?? '') ?></textarea>
+                                        placeholder="ระบุการแก้ไขเบื้องต้นที่ได้ดำเนินการ..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['initial_solution'] ?? '') ?></textarea>
                                 </div>
                             </div>
                             <div>
                                 <label class="form-label">💡 ปัญหาและข้อเสนอแนะ <span class="required">*</span></label>
                                 <div class="summernote-editor-wrapper">
                                     <textarea name="suggestion" id="suggestion" class="summernote-editor"
-                                        placeholder="ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข..."><?= htmlspecialchars($risk['suggestion'] ?? '') ?></textarea>
+                                        placeholder="ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข..." <?= !$is_editable ? 'disabled' : '' ?>><?= htmlspecialchars($risk['suggestion'] ?? '') ?></textarea>
                                 </div>
                             </div>
                             <?php if ($is_editable): ?>
@@ -1482,7 +1504,7 @@ if ($id) {
                         </div>
                         <div class="card-body">
                             <?php if ($is_editable): ?>
-                                <select name="status" id="status" class="status-select">
+                                <select name="status" id="status" class="status-select" <?= !$is_admin ? 'disabled' : '' ?>>
                                     <option value="">-- กรุณาเลือกสถานะ --</option>
                                     <?php foreach ($statuses as $key => $st): ?>
                                         <?php
@@ -1500,6 +1522,8 @@ if ($id) {
                                 </select>
                                 <?php if ($is_admin): ?>
                                     <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้</p>
+                                <?php else: ?>
+                                    <p class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle"></i> เฉพาะ Admin เท่านั้นที่สามารถเปลี่ยนสถานะได้ (คุณเป็นผู้ใช้งานทั่วไป)</p>
                                 <?php endif; ?>
                                 <div id="status-preview"></div>
                             <?php else: ?>
@@ -1530,9 +1554,50 @@ if ($id) {
                     <input type="hidden" name="status" value="<?= htmlspecialchars($risk['status'] ?? 'ยังไม่ดำเนินการ') ?>">
                 <?php endif; ?>
 
+                <!-- 8. การรายงานผล (เฉพาะ Admin, แก้ไขได้แม้สถานะยุติ) -->
+                <div class="form-card animate-in report-result-editor">
+                    <div class="card-header" style="background:#fffbeb; border-bottom-color:#fde68a;">
+                        <div class="card-header-icon" style="background:#fef9c3;color:#a16207;"><i class="fas fa-file-alt"></i></div>
+                        <h3 class="card-header-title">📄 การรายงานผล</h3>
+                        <span class="card-header-badge report-result"><i class="fas fa-crown"></i> เฉพาะ Admin</span>
+                    </div>
+                    <div class="card-body">
+                        <?php if ($is_admin): ?>
+                            <div class="summernote-editor-wrapper">
+                                <textarea name="report_result" id="report_result" class="summernote-editor"
+                                    placeholder="ระบุผลการดำเนินงาน ข้อเสนอแนะ หรือการรายงานผลสรุป..."><?= htmlspecialchars($risk['report_result'] ?? '') ?></textarea>
+                            </div>
+                            <?php if (isset($risk['status']) && $risk['status'] == 'ยุติ'): ?>
+                                <p class="text-xs text-gray-500 mt-2" style="color:#a16207;">
+                                    <i class="fas fa-info-circle"></i> สามารถแก้ไขการรายงานผลได้แม้สถานะเป็นยุติ
+                                </p>
+                            <?php endif; ?>
+                            <div class="flex justify-end pt-2">
+                                <button type="button" class="btn-default" onclick="fillReportResult();">
+                                    <i class="fas fa-pen"></i> เติมข้อความตัวอย่าง
+                                </button>
+                            </div>
+                        <?php else: ?>
+                            <div class="status-display" style="background:#fffbeb; border-color:#fde68a;">
+                                <i class="fas fa-lock text-gray-400"></i>
+                                <span style="color:#92400e;">
+                                    <i class="fas fa-crown"></i> เฉพาะผู้บริหาร (Admin) เท่านั้นที่สามารถกรอกข้อมูลการรายงานผล
+                                </span>
+                            </div>
+                            <input type="hidden" name="report_result" value="<?= htmlspecialchars($risk['report_result'] ?? '') ?>">
+                            <?php if (!empty($risk['report_result'])): ?>
+                                <div class="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                                    <p class="text-sm text-gray-600"><strong>รายงานผลปัจจุบัน:</strong></p>
+                                    <div class="text-sm text-gray-700"><?= $risk['report_result'] ?></div>
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <!-- Buttons -->
                 <div class="flex items-center gap-3 pt-3 pb-8 flex-wrap">
-                    <?php if ($is_editable): ?>
+                    <?php if ($is_editable || $is_admin): ?>
                         <button type="submit" class="btn-submit" id="submitBtn">
                             <i class="fas fa-save"></i> บันทึกรายงาน
                         </button>
@@ -1586,14 +1651,12 @@ if ($id) {
         let hasFilled = false;
         const btn = document.getElementById('fillDefaultBtn');
 
-        // วนลูปเช็คและเติมข้อความ
         ['detail', 'initial_solution', 'suggestion'].forEach(id => {
             const $editor = $('#' + id);
             if ($editor.length > 0) {
                 const isReallyEmpty = $editor.summernote('isEmpty');
                 const content = $editor.summernote('code').replace(/<[^>]*>/g, '').trim();
                 
-                // เช็คว่าว่างเปล่าจริงๆ
                 if (isReallyEmpty || !content || content === '<p><br></p>' || content === '<br>') {
                     $editor.summernote('code', defaultTexts[id]);
                     hasFilled = true;
@@ -1616,6 +1679,57 @@ if ($id) {
                 toast: true,
                 position: 'top-end'
             });
+        }
+    }
+
+    /**
+     * เติมข้อความตัวอย่างในรายงานผล
+     */
+    function fillReportResult() {
+        const $editor = $('#report_result');
+        if ($editor.length > 0) {
+            const isReallyEmpty = $editor.summernote('isEmpty');
+            const content = $editor.summernote('code').replace(/<[^>]*>/g, '').trim();
+            
+            if (isReallyEmpty || !content || content === '<p><br></p>' || content === '<br>') {
+                const sampleText = `
+                    <h4>📊 สรุปผลการดำเนินงาน</h4>
+                    <ul>
+                        <li>ดำเนินการตามแผนงานที่กำหนดไว้ครบถ้วน</li>
+                        <li>ไม่มีข้อร้องเรียนเพิ่มเติม</li>
+                        <li>สามารถป้องกันความเสี่ยงซ้ำได้</li>
+                    </ul>
+                    <p><strong>ข้อเสนอแนะ:</strong> ควรมีการทบทวนกระบวนการทำงานอย่างสม่ำเสมอ</p>
+                    <p><em>รายงานโดย: ผู้บริหาร</em></p>
+                `;
+                $editor.summernote('code', sampleText);
+                
+                const btn = document.querySelector('.report-result-editor .btn-default');
+                if (btn) {
+                    btn.innerHTML = '<i class="fas fa-check-circle"></i> เติมข้อมูลแล้ว';
+                    btn.classList.add('filled');
+                    btn.disabled = true;
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'เติมข้อความตัวอย่างเรียบร้อย',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'มีข้อมูลอยู่แล้ว',
+                    text: 'กรุณาลบข้อมูลเดิมก่อนเติมข้อความตัวอย่าง',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            }
         }
     }
 </script>
@@ -1642,18 +1756,20 @@ if ($id) {
             disableDragAndDrop: false,
             callbacks: {
                 onChange: function(contents, $editable) {
-                    // Trigger auto-save when content changes
                     if (typeof autoSaveDraft === 'function') {
                         clearTimeout(window._autoSaveTimer);
                         window._autoSaveTimer = setTimeout(autoSaveDraft, 30000);
                     }
-                    
-                    // Mark form as changed
                     window._formChanged = true;
                 },
                 onInit: function() {
-                    // ถ้าไม่สามารถแก้ไขได้ → disable
-                    if (!isEditable) {
+                    // ถ้าไม่สามารถแก้ไขได้ → disable (เฉพาะฟิลด์ทั่วไป)
+                    if (!isEditable && this.id !== 'report_result') {
+                        $(this).summernote('disable');
+                        $(this).closest('.note-editor').addClass('disabled-editor');
+                    }
+                    // report_result เปิดให้แก้ไขตลอด (เฉพาะ Admin)
+                    if (this.id === 'report_result' && !isAdmin) {
                         $(this).summernote('disable');
                         $(this).closest('.note-editor').addClass('disabled-editor');
                     }
@@ -1677,7 +1793,14 @@ if ($id) {
             placeholder: 'ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข...'
         });
 
-        // ถ้าไม่สามารถแก้ไขได้ → disable ทุก editor
+        // Report Result Editor (special)
+        $('#report_result').summernote({
+            ...summernoteConfig,
+            placeholder: 'ระบุผลการดำเนินงาน ข้อเสนอแนะ หรือการรายงานผลสรุป...',
+            height: 150
+        });
+
+        // ถ้าไม่สามารถแก้ไขได้ → disable ทุก editor ยกเว้น report_result
         if (!isEditable) {
             $('#detail, #initial_solution, #suggestion').each(function() {
                 if (!$(this).next('.note-editor').hasClass('disabled-editor')) {
@@ -1688,13 +1811,11 @@ if ($id) {
         }
 
         // ============================================
-        // ฟังก์ชั่น Auto-save (เก็บเนื้อหา Summernote ด้วย)
+        // ฟังก์ชั่น Auto-save
         // ============================================
         function autoSaveDraft() {
-            if (!isEditable) return;
-
             // อัพเดทค่า textarea จาก Summernote ก่อนส่ง
-            $('#detail, #initial_solution, #suggestion').each(function() {
+            $('#detail, #initial_solution, #suggestion, #report_result').each(function() {
                 if ($(this).data('summernote')) {
                     this.value = $(this).summernote('code');
                 }
@@ -1723,19 +1844,8 @@ if ($id) {
         }
 
         // ============================================
-        // Existing Code (คงเดิมทั้งหมด)
+        // Existing Code
         // ============================================
-
-        if (!isEditable) {
-            Swal.fire({
-                icon: 'info',
-                title: 'ไม่สามารถแก้ไขได้',
-                text: 'รายการนี้ถูกดำเนินการเสร็จสิ้นหรือยุติแล้ว',
-                confirmButtonText: 'ตกลง',
-                confirmButtonColor: '#2563eb'
-            });
-            return;
-        }
 
         // DATE VALIDATION
         const eventDatetimeInput = document.getElementById('event_datetime');
@@ -1935,7 +2045,7 @@ if ($id) {
         document.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                if (isEditable) form.dispatchEvent(new Event('submit'));
+                if (isEditable || isAdmin) form.dispatchEvent(new Event('submit'));
             }
             if (e.key === 'Escape') {
                 const cancelBtn = document.querySelector('.btn-cancel');
@@ -1975,7 +2085,7 @@ if ($id) {
             formChanged = true;
         });
         window.addEventListener('beforeunload', function(e) {
-            if (formChanged && isEditable) {
+            if (formChanged && (isEditable || isAdmin)) {
                 e.preventDefault();
                 e.returnValue = 'คุณยังไม่ได้บันทึกข้อมูล ต้องการออกจากหน้านี้ใช่หรือไม่?';
                 return e.returnValue;
@@ -1992,7 +2102,7 @@ if ($id) {
 
             // ⭐ ซิงค์เนื้อหา Summernote ลง textarea ก่อนส่ง
             let syncSuccess = true;
-            $('#detail, #initial_solution, #suggestion').each(function() {
+            $('#detail, #initial_solution, #suggestion, #report_result').each(function() {
                 try {
                     if ($(this).data('summernote')) {
                         this.value = $(this).summernote('code');
@@ -2013,7 +2123,7 @@ if ($id) {
                 return;
             }
 
-            // Validate: ตรวจสอบว่า Summernote ไม่ว่างเปล่า
+            // Validate: ตรวจสอบว่า Summernote ไม่ว่างเปล่า (เฉพาะฟิลด์ที่จำเป็น)
             let hasEmptySummernote = false;
             ['detail', 'initial_solution', 'suggestion'].forEach(id => {
                 const $editor = $('#' + id);
@@ -2153,7 +2263,7 @@ if ($id) {
                 });
         });
 
-        console.log('✅ ระบบพร้อมใช้งาน! (Summernote Editors + col-12 Single Column + Auto Redirect)');
+        console.log('✅ ระบบพร้อมใช้งาน! (Summernote Editors + Report Result Feature)');
     });
-</script>
+</script> 
 <?php include 'includes/footer.php'; ?>
