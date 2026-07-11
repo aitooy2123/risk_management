@@ -150,7 +150,8 @@ $csrf_token = generateCsrfToken();
 $isAdmin = isAdmin();
 
 // ===== ฟังก์ชัน helpers =====
-function getSeverityFullText($severity) {
+function getSeverityFullText($severity)
+{
     $map = [
         'A' => 'มีโอกาสเกิดความเสี่ยงแต่ยังไม่เกิดขึ้น',
         'B' => 'เกิดความเสี่ยง ยังไม่ถึงตัวบุคคล ไม่เกิดผลกระทบต่องาน',
@@ -162,40 +163,54 @@ function getSeverityFullText($severity) {
     return $map[$severity] ?? 'ไม่ระบุ';
 }
 
-function getSeverityColor($severity) {
+function getSeverityColor($severity)
+{
     $colors = ['A' => '#3b82f6', 'B' => '#22c55e', 'C' => '#84cc16', 'D' => '#eab308', 'E' => '#f97316', 'F' => '#ef4444'];
     return $colors[$severity] ?? '#6b7280';
 }
 
-function getSeverityBgColor($severity) {
+function getSeverityBgColor($severity)
+{
     $colors = ['A' => '#eff6ff', 'B' => '#f0fdf4', 'C' => '#f7fee7', 'D' => '#fefce8', 'E' => '#fff7ed', 'F' => '#fef2f2'];
     return $colors[$severity] ?? '#f9fafb';
 }
 
-function getSeverityLabel($severity) {
+function getSeverityLabel($severity)
+{
     $labels = ['A' => 'ต่ำมาก', 'B' => 'ต่ำ', 'C' => 'ปานกลาง', 'D' => 'สูง', 'E' => 'สูงมาก', 'F' => 'สูงสุด'];
     return $labels[$severity] ?? $severity;
 }
 
-function getStatusBadgeClass($status) {
+function getStatusBadgeClass($status)
+{
     switch ($status) {
-        case 'ดำเนินการแล้ว': return 'badge-emerald';
-        case 'กำลังดำเนินการ': return 'badge-sky';
-        case 'ยุติ': return 'badge-gray';
-        default: return 'badge-slate';
+        case 'ดำเนินการแล้ว':
+            return 'badge-emerald';
+        case 'กำลังดำเนินการ':
+            return 'badge-sky';
+        case 'ยุติ':
+            return 'badge-gray';
+        default:
+            return 'badge-slate';
     }
 }
 
-function getStatusIcon($status) {
+function getStatusIcon($status)
+{
     switch ($status) {
-        case 'ดำเนินการแล้ว': return 'fa-check-circle';
-        case 'กำลังดำเนินการ': return 'fa-spinner fa-spin';
-        case 'ยุติ': return 'fa-stop-circle';
-        default: return 'fa-clock';
+        case 'ดำเนินการแล้ว':
+            return 'fa-check-circle';
+        case 'กำลังดำเนินการ':
+            return 'fa-spinner fa-spin';
+        case 'ยุติ':
+            return 'fa-stop-circle';
+        default:
+            return 'fa-clock';
     }
 }
 
-function thaiDateView($date) {
+function thaiDateView($date)
+{
     if (empty($date)) return '-';
     $timestamp = strtotime($date);
     $year = date('Y', $timestamp) + 543;
@@ -205,20 +220,23 @@ function thaiDateView($date) {
     return $day . ' ' . $thaiMonths[$month] . ' ' . $year;
 }
 
-function isImageFile($filename) {
+function isImageFile($filename)
+{
     if (empty($filename)) return false;
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 }
 
-function getFileIcon($filename) {
+function getFileIcon($filename)
+{
     if (empty($filename)) return 'fa-file';
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     $icons = ['pdf' => 'fa-file-pdf', 'doc' => 'fa-file-word', 'docx' => 'fa-file-word', 'xls' => 'fa-file-excel', 'xlsx' => 'fa-file-excel', 'jpg' => 'fa-file-image', 'jpeg' => 'fa-file-image', 'png' => 'fa-file-image', 'gif' => 'fa-file-image', 'webp' => 'fa-file-image'];
     return $icons[$ext] ?? 'fa-file';
 }
 
-function formatFileSize($bytes) {
+function formatFileSize($bytes)
+{
     if ($bytes === false || $bytes === null) return 'ไม่ทราบขนาด';
     if ($bytes < 1024) return $bytes . ' B';
     if ($bytes < 1048576) return number_format($bytes / 1024, 1) . ' KB';
@@ -229,7 +247,8 @@ function formatFileSize($bytes) {
 $current_page = basename($_SERVER['PHP_SELF']);
 $is_admin = isAdmin();
 
-function getSystemSettings($pdo) {
+function getSystemSettings($pdo)
+{
     $defaults = [
         'site_name' => 'Risk Management',
         'site_description' => 'ระบบบริหารความเสี่ยง',
@@ -248,7 +267,8 @@ function getSystemSettings($pdo) {
                 }
             }
         }
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+    }
     return $defaults;
 }
 
@@ -277,17 +297,20 @@ if (isset($pdo)) {
             $stmt->execute([$_SESSION['user_id']]);
         }
         $pending_risk_count = $stmt->fetchColumn();
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+    }
 }
 
 $user_count = 0;
 if ($is_admin && isset($pdo)) {
     try {
         $user_count = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+    }
 }
 
-function isMenuActive($page, $current_page, $sub_pages = []) {
+function isMenuActive($page, $current_page, $sub_pages = [])
+{
     if ($current_page == $page) return true;
     foreach ($sub_pages as $sub) {
         if ($current_page == $sub) return true;
@@ -306,6 +329,7 @@ $statusIcon = getStatusIcon($currentStatus);
 ?>
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -314,6 +338,9 @@ $statusIcon = getStatusIcon($currentStatus);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
     <style>
         :root {
             --sidebar-width: 240px;
@@ -422,8 +449,13 @@ $statusIcon = getStatusIcon($currentStatus);
         }
 
         @keyframes ringSpin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .logo-image {
@@ -478,9 +510,18 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 1;
         }
 
-        .sidebar-nav::-webkit-scrollbar { width: 3px; }
-        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.06); border-radius: 3px; }
+        .sidebar-nav::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 3px;
+        }
 
         .nav-section-label {
             font-size: 0.6rem;
@@ -523,10 +564,26 @@ $statusIcon = getStatusIcon($currentStatus);
             transition: height 0.3s ease;
         }
 
-        .menu-item:hover::before { height: 60%; }
-        .menu-item:hover { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.85); }
-        .menu-item.active::before { height: 80%; background: #3b82f6; }
-        .menu-item.active { background: rgba(255, 255, 255, 0.08); color: white; font-weight: 600; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+        .menu-item:hover::before {
+            height: 60%;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .menu-item.active::before {
+            height: 80%;
+            background: #3b82f6;
+        }
+
+        .menu-item.active {
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
 
         .menu-icon {
             width: 32px;
@@ -541,11 +598,31 @@ $statusIcon = getStatusIcon($currentStatus);
             transition: all 0.25s ease;
         }
 
-        .menu-item:hover .menu-icon { background: rgba(255, 255, 255, 0.08); transform: scale(1.05); }
-        .menu-item.active .menu-icon { background: rgba(59, 130, 246, 0.25); box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        .menu-item:hover .menu-icon {
+            background: rgba(255, 255, 255, 0.08);
+            transform: scale(1.05);
+        }
 
-        .menu-content { flex: 1; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-        .menu-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-item.active .menu-icon {
+            background: rgba(59, 130, 246, 0.25);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+        }
+
+        .menu-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+        }
+
+        .menu-text {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         .menu-badge {
             font-size: 0.6rem;
@@ -557,14 +634,42 @@ $statusIcon = getStatusIcon($currentStatus);
             flex-shrink: 0;
         }
 
-        .menu-badge-admin { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
-        .menu-badge-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); animation: badgePulse 2s ease-in-out infinite; }
-        .menu-badge-users { background: rgba(167, 139, 250, 0.25); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, 0.3); }
-        .menu-badge-settings { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); animation: badgePulse 2s ease-in-out infinite; }
+        .menu-badge-admin {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .menu-badge-pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+
+        .menu-badge-users {
+            background: rgba(167, 139, 250, 0.25);
+            color: #c4b5fd;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+        }
+
+        .menu-badge-settings {
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            animation: badgePulse 2s ease-in-out infinite;
+        }
 
         @keyframes badgePulse {
-            0%, 100% { opacity: 0.8; }
-            50% { opacity: 1; }
+
+            0%,
+            100% {
+                opacity: 0.8;
+            }
+
+            50% {
+                opacity: 1;
+            }
         }
 
         .sidebar-footer {
@@ -575,20 +680,74 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 1;
         }
 
-        .sidebar-user { display: flex; align-items: center; gap: 0.625rem; padding: 0.375rem; }
-        .user-avatar-sidebar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.1); flex-shrink: 0; }
-        .user-status-dot { position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background: #34d399; border-radius: 50%; border: 2px solid #1e293b; }
-        .sidebar-user-info { flex: 1; min-width: 0; }
-        .sidebar-user-name { font-size: 0.75rem; font-weight: 600; color: white; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .sidebar-user-role { font-size: 0.625rem; color: rgba(255, 255, 255, 0.4); line-height: 1.2; }
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.375rem;
+        }
+
+        .user-avatar-sidebar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .user-status-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            border: 2px solid #1e293b;
+        }
+
+        .sidebar-user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sidebar-user-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-role {
+            font-size: 0.625rem;
+            color: rgba(255, 255, 255, 0.4);
+            line-height: 1.2;
+        }
 
         .logout-btn {
-            display: flex; align-items: center; justify-content: center;
-            width: 32px; height: 32px; border-radius: 8px;
-            color: rgba(255, 255, 255, 0.3); text-decoration: none;
-            transition: all 0.25s ease; cursor: pointer; background: none; border: none; flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.3);
+            text-decoration: none;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            background: none;
+            border: none;
+            flex-shrink: 0;
         }
-        .logout-btn:hover { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
 
         /* ===== Main Content ===== */
         .main-content {
@@ -614,16 +773,59 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 100;
         }
 
-        .top-bar-left { display: flex; align-items: center; gap: 0.75rem; }
-        .menu-toggle { display: none; background: none; border: none; color: #475569; font-size: 1.125rem; cursor: pointer; padding: 0.375rem; border-radius: 0.5rem; transition: all 0.2s; }
-        .menu-toggle:hover { background: #f1f5f9; color: #1e293b; }
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
 
-        .breadcrumb { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: #64748b; }
-        .breadcrumb a { color: #64748b; text-decoration: none; transition: color 0.2s; }
-        .breadcrumb a:hover { color: #2563eb; }
-        .breadcrumb .current { color: #1e293b; font-weight: 600; }
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: #475569;
+            font-size: 1.125rem;
+            cursor: pointer;
+            padding: 0.375rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
 
-        .top-bar-right { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: #475569; }
+        .menu-toggle:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+            color: #64748b;
+        }
+
+        .breadcrumb a {
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb a:hover {
+            color: #2563eb;
+        }
+
+        .breadcrumb .current {
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+            color: #475569;
+        }
 
         /* Page Content */
         .page-content {
@@ -748,10 +950,29 @@ $statusIcon = getStatusIcon($currentStatus);
             border: 1px solid;
         }
 
-        .badge-emerald { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
-        .badge-sky { background: #f0f9ff; color: #075985; border-color: #bae6fd; }
-        .badge-gray { background: #f9fafb; color: #4b5563; border-color: #e5e7eb; }
-        .badge-slate { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+        .badge-emerald {
+            background: #ecfdf5;
+            color: #065f46;
+            border-color: #a7f3d0;
+        }
+
+        .badge-sky {
+            background: #f0f9ff;
+            color: #075985;
+            border-color: #bae6fd;
+        }
+
+        .badge-gray {
+            background: #f9fafb;
+            color: #4b5563;
+            border-color: #e5e7eb;
+        }
+
+        .badge-slate {
+            background: #f8fafc;
+            color: #475569;
+            border-color: #e2e8f0;
+        }
 
         /* Severity */
         .severity-display {
@@ -777,9 +998,22 @@ $statusIcon = getStatusIcon($currentStatus);
             flex-shrink: 0;
         }
 
-        .severity-info { flex: 1; min-width: 0; }
-        .severity-level { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.125rem; }
-        .severity-desc { font-size: 0.8rem; line-height: 1.5; color: #475569; }
+        .severity-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .severity-level {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 0.125rem;
+        }
+
+        .severity-desc {
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: #475569;
+        }
 
         /* Notice */
         .notice {
@@ -793,11 +1027,22 @@ $statusIcon = getStatusIcon($currentStatus);
             line-height: 1.5;
         }
 
-        .notice-success { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1px solid #a7f3d0; color: #065f46; }
-        .notice-warning { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a; color: #92400e; }
+        .notice-success {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+        }
+
+        .notice-warning {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
 
         /* Form */
-        .form-group { margin-bottom: 1.25rem; }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
 
         .form-label {
             font-size: 0.75rem;
@@ -811,7 +1056,8 @@ $statusIcon = getStatusIcon($currentStatus);
             gap: 0.35rem;
         }
 
-        .form-textarea, .form-input {
+        .form-textarea,
+        .form-input {
             width: 100%;
             padding: 0.75rem 0.875rem;
             border: 1.5px solid #e2e8f0;
@@ -826,9 +1072,23 @@ $statusIcon = getStatusIcon($currentStatus);
             resize: vertical;
         }
 
-        .form-textarea { min-height: 100px; }
-        .form-textarea:focus, .form-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08); }
-        .form-textarea:disabled, .form-input:disabled { background: #f1f5f9; cursor: not-allowed; opacity: 0.7; }
+        .form-textarea {
+            min-height: 100px;
+        }
+
+        .form-textarea:focus,
+        .form-input:focus {
+            border-color: #2563eb;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+        }
+
+        .form-textarea:disabled,
+        .form-input:disabled {
+            background: #f1f5f9;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
 
         /* Buttons */
         .btn {
@@ -847,16 +1107,58 @@ $statusIcon = getStatusIcon($currentStatus);
             white-space: nowrap;
         }
 
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-secondary { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
-        .btn-secondary:hover:not(:disabled) { background: #f1f5f9; border-color: #cbd5e1; }
-        .btn-primary { background: linear-gradient(135deg, #059669, #047857); color: white; border-color: #047857; }
-        .btn-primary:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3); transform: translateY(-1px); }
-        .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; border-radius: 0.4rem; }
-        .btn-outline-blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-        .btn-outline-blue:hover { background: #dbeafe; }
-        .btn-outline-green { background: #f0fdf4; color: #047857; border-color: #bbf7d0; }
-        .btn-outline-green:hover { background: #dcfce7; }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f8fafc;
+            color: #475569;
+            border-color: #e2e8f0;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: white;
+            border-color: #047857;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.75rem;
+            border-radius: 0.4rem;
+        }
+
+        .btn-outline-blue {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+        }
+
+        .btn-outline-blue:hover {
+            background: #dbeafe;
+        }
+
+        .btn-outline-green {
+            background: #f0fdf4;
+            color: #047857;
+            border-color: #bbf7d0;
+        }
+
+        .btn-outline-green:hover {
+            background: #dcfce7;
+        }
 
         /* Upload */
         .upload-area {
@@ -870,8 +1172,15 @@ $statusIcon = getStatusIcon($currentStatus);
             display: block;
         }
 
-        .upload-area:hover:not(.disabled) { border-color: #2563eb; background: #eff6ff; }
-        .upload-area.disabled { cursor: not-allowed; opacity: 0.6; }
+        .upload-area:hover:not(.disabled) {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .upload-area.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
 
         .upload-icon-circle {
             width: 48px;
@@ -884,9 +1193,22 @@ $statusIcon = getStatusIcon($currentStatus);
             margin: 0 auto 0.75rem;
         }
 
-        .upload-icon-circle i { font-size: 1.25rem; color: #2563eb; }
-        .upload-text { font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.25rem; }
-        .upload-hint { font-size: 0.8rem; color: #94a3b8; }
+        .upload-icon-circle i {
+            font-size: 1.25rem;
+            color: #2563eb;
+        }
+
+        .upload-text {
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-hint {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
 
         /* File Card */
         .file-card {
@@ -933,11 +1255,38 @@ $statusIcon = getStatusIcon($currentStatus);
             flex-wrap: wrap;
         }
 
-        .file-info-left { display: flex; align-items: center; gap: 0.75rem; }
-        .file-icon { width: 40px; height: 40px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
-        .file-name { font-weight: 600; font-size: 0.85rem; color: #1e293b; }
-        .file-meta { font-size: 0.72rem; color: #94a3b8; }
-        .file-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .file-info-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #1e293b;
+        }
+
+        .file-meta {
+            font-size: 0.72rem;
+            color: #94a3b8;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
 
         .file-preview-inline {
             margin-top: 0.75rem;
@@ -964,7 +1313,9 @@ $statusIcon = getStatusIcon($currentStatus);
             justify-content: center;
         }
 
-        .btn-remove:hover { background: #fee2e2; }
+        .btn-remove:hover {
+            background: #fee2e2;
+        }
 
         /* Form Footer */
         .form-footer {
@@ -977,7 +1328,9 @@ $statusIcon = getStatusIcon($currentStatus);
             flex-wrap: wrap;
         }
 
-        .hidden { display: none !important; }
+        .hidden {
+            display: none !important;
+        }
 
         /* Sidebar Overlay */
         .sidebar-overlay {
@@ -991,7 +1344,9 @@ $statusIcon = getStatusIcon($currentStatus);
             z-index: 999;
         }
 
-        .sidebar-overlay.active { display: block; }
+        .sidebar-overlay.active {
+            display: block;
+        }
 
         /* Mobile Bottom Bar */
         .mobile-bottom-bar {
@@ -1010,43 +1365,137 @@ $statusIcon = getStatusIcon($currentStatus);
 
         /* ===== Responsive ===== */
         @media (max-width: 1024px) {
-            .page-content { padding: 1rem; }
-            .page-header { padding: 1.25rem 1.5rem; }
-            .content-container { max-width: 100%; }
+            .page-content {
+                padding: 1rem;
+            }
+
+            .page-header {
+                padding: 1.25rem 1.5rem;
+            }
+
+            .content-container {
+                max-width: 100%;
+            }
         }
 
         @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); width: 260px; }
-            .sidebar.open { transform: translateX(0); }
-            .sidebar-overlay.active { display: block; }
-            .main-content { margin-left: 0; }
-            .menu-toggle { display: flex; }
-            .top-bar { padding: 0 1rem; }
-            .page-content { padding: 0.75rem; padding-bottom: 5rem; }
-            .page-header h1 { font-size: 1.25rem; }
-            .card { padding: 1rem; }
-            .info-grid { grid-template-columns: 1fr; gap: 0.75rem; }
-            .severity-display { flex-direction: column; text-align: center; }
-            .file-info { flex-direction: column; align-items: flex-start; }
-            .file-actions { width: 100%; }
-            .file-actions .btn { flex: 1; justify-content: center; }
-            .form-footer { flex-direction: column; }
-            .form-footer .btn { width: 100%; justify-content: center; }
-            .mobile-bottom-bar { display: flex; }
-            .top-bar-right span { display: none; }
+            .sidebar {
+                transform: translateX(-100%);
+                width: 260px;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .menu-toggle {
+                display: flex;
+            }
+
+            .top-bar {
+                padding: 0 1rem;
+            }
+
+            .page-content {
+                padding: 0.75rem;
+                padding-bottom: 5rem;
+            }
+
+            .page-header h1 {
+                font-size: 1.25rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .severity-display {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .file-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .file-actions {
+                width: 100%;
+            }
+
+            .file-actions .btn {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .form-footer {
+                flex-direction: column;
+            }
+
+            .form-footer .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .mobile-bottom-bar {
+                display: flex;
+            }
+
+            .top-bar-right span {
+                display: none;
+            }
         }
 
         @media (max-width: 480px) {
-            .page-header { padding: 1rem; border-radius: 0.75rem; }
-            .page-header h1 { font-size: 1.1rem; }
-            .card { padding: 0.875rem; border-radius: 0.75rem; }
-            .form-textarea, .form-input { font-size: 0.8rem; padding: 0.625rem 0.75rem; }
-            .form-textarea { min-height: 80px; }
-            .upload-area { padding: 1.25rem; }
-            .btn { font-size: 0.8rem; padding: 0.5rem 1rem; }
+            .page-header {
+                padding: 1rem;
+                border-radius: 0.75rem;
+            }
+
+            .page-header h1 {
+                font-size: 1.1rem;
+            }
+
+            .card {
+                padding: 0.875rem;
+                border-radius: 0.75rem;
+            }
+
+            .form-textarea,
+            .form-input {
+                font-size: 0.8rem;
+                padding: 0.625rem 0.75rem;
+            }
+
+            .form-textarea {
+                min-height: 80px;
+            }
+
+            .upload-area {
+                padding: 1.25rem;
+            }
+
+            .btn {
+                font-size: 0.8rem;
+                padding: 0.5rem 1rem;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="app-layout">
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -1422,25 +1871,52 @@ $statusIcon = getStatusIcon($currentStatus);
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-        function openSidebar() { sidebar.classList.add('open'); sidebarOverlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
-        function closeSidebar() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('active'); document.body.style.overflow = ''; }
-        menuToggle.addEventListener('click', () => { sidebar.classList.contains('open') ? closeSidebar() : openSidebar(); });
+        function openSidebar() {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+        });
         sidebarOverlay.addEventListener('click', closeSidebar);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar(); });
-        window.addEventListener('resize', () => { if (window.innerWidth > 768 && sidebar.classList.contains('open')) closeSidebar(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+        });
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768 && sidebar.classList.contains('open')) closeSidebar();
+        });
 
         // Logout
         document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
             e.preventDefault();
             Swal.fire({
-                title: 'ออกจากระบบ?', html: '<p style="color:#475569;">คุณต้องการออกจากระบบใช่หรือไม่</p>',
-                icon: 'question', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#64748b',
-                confirmButtonText: '<i class="fas fa-sign-out-alt"></i> ออกจากระบบ', cancelButtonText: 'ยกเลิก',
+                title: 'ออกจากระบบ?',
+                html: '<p style="color:#475569;">คุณต้องการออกจากระบบใช่หรือไม่</p>',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="fas fa-sign-out-alt"></i> ออกจากระบบ',
+                cancelButtonText: 'ยกเลิก',
                 reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({ title: 'กำลังออกจากระบบ...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
-                    setTimeout(() => { window.location.href = 'logout.php'; }, 600);
+                    Swal.fire({
+                        title: 'กำลังออกจากระบบ...',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+                    setTimeout(() => {
+                        window.location.href = 'logout.php';
+                    }, 600);
                 }
             });
         });
@@ -1448,7 +1924,14 @@ $statusIcon = getStatusIcon($currentStatus);
         // Fancybox
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof Fancybox !== 'undefined') {
-                Fancybox.bind("[data-fancybox]", { Thumbs: { autoStart: true }, Toolbar: { display: ["zoom", "slideshow", "fullscreen", "download", "thumbs", "close"] } });
+                Fancybox.bind("[data-fancybox]", {
+                    Thumbs: {
+                        autoStart: true
+                    },
+                    Toolbar: {
+                        display: ["zoom", "slideshow", "fullscreen", "download", "thumbs", "close"]
+                    }
+                });
             }
         });
 
@@ -1459,26 +1942,38 @@ $statusIcon = getStatusIcon($currentStatus);
                     icon: '<?= $flash['type'] ?? 'info' ?>',
                     title: '<?= addslashes($flash['title'] ?? '') ?>',
                     html: '<?= addslashes($flash['message'] ?? '') ?>',
-                    confirmButtonColor: '#2563eb', confirmButtonText: 'ตกลง',
-                    <?php if (($flash['type'] ?? '') === 'success'): ?>timer: 3000, timerProgressBar: true,<?php endif; ?>
+                    confirmButtonColor: '#2563eb',
+                    confirmButtonText: 'ตกลง',
+                    <?php if (($flash['type'] ?? '') === 'success'): ?>timer: 3000,
+                    timerProgressBar: true,
+                <?php endif; ?>
                 });
             <?php endif; ?>
         });
 
         // File Upload
         function handleFileSelect(input) {
-            const pa = document.getElementById('file-preview-area'), fn = document.getElementById('selected-file-name'), fs = document.getElementById('selected-file-size');
+            const pa = document.getElementById('file-preview-area'),
+                fn = document.getElementById('selected-file-name'),
+                fs = document.getElementById('selected-file-size');
             if (input.files && input.files[0]) {
                 const f = input.files[0];
                 if (pa) pa.style.display = 'inline-flex';
                 if (fn) fn.textContent = f.name;
-                if (fs) { let s = f.size; if (s < 1024) fs.textContent = ' (' + s + ' B)'; else if (s < 1048576) fs.textContent = ' (' + (s / 1024).toFixed(1) + ' KB)'; else fs.textContent = ' (' + (s / 1048576).toFixed(1) + ' MB)'; }
+                if (fs) {
+                    let s = f.size;
+                    if (s < 1024) fs.textContent = ' (' + s + ' B)';
+                    else if (s < 1048576) fs.textContent = ' (' + (s / 1024).toFixed(1) + ' KB)';
+                    else fs.textContent = ' (' + (s / 1048576).toFixed(1) + ' MB)';
+                }
             }
         }
 
         function removeSelectedFile(e) {
-            e.stopPropagation(); e.preventDefault();
-            const fi = document.getElementById('report_file'), pa = document.getElementById('file-preview-area');
+            e.stopPropagation();
+            e.preventDefault();
+            const fi = document.getElementById('report_file'),
+                pa = document.getElementById('file-preview-area');
             if (fi) fi.value = '';
             if (pa) pa.style.display = 'none';
         }
@@ -1486,12 +1981,28 @@ $statusIcon = getStatusIcon($currentStatus);
         // Drag & Drop
         const uploadArea = document.querySelector('.upload-area:not(.disabled)');
         if (uploadArea) {
-            uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); this.style.borderColor = '#2563eb'; this.style.background = '#eff6ff'; });
-            uploadArea.addEventListener('dragleave', function(e) { e.preventDefault(); this.style.borderColor = '#cbd5e1'; this.style.background = '#fafbfc'; });
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#2563eb';
+                this.style.background = '#eff6ff';
+            });
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#cbd5e1';
+                this.style.background = '#fafbfc';
+            });
             uploadArea.addEventListener('drop', function(e) {
-                e.preventDefault(); this.style.borderColor = '#cbd5e1'; this.style.background = '#fafbfc';
-                const files = e.dataTransfer.files, fi = document.getElementById('report_file');
-                if (files.length > 0 && fi) { const dt = new DataTransfer(); dt.items.add(files[0]); fi.files = dt.files; handleFileSelect(fi); }
+                e.preventDefault();
+                this.style.borderColor = '#cbd5e1';
+                this.style.background = '#fafbfc';
+                const files = e.dataTransfer.files,
+                    fi = document.getElementById('report_file');
+                if (files.length > 0 && fi) {
+                    const dt = new DataTransfer();
+                    dt.items.add(files[0]);
+                    fi.files = dt.files;
+                    handleFileSelect(fi);
+                }
             });
         }
 
@@ -1504,21 +2015,45 @@ $statusIcon = getStatusIcon($currentStatus);
             Swal.fire({
                 title: isUpdate ? 'ยืนยันการอัปเดต?' : 'ยืนยันการบันทึก?',
                 html: (isUpdate ? 'คุณต้องการอัปเดตสรุปผลการรายงานนี้ใช่หรือไม่?' : 'คุณต้องการบันทึกสรุปผลการรายงานนี้ใช่หรือไม่?') + '<br><small>สถานะจะถูกเปลี่ยนเป็น "ดำเนินการแล้ว" โดยอัตโนมัติ</small>',
-                icon: 'question', showCancelButton: true, confirmButtonColor: '#059669', cancelButtonColor: '#6b7280',
-                confirmButtonText: '<i class="fas fa-save"></i> ' + (isUpdate ? 'อัปเดต' : 'บันทึก'), cancelButtonText: 'ยกเลิก', reverseButtons: true
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#059669',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: '<i class="fas fa-save"></i> ' + (isUpdate ? 'อัปเดต' : 'บันทึก'),
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({ title: 'กำลังบันทึก...', html: 'กรุณารอสักครู่', allowOutsideClick: false, showConfirmButton: false, willOpen: () => Swal.showLoading() });
-                    const submitBtn = document.getElementById('submitBtn'), mobileBtn = document.getElementById('mobileSubmitBtn');
-                    if (submitBtn) { submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...'; submitBtn.disabled = true; }
-                    if (mobileBtn) { mobileBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...'; mobileBtn.disabled = true; }
+                    Swal.fire({
+                        title: 'กำลังบันทึก...',
+                        html: 'กรุณารอสักครู่',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => Swal.showLoading()
+                    });
+                    const submitBtn = document.getElementById('submitBtn'),
+                        mobileBtn = document.getElementById('mobileSubmitBtn');
+                    if (submitBtn) {
+                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+                        submitBtn.disabled = true;
+                    }
+                    if (mobileBtn) {
+                        mobileBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+                        mobileBtn.disabled = true;
+                    }
                     document.getElementById('reportForm').submit();
                 }
             });
         }
 
-        document.getElementById('reportForm')?.addEventListener('submit', function(e) { e.preventDefault(); handleSubmit(); });
-        document.getElementById('mobileSubmitBtn')?.addEventListener('click', function(e) { e.preventDefault(); handleSubmit(); });
+        document.getElementById('reportForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            handleSubmit();
+        });
+        document.getElementById('mobileSubmitBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            handleSubmit();
+        });
 
         // Mobile Bottom Bar Scroll
         let lastScrollY = window.scrollY;
@@ -1526,11 +2061,16 @@ $statusIcon = getStatusIcon($currentStatus);
         if (mobileBottomBar && window.innerWidth <= 768) {
             window.addEventListener('scroll', function() {
                 const currentScrollY = window.scrollY;
-                if (currentScrollY > lastScrollY && currentScrollY > 100) { mobileBottomBar.style.transform = 'translateY(100%)'; mobileBottomBar.style.transition = 'transform 0.3s ease'; }
-                else { mobileBottomBar.style.transform = 'translateY(0)'; }
+                if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                    mobileBottomBar.style.transform = 'translateY(100%)';
+                    mobileBottomBar.style.transition = 'transform 0.3s ease';
+                } else {
+                    mobileBottomBar.style.transform = 'translateY(0)';
+                }
                 lastScrollY = currentScrollY;
             });
         }
     </script>
 </body>
+
 </html>

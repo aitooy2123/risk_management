@@ -1,7 +1,7 @@
 {
     "sarabun": {
-        "normal": "C:\\xampp\\htdocs\\risk_management\\vendor\\dompdf\\dompdf\/lib\/fonts\/sarabun_normal_4d7ed5287f3cc32e3e3f99fb1454e9f1",
-        "bold": "sarabun_bold_ddd76a2d1bb444001f7e5a731aa9fc54",
+        "normal": "C:\\xampp\\htdocs\\risk_management\\vendor\\dompdf\\dompdf\/lib\/fonts\/sarabun_normal_3f40be96464417f21e621df52fdc65eb",
+        "bold": "sarabun_bold_59d4c76b3ddbd4743c36903da30fda38",
         "italic": "C:\\xampp\\htdocs\\risk_management\\vendor\\dompdf\\dompdf\/lib\/fonts\/sarabun_italic_b8a370b001c4921d8a1ce2ab5aef1b72"
     }
 }

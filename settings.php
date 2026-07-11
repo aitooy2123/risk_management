@@ -31,7 +31,7 @@ $defaults = [
     'site_logo' => 'assets/default-logo.png',
     'items_per_page' => '10',
     'session_timeout' => '30',
-    'site_url' => 'http://localhost/risk_management/',
+    'site_url' => '',
     'menu_order' => 'dashboard,risks,risk_form,reports,users,settings,logout',
     'menu_dashboard' => 'ภาพรวมระบบ', 'menu_dashboard_visible' => '1', 'menu_dashboard_url' => 'dashboard.php',
     'menu_risks' => 'รายการความเสี่ยง', 'menu_risks_visible' => '1', 'menu_risks_url' => 'risks.php',
@@ -45,7 +45,7 @@ foreach ($defaults as $key => $value) {
     if (!isset($settings[$key])) $settings[$key] = $value;
 }
 
-// ===== จัดการ Action (เหมือนเดิม) =====
+// ===== จัดการ Action =====
 $success_message = '';
 $error_message = '';
 
@@ -316,6 +316,11 @@ function formatSizeDisplay($bytes) {
 $csrf_token = generateCsrfToken();
 $page_title = 'ตั้งค่าระบบ';
 $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form,reports,users,settings,logout');
+
+$active_tab = $_GET['tab'] ?? 'general';
+if (!in_array($active_tab, ['general', 'menu', 'backup', 'system'])) {
+    $active_tab = 'general';
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -327,6 +332,10 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
     <style>
         :root {
             --primary: #6366f1;
@@ -350,7 +359,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             background-attachment: fixed;
         }
         
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
@@ -362,7 +370,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             padding: 1.5rem;
         }
 
-        /* ===== HEADER ===== */
         .header {
             position: relative;
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #312e81 60%, #4f46e5 100%);
@@ -476,7 +483,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             50% { opacity: 0.4; }
         }
 
-        /* ===== TABS ===== */
         .tabs-wrapper {
             background: white;
             padding: 0.5rem;
@@ -560,7 +566,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             font-weight: 700;
         }
 
-        /* ===== CONTENT ===== */
         .tab-content {
             display: none;
             animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -571,17 +576,10 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
         }
         
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ===== CARDS ===== */
         .card {
             background: white;
             border-radius: 1.5rem;
@@ -639,7 +637,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             padding: 2rem;
         }
 
-        /* ===== FORM ELEMENTS ===== */
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -698,7 +695,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             color: #94a3b8;
         }
 
-        /* ===== BUTTONS ===== */
         .btn {
             padding: 0.875rem 2rem;
             border-radius: 0.875rem;
@@ -799,7 +795,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
         .btn-icon.red { background: #fef2f2; color: #ef4444; }
         .btn-icon.red:hover { background: #ef4444; color: white; }
 
-        /* ===== STATS ===== */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -860,7 +855,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             margin-bottom: 0.5rem;
         }
 
-        /* ===== SWITCH ===== */
         .switch {
             position: relative;
             display: inline-block;
@@ -907,7 +901,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             transform: translateX(22px);
         }
 
-        /* ===== MENU ITEMS ===== */
         .menu-item-row {
             display: flex;
             align-items: center;
@@ -1019,7 +1012,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             transform: scale(1.2);
         }
 
-        /* ===== DANGER ZONE ===== */
         .danger-zone {
             border: 2px dashed #fca5a5;
             border-radius: 1.5rem;
@@ -1082,7 +1074,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             border-color: #2563eb;
         }
 
-        /* ===== TABLE ===== */
         .backup-table {
             width: 100%;
             border-collapse: collapse;
@@ -1114,7 +1105,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             background: #f8fafc;
         }
 
-        /* ===== UPLOAD ZONE ===== */
         .upload-zone {
             border: 2px dashed #a7f3d0;
             border-radius: 1.25rem;
@@ -1137,7 +1127,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             background: linear-gradient(135deg, #d1fae5, #a7f3d0);
         }
 
-        /* ===== LOGO UPLOAD ===== */
         .logo-upload {
             display: flex;
             align-items: center;
@@ -1182,7 +1171,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             transform: translateY(-2px);
         }
 
-        /* ===== ALERTS ===== */
         .alert {
             padding: 1.25rem 1.75rem;
             border-radius: 1rem;
@@ -1212,7 +1200,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             border: 2px solid #fecaca;
         }
 
-        /* ===== ACTION BAR ===== */
         .action-bar {
             display: flex;
             gap: 1rem;
@@ -1221,7 +1208,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             border-top: 2px solid #f1f5f9;
         }
 
-        /* ===== EMPTY STATE ===== */
         .empty-state {
             text-align: center;
             padding: 4rem 2rem;
@@ -1235,82 +1221,29 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             opacity: 0.5;
         }
 
-        /* ===== RESPONSIVE ===== */
         @media (max-width: 1024px) {
-            .stats-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-            
-            .tabs-nav {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .tabs-nav { grid-template-columns: repeat(2, 1fr); }
         }
         
         @media (max-width: 768px) {
-            .header {
-                padding: 1.5rem;
-                border-radius: 1.5rem;
-            }
-            
-            .header h1 {
-                font-size: 1.5rem;
-            }
-            
-            .header-icon {
-                width: 48px;
-                height: 48px;
-                font-size: 1.25rem;
-            }
-            
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .danger-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .action-bar {
-                flex-direction: column;
-            }
-            
-            .menu-item-details {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-            
-            .logo-upload {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .card-body {
-                padding: 1.25rem;
-            }
-            
-            .tabs-nav {
-                grid-template-columns: 1fr 1fr;
-                gap: 0.25rem;
-            }
-            
-            .tab-btn {
-                padding: 0.75rem 1rem;
-                font-size: 0.8rem;
-            }
+            .header { padding: 1.5rem; border-radius: 1.5rem; }
+            .header h1 { font-size: 1.5rem; }
+            .header-icon { width: 48px; height: 48px; font-size: 1.25rem; }
+            .form-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .danger-grid { grid-template-columns: 1fr; }
+            .action-bar { flex-direction: column; }
+            .menu-item-details { flex-direction: column; gap: 0.5rem; }
+            .logo-upload { flex-direction: column; align-items: flex-start; }
+            .card-body { padding: 1.25rem; }
+            .tabs-nav { grid-template-columns: 1fr 1fr; gap: 0.25rem; }
+            .tab-btn { padding: 0.75rem 1rem; font-size: 0.8rem; }
         }
         
         @media (max-width: 480px) {
-            .tabs-nav {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
+            .tabs-nav { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -1355,16 +1288,16 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
                 <!-- TABS -->
                 <div class="tabs-wrapper">
                     <div class="tabs-nav" id="tabNavigation">
-                        <button type="button" class="tab-btn active" onclick="switchTab('general')" data-tab="general">
+                        <button type="button" class="tab-btn <?= $active_tab === 'general' ? 'active' : '' ?>" onclick="switchTab('general')" data-tab="general">
                             <span><i class="fas fa-sliders-h"></i> ทั่วไป</span>
                         </button>
-                        <button type="button" class="tab-btn" onclick="switchTab('menu')" data-tab="menu">
+                        <button type="button" class="tab-btn <?= $active_tab === 'menu' ? 'active' : '' ?>" onclick="switchTab('menu')" data-tab="menu">
                             <span><i class="fas fa-bars"></i> เมนู</span>
                         </button>
-                        <button type="button" class="tab-btn" onclick="switchTab('backup')" data-tab="backup">
+                        <button type="button" class="tab-btn <?= $active_tab === 'backup' ? 'active' : '' ?>" onclick="switchTab('backup')" data-tab="backup">
                             <span><i class="fas fa-database"></i> สำรองข้อมูล <span class="tab-badge"><?= count($backup_files) ?></span></span>
                         </button>
-                        <button type="button" class="tab-btn danger" onclick="switchTab('system')" data-tab="system">
+                        <button type="button" class="tab-btn danger <?= $active_tab === 'system' ? 'active' : '' ?>" onclick="switchTab('system')" data-tab="system">
                             <span><i class="fas fa-tools"></i> ระบบ</span>
                         </button>
                     </div>
@@ -1377,7 +1310,7 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
                     <input type="hidden" name="menu_order" id="menuOrderInput" value="<?= htmlspecialchars(implode(',', $menu_order)) ?>">
 
                     <!-- TAB: ทั่วไป -->
-                    <div class="tab-content active" id="tab-general">
+                    <div class="tab-content <?= $active_tab === 'general' ? 'active' : '' ?>" id="tab-general">
                         <div class="card">
                             <div class="card-header">
                                 <div class="card-icon purple"><i class="fas fa-info-circle"></i></div>
@@ -1392,17 +1325,17 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
                                         <label class="form-label"><i class="fas fa-heading"></i> ชื่อระบบ</label>
                                         <input type="text" name="site_name" class="form-input" value="<?= htmlspecialchars($settings['site_name']) ?>" placeholder="เช่น Risk Management" required>
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group full">
                                         <label class="form-label"><i class="fas fa-align-left"></i> คำอธิบาย</label>
-                                        <input type="text" name="site_description" class="form-input" value="<?= htmlspecialchars($settings['site_description']) ?>" placeholder="คำอธิบายสั้นๆ">
+                                        <textarea name="site_description" class="form-input" rows="5" placeholder="คำอธิบายระบบ"><?= htmlspecialchars($settings['site_description']) ?></textarea>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label"><i class="fas fa-building"></i> หน่วยงาน</label>
                                         <input type="text" name="site_organization" class="form-input" value="<?= htmlspecialchars($settings['site_organization']) ?>" placeholder="ชื่อหน่วยงาน">
                                     </div>
-                                    <div class="form-group full">
+                                    <div class="form-group">
                                         <label class="form-label"><i class="fas fa-link"></i> URL เว็บไซต์</label>
-                                        <input type="text" name="site_url" class="form-input" value="<?= htmlspecialchars($settings['site_url']) ?>" placeholder="https://example.com/">
+                                        <input type="text" name="site_url" class="form-input" value="<?= htmlspecialchars($settings['site_url'] ?? '') ?>" placeholder="https://example.com/">
                                     </div>
                                     <div class="form-group full">
                                         <label class="form-label"><i class="fas fa-image"></i> โลโก้</label>
@@ -1418,20 +1351,6 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
                                         </div>
                                         <input type="text" name="site_logo_url" class="form-input" value="<?= htmlspecialchars($settings['site_logo']) ?>" placeholder="หรือวาง URL โลโก้" style="margin-top:1rem;">
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <div class="card-icon cyan"><i class="fas fa-cog"></i></div>
-                                <div>
-                                    <div class="card-title">ค่าพื้นฐาน</div>
-                                    <div class="card-subtitle">การแสดงผลและความปลอดภัย</div>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="form-grid">
                                     <div class="form-group">
                                         <label class="form-label"><i class="fas fa-list-ol"></i> รายการต่อหน้า</label>
                                         <select name="items_per_page" class="form-input">
@@ -1461,7 +1380,7 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
                     </div>
 
                     <!-- TAB: เมนู -->
-                    <div class="tab-content" id="tab-menu">
+                    <div class="tab-content <?= $active_tab === 'menu' ? 'active' : '' ?>" id="tab-menu">
                         <div class="card">
                             <div class="card-header">
                                 <div class="card-icon blue"><i class="fas fa-edit"></i></div>
@@ -1526,7 +1445,7 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
                 </form>
 
                 <!-- TAB: สำรองข้อมูล -->
-                <div class="tab-content" id="tab-backup">
+                <div class="tab-content <?= $active_tab === 'backup' ? 'active' : '' ?>" id="tab-backup">
                     <div class="card">
                         <div class="card-header">
                             <div class="card-icon amber"><i class="fas fa-database"></i></div>
@@ -1662,7 +1581,7 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
                 </div>
 
                 <!-- TAB: ระบบ -->
-                <div class="tab-content" id="tab-system">
+                <div class="tab-content <?= $active_tab === 'system' ? 'active' : '' ?>" id="tab-system">
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-icon">👥</div>
@@ -1755,13 +1674,12 @@ $menu_order = explode(',', $settings['menu_order'] ?? 'dashboard,risks,risk_form
             if (tabBtn) tabBtn.classList.add('active');
             if (tabContent) tabContent.classList.add('active');
             
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            window.history.replaceState({}, '', url);
+            
             localStorage.setItem('settingsActiveTab', tabName);
         }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedTab = localStorage.getItem('settingsActiveTab');
-            if (savedTab) switchTab(savedTab);
-        });
 
         // ===== LOGO PREVIEW =====
         function previewLogo(input) {

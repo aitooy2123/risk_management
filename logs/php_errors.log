@@ -1,0 +1,1 @@
+[11-Jul-2026 08:50:10 Europe/Berlin] PHP Fatal error:  Cannot redeclare getThaiDate() (previously declared in C:\xampp\htdocs\risk_management\generate_pdf.php:136) in C:\xampp\htdocs\risk_management\includes\functions.php on line 41
