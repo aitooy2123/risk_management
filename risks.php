@@ -2,6 +2,9 @@
 
 /**
  * รายการความเสี่ยง - UI สวยงาม พร้อมระบบจัดการเต็มรูปแบบ
+ * Version: 2.0 - Premium Risk Management Table
+ * 
+ * Features:
  * - ฟิลเตอร์: กลุ่มงาน, ประเภท, ระดับ, สถานะ, วันที่
  * - แสดงสถานะความเสี่ยง + สถานะการรายงานผล
  * - Admin: เห็นทั้งหมด / User: เห็นเฉพาะของตัวเอง
@@ -23,6 +26,10 @@
  * - ใช้ SweetAlert2 สำหรับการแจ้งเตือนและการยืนยัน
  * - Keyboard Shortcuts: Ctrl+A เลือกทั้งหมด, Ctrl+D ลบที่เลือก, Esc ปิดเมนู
  */
+
+// =============================================
+// 1. INITIALIZATION & SECURITY
+// =============================================
 define('ACCESS_ALLOWED', true);
 require_once 'config/db.php';
 require_once 'includes/functions.php';
@@ -31,7 +38,13 @@ if (!isLoggedIn()) {
     redirect('index.php');
 }
 
-// ===== ฟังก์ชันแปลงวันที่เป็น พ.ศ. ไทย =====
+// =============================================
+// 2. HELPER FUNCTIONS
+// =============================================
+
+/**
+ * แปลงวันที่เป็น พ.ศ. ไทย
+ */
 function thaiDate($date, $showTime = false)
 {
     if (empty($date)) {
@@ -67,7 +80,9 @@ function thaiDate($date, $showTime = false)
     return "{$day} {$thaiMonth} {$year}";
 }
 
-// ===== ฟังก์ชันตรวจสอบสิทธิ์ =====
+/**
+ * ตรวจสอบสิทธิ์การแก้ไข
+ */
 function canModify($risk_user_id)
 {
     if (!isset($_SESSION['user_id'])) {
@@ -79,11 +94,17 @@ function canModify($risk_user_id)
     return $_SESSION['user_id'] == $risk_user_id;
 }
 
+/**
+ * ตรวจสอบสิทธิ์การลบ
+ */
 function canDelete()
 {
     return isAdmin();
 }
 
+/**
+ * ดึงไอคอนตามสถานะ
+ */
 function getStatusIcon($status)
 {
     if ($status == 'ดำเนินการแล้ว') {
@@ -98,7 +119,19 @@ function getStatusIcon($status)
     return 'fa-clock';
 }
 
-// ===== ดึงค่าการตั้งค่าระบบ =====
+/**
+ * สร้าง URL สำหรับ pagination
+ */
+function buildRiskPageUrl($page, $currentParams)
+{
+    $query = $currentParams;
+    $query['page'] = $page;
+    return 'risks.php?' . http_build_query($query);
+}
+
+// =============================================
+// 3. SYSTEM SETTINGS
+// =============================================
 $settings = [];
 try {
     $stmt = $pdo->query("SHOW TABLES LIKE 'system_settings'");
@@ -113,7 +146,9 @@ try {
     // ใช้ค่าเริ่มต้น
 }
 
-// ===== ตัวแปร Filter =====
+// =============================================
+// 4. FILTER VARIABLES
+// =============================================
 $type_filter     = $_GET['risk_type'] ?? '';
 $severity_filter = $_GET['severity'] ?? '';
 $group_filter    = $_GET['unit'] ?? '';
@@ -125,7 +160,9 @@ $page    = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = (int) ($settings['items_per_page'] ?? 10);
 $offset  = ($page - 1) * $perPage;
 
-// ===== สร้าง Query =====
+// =============================================
+// 5. BUILD QUERY
+// =============================================
 $where  = "WHERE 1=1";
 $params = [];
 
@@ -163,20 +200,24 @@ if (!isAdmin()) {
     $params[] = $_SESSION['user_id'];
 }
 
-// ===== นับจำนวนทั้งหมด =====
+// =============================================
+// 6. COUNT & FETCH DATA
+// =============================================
+
+// นับจำนวนทั้งหมด
 $countSql  = "SELECT COUNT(*) FROM risks r $where";
 $countStmt = $pdo->prepare($countSql);
 $countStmt->execute($params);
 $totalRows  = $countStmt->fetchColumn();
 $totalPages = ceil($totalRows / $perPage);
 
-// ===== ดึง ID ทั้งหมด =====
+// ดึง ID ทั้งหมด (สำหรับพิมพ์ทั้งหมด)
 $allIdsSql  = "SELECT r.id FROM risks r $where ORDER BY r.created_at DESC";
 $allIdsStmt = $pdo->prepare($allIdsSql);
 $allIdsStmt->execute($params);
 $allIds = $allIdsStmt->fetchAll(PDO::FETCH_COLUMN);
 
-// ===== ดึงข้อมูลตามหน้า =====
+// ดึงข้อมูลตามหน้า
 $dataSql = "SELECT r.*, u.username, u.fullname, rr.id as report_id 
             FROM risks r 
             LEFT JOIN users u ON r.user_id = u.id 
@@ -197,6 +238,7 @@ $stmt->bindValue($i, (int) $offset, PDO::PARAM_INT);
 $stmt->execute();
 $risks = $stmt->fetchAll();
 
+// แก้ไขสถานะว่างเปล่า
 foreach ($risks as &$risk) {
     if (empty($risk['status']) || $risk['status'] == '') {
         $risk['status'] = 'ยังไม่ดำเนินการ';
@@ -204,7 +246,9 @@ foreach ($risks as &$risk) {
 }
 unset($risk);
 
-// ===== ดึงข้อมูลสำหรับ Filter =====
+// =============================================
+// 7. FILTER DATA
+// =============================================
 $types      = $pdo->query("SELECT DISTINCT risk_type FROM risks ORDER BY risk_type")->fetchAll(PDO::FETCH_COLUMN);
 $severities = $pdo->query("SELECT DISTINCT severity FROM risks ORDER BY severity")->fetchAll(PDO::FETCH_COLUMN);
 $units      = $pdo->query("SELECT DISTINCT unit FROM risks ORDER BY unit")->fetchAll(PDO::FETCH_COLUMN);
@@ -221,15 +265,11 @@ try {
     $statuses = ['ยังไม่ดำเนินการ', 'กำลังดำเนินการ', 'ดำเนินการแล้ว', 'ยุติ'];
 }
 
+// =============================================
+// 8. CONFIGURATION ARRAYS
+// =============================================
 $csrf_token       = generateCsrfToken();
 $hasActiveFilters = ($type_filter !== '' || $severity_filter !== '' || $group_filter !== '' || $status_filter !== '' || $date_from !== '' || $date_to !== '');
-
-function buildRiskPageUrl($page, $currentParams)
-{
-    $query = $currentParams;
-    $query['page'] = $page;
-    return 'risks.php?' . http_build_query($query);
-}
 
 $severityLabels = [
     'A' => 'ต่ำมาก',
@@ -265,6 +305,9 @@ $isAdmin = isAdmin();
 $page_title = 'รายการความเสี่ยง';
 ?>
 <?php include 'includes/header.php'; ?>
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
     :root {
