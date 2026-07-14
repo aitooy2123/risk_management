@@ -2,7 +2,7 @@
 /**
  * Dashboard - Risk Management System
  * Full Page Layout with Organized Structure
- * Version: 2.0
+ * Version: 2.1 - Fixed Issues
  */
 
 // =============================================
@@ -53,8 +53,38 @@ $SEVERITY_MAP = [
     'E' => 'ระดับ E : เกิดความเสี่ยง ถึงตัวบุคคล เกิดผลกระทบต่องานระดับสูงสุดไม่สามารถแก้ไขได้ รายงานผู้บริหาร'
 ];
 
+// 🔧 แก้ไขปัญหา #1: กำหนดสีตามระดับความเสี่ยงโดยตรง
+$SEVERITY_COLORS = [
+    'A' => '#22c55e',  // สีเขียว
+    'B' => '#3b82f6',  // สีน้ำเงิน
+    'C' => '#84cc16',  // สีเขียวอ่อน
+    'D' => '#eab308',  // สีเหลือง
+    'F' => '#f97316',  // สีส้ม
+    'E' => '#ef4444'   // สีแดง
+];
+
+// 🔧 แก้ไขปัญหา #2: กำหนดสีให้ตรงกับประเภทความเสี่ยง (6 ประเภทเท่านั้น)
+$RISK_TYPE_COLORS = [
+    'ความเสี่ยงทางด้านกลยุทธ์' => 'rgba(99,102,241,0.75)',
+    'ความเสี่ยงทางด้านการเงิน' => 'rgba(59,130,246,0.75)',
+    'ความเสี่ยงทางด้านการปฏิบัติงาน' => 'rgba(34,197,94,0.75)',
+    'ความเสี่ยงทางด้านกฎหมาย' => 'rgba(234,179,8,0.75)',
+    'ความเสี่ยงด้านสิ่งแวดล้อม' => 'rgba(249,115,22,0.75)',
+    'ปัญหาและข้อเสนอแนะที่อยากให้ช่วยแก้ไข' => 'rgba(239,68,68,0.75)'
+];
+
+// สีสำรองสำหรับ Risk Type Chart (ใช้เมื่อมีประเภทที่ไม่อยู่ใน $RISK_TYPE_COLORS)
+$FALLBACK_COLORS = [
+    'rgba(139,92,246,0.75)',
+    'rgba(20,184,166,0.75)',
+    'rgba(236,72,153,0.75)',
+    'rgba(168,85,247,0.75)',
+    'rgba(52,211,153,0.75)',
+    'rgba(251,146,60,0.75)'
+];
+
 $CHART_COLORS = [
-    'doughnut' => ['#3b82f6', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'],
+    'doughnut' => ['#22c55e', '#3b82f6', '#84cc16', '#eab308', '#f97316', '#ef4444'], // 🔧 แก้ไขให้ตรงกับระดับ A,B,C,D,F,E
     'group' => ['#3b82f6', '#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'],
     'groupBorder' => ['#2563eb', '#4f46e5', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626', '#db2777', '#0d9488']
 ];
@@ -209,18 +239,35 @@ $data['recentRisks'] = dbFetchAll($pdo,
     $where_params
 );
 
-// 7.4 Group summary
-$unitOrderString = "'" . implode("','", $UNIT_ORDER) . "'";
-$data['groupSummary'] = dbFetchAll($pdo, 
+// 7.4 Group summary - 🔧 แก้ไขปัญหา #3: ใช้ LEFT JOIN กับ UNIT_ORDER เพื่อแสดงทุกกลุ่ม
+// สร้างตารางชั่วคราวของกลุ่มทั้งหมด
+$unitList = "'" . implode("','", $UNIT_ORDER) . "'";
+
+// ดึงข้อมูลกลุ่มที่มีความเสี่ยง (ตาม filter)
+$groupDataRaw = dbFetchAll($pdo, 
     "SELECT unit, COUNT(*) as total 
      FROM risks r $where_clause 
-     GROUP BY unit 
-     ORDER BY FIELD(unit, $unitOrderString), total DESC",
+     GROUP BY unit",
     $where_params
 );
 
-// 7.5 Status summary by group
-$data['statusSummary'] = dbFetchAll($pdo, 
+// แปลงเป็น associative array
+$groupDataMap = [];
+foreach ($groupDataRaw as $item) {
+    $groupDataMap[$item['unit']] = (int)$item['total'];
+}
+
+// 🔧 สร้างข้อมูลกลุ่มให้ครบทุกกลุ่ม (ถึงไม่มีข้อมูลก็แสดง)
+$data['groupSummary'] = [];
+foreach ($UNIT_ORDER as $unit) {
+    $data['groupSummary'][] = [
+        'unit' => $unit,
+        'total' => isset($groupDataMap[$unit]) ? $groupDataMap[$unit] : 0
+    ];
+}
+
+// 7.5 Status summary by group - 🔧 แก้ไขปัญหา #4: แสดงทุกกลุ่ม
+$statusDataRaw = dbFetchAll($pdo, 
     "SELECT unit,
         SUM(CASE WHEN status = 'ยังไม่ดำเนินการ' OR status IS NULL OR status = '' THEN 1 ELSE 0 END) as pending,
         SUM(CASE WHEN status = 'กำลังดำเนินการ' THEN 1 ELSE 0 END) as in_progress,
@@ -228,10 +275,32 @@ $data['statusSummary'] = dbFetchAll($pdo,
         SUM(CASE WHEN status = 'ยุติ' THEN 1 ELSE 0 END) as terminated_count,
         COUNT(*) as total
      FROM risks r $where_clause 
-     GROUP BY unit 
-     ORDER BY FIELD(unit, $unitOrderString), total DESC",
+     GROUP BY unit",
     $where_params
 );
+
+// แปลงเป็น associative array
+$statusDataMap = [];
+foreach ($statusDataRaw as $item) {
+    $statusDataMap[$item['unit']] = $item;
+}
+
+// 🔧 สร้างข้อมูลสถานะให้ครบทุกกลุ่ม
+$data['statusSummary'] = [];
+foreach ($UNIT_ORDER as $unit) {
+    if (isset($statusDataMap[$unit])) {
+        $data['statusSummary'][] = $statusDataMap[$unit];
+    } else {
+        $data['statusSummary'][] = [
+            'unit' => $unit,
+            'pending' => 0,
+            'in_progress' => 0,
+            'completed' => 0,
+            'terminated_count' => 0,
+            'total' => 0
+        ];
+    }
+}
 
 // 7.6 Top reporters
 $data['topReporters'] = dbFetchAll($pdo, 
@@ -280,6 +349,12 @@ $data['groupTopTypes'] = [];
 foreach ($data['groupSummary'] as $group) {
     $unit = $group['unit'];
     
+    // ถ้าไม่มีข้อมูลความเสี่ยงสำหรับกลุ่มนี้
+    if ($group['total'] == 0) {
+        $data['groupTopTypes'][$unit] = '-';
+        continue;
+    }
+    
     // Build sub-query conditions
     $subConditions = ["unit = :u"];
     $subParams = [':u' => $unit];
@@ -326,8 +401,10 @@ $chartData = [
     'severityCounts' => [],
     'severityFullLabels' => [],
     'severityFullCounts' => [],
+    'severityColors' => [],  // 🔧 เพิ่มสำหรับปัญหา #1
     'riskTypeLabels' => [],
     'riskTypeCounts' => [],
+    'riskTypeColors' => [],  // 🔧 เพิ่มสำหรับปัญหา #2
     'groupUnits' => [],
     'groupTotals' => [],
     'groupTopTypesArray' => [],
@@ -338,7 +415,7 @@ $chartData = [
     'statusTerminated' => []
 ];
 
-// Process severity data
+// 🔧 แก้ไขปัญหา #1: Process severity data with correct colors
 foreach ($data['severityData'] as $item) {
     $chartData['severityLabels'][] = $item['severity'];
     $chartData['severityCounts'][] = (int)$item['count'];
@@ -348,15 +425,30 @@ foreach ($data['severityData'] as $item) {
         : $item['severity'];
     $chartData['severityFullLabels'][] = $label;
     $chartData['severityFullCounts'][] = (int)$item['count'];
+    
+    // 🔧 ใช้สีตามระดับความเสี่ยงโดยตรง
+    $chartData['severityColors'][] = isset($SEVERITY_COLORS[$item['severity']]) 
+        ? $SEVERITY_COLORS[$item['severity']] 
+        : '#94a3b8';
 }
 
-// Process risk type data
+// 🔧 แก้ไขปัญหา #2: Process risk type data with correct colors
+$fallbackIndex = 0;
 foreach ($data['riskTypes'] as $item) {
     $chartData['riskTypeLabels'][] = $item['risk_type'];
     $chartData['riskTypeCounts'][] = (int)$item['count'];
+    
+    // 🔧 ใช้สีตามประเภทความเสี่ยงที่กำหนดไว้
+    if (isset($RISK_TYPE_COLORS[$item['risk_type']])) {
+        $chartData['riskTypeColors'][] = $RISK_TYPE_COLORS[$item['risk_type']];
+    } else {
+        // ใช้สีสำรองถ้าไม่ตรงกับที่กำหนด
+        $chartData['riskTypeColors'][] = $FALLBACK_COLORS[$fallbackIndex % count($FALLBACK_COLORS)];
+        $fallbackIndex++;
+    }
 }
 
-// Process group summary data
+// Process group summary data (🔧 แก้ไขปัญหา #3: ข้อมูลครบทุกกลุ่มแล้ว)
 foreach ($data['groupSummary'] as $item) {
     $chartData['groupUnits'][] = $item['unit'];
     $chartData['groupTotals'][] = (int)$item['total'];
@@ -365,7 +457,7 @@ foreach ($data['groupSummary'] as $item) {
         : '-';
 }
 
-// Process status summary data
+// Process status summary data (🔧 แก้ไขปัญหา #4: ข้อมูลครบทุกกลุ่มแล้ว)
 foreach ($data['statusSummary'] as $item) {
     $chartData['statusUnits'][] = $item['unit'];
     $chartData['statusPending'][] = (int)$item['pending'];
@@ -398,8 +490,8 @@ function getStatusBadgeClass($status) {
  */
 function getSeverityBadgeClass($severity) {
     $classes = [
-        'A' => 'badge-info',
-        'B' => 'badge-success',
+        'A' => 'badge-success',   // 🔧 แก้ไขให้ตรงกับสี
+        'B' => 'badge-info',
         'C' => 'badge-lime',
         'D' => 'badge-warning',
         'F' => 'badge-orange',
@@ -2044,29 +2136,31 @@ include 'includes/header.php';
     /**
      * Dashboard JavaScript
      * Handles charts, filters, refresh, export and notifications
+     * Version: 2.1 - Fixed all chart issues
      */
     
     // =============================================
     // DATA FROM PHP
     // =============================================
     var DASHBOARD_DATA = {
-        // Severity Chart
+        // Severity Chart - 🔧 ใช้สีที่แมปตามระดับ
         severityLabels: <?= json_encode($chartData['severityFullLabels'], JSON_UNESCAPED_UNICODE) ?>,
         severityCounts: <?= json_encode($chartData['severityFullCounts']) ?>,
-        doughnutColors: <?= json_encode($CHART_COLORS['doughnut']) ?>,
+        severityColors: <?= json_encode($chartData['severityColors']) ?>,
         
-        // Risk Type Chart
+        // Risk Type Chart - 🔧 ใช้สีที่แมปตามประเภท (ไม่มีสีเกิน)
         riskTypeLabels: <?= json_encode($chartData['riskTypeLabels'], JSON_UNESCAPED_UNICODE) ?>,
         riskTypeCounts: <?= json_encode($chartData['riskTypeCounts']) ?>,
+        riskTypeColors: <?= json_encode($chartData['riskTypeColors']) ?>,
         
-        // Group Chart
+        // Group Chart - 🔧 ข้อมูลครบทุกกลุ่ม
         groupUnits: <?= json_encode($chartData['groupUnits'], JSON_UNESCAPED_UNICODE) ?>,
         groupTotals: <?= json_encode($chartData['groupTotals']) ?>,
         groupTopTypes: <?= json_encode($chartData['groupTopTypesArray'], JSON_UNESCAPED_UNICODE) ?>,
         groupColors: <?= json_encode($CHART_COLORS['group']) ?>,
         groupBorderColors: <?= json_encode($CHART_COLORS['groupBorder']) ?>,
         
-        // Status Chart
+        // Status Chart - 🔧 ข้อมูลครบทุกกลุ่ม
         statusUnits: <?= json_encode($chartData['statusUnits'], JSON_UNESCAPED_UNICODE) ?>,
         statusPending: <?= json_encode($chartData['statusPending']) ?>,
         statusInProgress: <?= json_encode($chartData['statusInProgress']) ?>,
@@ -2130,13 +2224,18 @@ include 'includes/header.php';
         // ---- Severity Doughnut Chart ----
         var severityCanvas = qs('#severityChart');
         if (severityCanvas) {
+            // 🔧 ใช้สีที่แมปตามระดับความเสี่ยงโดยตรง
+            var bgColors = DASHBOARD_DATA.severityColors && DASHBOARD_DATA.severityColors.length > 0 
+                ? DASHBOARD_DATA.severityColors 
+                : ['#22c55e', '#3b82f6', '#84cc16', '#eab308', '#f97316', '#ef4444'];
+            
             charts.severity = new Chart(severityCanvas, {
                 type: 'doughnut',
                 data: {
                     labels: DASHBOARD_DATA.severityLabels,
                     datasets: [{
                         data: DASHBOARD_DATA.severityCounts,
-                        backgroundColor: DASHBOARD_DATA.doughnutColors,
+                        backgroundColor: bgColors,
                         borderWidth: 3,
                         borderColor: '#ffffff',
                         hoverBorderWidth: 4,
@@ -2197,22 +2296,25 @@ include 'includes/header.php';
         // ---- Risk Type Polar Area Chart ----
         var riskTypeCanvas = qs('#riskTypeChart');
         if (riskTypeCanvas) {
+            // 🔧 ใช้สีที่แมปตามประเภทความเสี่ยง (ไม่มีสีเกิน)
+            var polarColors = DASHBOARD_DATA.riskTypeColors && DASHBOARD_DATA.riskTypeColors.length > 0
+                ? DASHBOARD_DATA.riskTypeColors
+                : [
+                    'rgba(99,102,241,0.75)',
+                    'rgba(59,130,246,0.75)',
+                    'rgba(34,197,94,0.75)',
+                    'rgba(234,179,8,0.75)',
+                    'rgba(249,115,22,0.75)',
+                    'rgba(239,68,68,0.75)'
+                  ];
+            
             charts.riskType = new Chart(riskTypeCanvas, {
                 type: 'polarArea',
                 data: {
                     labels: DASHBOARD_DATA.riskTypeLabels,
                     datasets: [{
                         data: DASHBOARD_DATA.riskTypeCounts,
-                        backgroundColor: [
-                            'rgba(99,102,241,0.75)',
-                            'rgba(59,130,246,0.75)',
-                            'rgba(34,197,94,0.75)',
-                            'rgba(234,179,8,0.75)',
-                            'rgba(249,115,22,0.75)',
-                            'rgba(239,68,68,0.75)',
-                            'rgba(139,92,246,0.75)',
-                            'rgba(20,184,166,0.75)'
-                        ],
+                        backgroundColor: polarColors,
                         borderWidth: 2,
                         borderColor: '#ffffff'
                     }]
@@ -2259,6 +2361,17 @@ include 'includes/header.php';
         // ---- Group Bar Chart ----
         var groupCanvas = qs('#groupChart');
         if (groupCanvas) {
+            // 🔧 สร้างสีให้พอดีกับจำนวนกลุ่ม (9 กลุ่ม)
+            var groupBgColors = [];
+            var groupBorderColorsList = [];
+            var allGroupColors = DASHBOARD_DATA.groupColors;
+            var allGroupBorderColors = DASHBOARD_DATA.groupBorderColors;
+            
+            for (var i = 0; i < DASHBOARD_DATA.groupUnits.length; i++) {
+                groupBgColors.push(allGroupColors[i % allGroupColors.length]);
+                groupBorderColorsList.push(allGroupBorderColors[i % allGroupBorderColors.length]);
+            }
+            
             charts.group = new Chart(groupCanvas, {
                 type: 'bar',
                 data: {
@@ -2266,8 +2379,8 @@ include 'includes/header.php';
                     datasets: [{
                         label: 'จำนวนเคส',
                         data: DASHBOARD_DATA.groupTotals,
-                        backgroundColor: DASHBOARD_DATA.groupColors,
-                        borderColor: DASHBOARD_DATA.groupBorderColors,
+                        backgroundColor: groupBgColors,
+                        borderColor: groupBorderColorsList,
                         borderWidth: 2,
                         borderRadius: 8,
                         borderSkipped: false
@@ -2616,7 +2729,6 @@ include 'includes/header.php';
         
         // Keyboard shortcuts
         document.addEventListener('keydown', function(event) {
-            // Ctrl+R or Cmd+R = Refresh dashboard
             if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
                 if (!event.target.closest('input, textarea, select')) {
                     event.preventDefault();
@@ -2624,7 +2736,6 @@ include 'includes/header.php';
                 }
             }
             
-            // Escape = Reset filters
             if (event.key === 'Escape') {
                 var resetLink = qs('a[href="dashboard.php"]');
                 if (resetLink && resetLink.classList.contains('btn-red')) {
@@ -2633,9 +2744,10 @@ include 'includes/header.php';
             }
         });
         
-        // Log success
-        console.log('✅ Dashboard initialized successfully');
-        console.log('📊 Data loaded: ' + DASHBOARD_DATA.severityCounts.reduce(function(a,b) { return a+b; }, 0) + ' total severity records');
+        console.log('✅ Dashboard v2.1 initialized successfully');
+        console.log('🔧 Fixed: Severity colors mapped correctly');
+        console.log('🔧 Fixed: Risk type colors no longer exceed');
+        console.log('🔧 Fixed: All groups displayed in charts');
         console.log('🔄 Auto-refresh enabled (every 60 seconds)');
     });
     </script>
